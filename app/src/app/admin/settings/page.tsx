@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { CalendarDays, ArrowLeft, MapPin } from 'lucide-react'
+import { CalendarDays, ArrowLeft, MapPin, Users } from 'lucide-react'
 
 export default function SettingsPage() {
     return (
@@ -50,6 +50,25 @@ export default function SettingsPage() {
                         <CardContent>
                             <p className="text-sm text-muted-foreground">
                                 Configure available locations for work shifts and business trips.
+                            </p>
+                        </CardContent>
+                    </Card>
+                </Link>
+
+                <Link href="/admin/settings/categories">
+                    <Card className="hover:bg-accent/50 transition-colors cursor-pointer h-full">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Users className="h-5 w-5" />
+                                Employee Categories
+                            </CardTitle>
+                            <CardDescription>
+                                Manage employee categories
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-muted-foreground">
+                                Add and manage employee categories like Fulltime, Parttime, etc.
                             </p>
                         </CardContent>
                     </Card>

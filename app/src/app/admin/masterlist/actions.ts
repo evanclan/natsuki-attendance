@@ -3,7 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-export type ShiftType = 'work' | 'rest' | 'absent' | 'paid_leave' | 'half_paid_leave' | 'business_trip' | 'flex' | 'special_leave'
+export type ShiftType = 'work' | 'rest' | 'absent' | 'paid_leave' | 'half_paid_leave' | 'business_trip' | 'flex' | 'special_leave' | 'preferred_rest'
 
 export type MasterListShiftData = {
     date: string
@@ -14,6 +14,8 @@ export type MasterListShiftData = {
     location?: string
     paid_leave_hours?: number
     memo?: string
+    color?: string
+    force_break?: boolean
 }
 
 export async function getMonthlyMasterList(year: number, month: number) {
@@ -26,10 +28,10 @@ export async function getMonthlyMasterList(year: number, month: number) {
         const startDateStr = startDate.toISOString().split('T')[0]
         const endDateStr = endDate.toISOString().split('T')[0]
 
-        // 1. Fetch all active people
+        // Get all active people
         const { data: people, error: peopleError } = await supabase
             .from('people')
-            .select('id, full_name, code, role, category_id')
+            .select('id, full_name, code, role, job_type, categories(name)')
             .eq('status', 'active')
             .order('role', { ascending: true }) // Employees first, then students (alphabetical usually, but role enum might order differently)
             .order('code', { ascending: true })
@@ -100,6 +102,8 @@ export async function upsertShift(personId: string, shiftData: MasterListShiftDa
             location: shiftData.location,
             paid_leave_hours: shiftData.paid_leave_hours,
             memo: shiftData.memo,
+            color: shiftData.color,
+            force_break: shiftData.force_break,
             updated_at: new Date().toISOString(),
         }
 
@@ -244,3 +248,33 @@ async function syncShiftToAttendance(personId: string, shiftData: MasterListShif
     }
 }
 
+export async function deleteShift(personId: string, date: string) {
+
+    try {
+        const supabase = await createClient()
+
+        // Get the shift first to check type (to remove attendance if needed?)
+        // For now, just delete the shift.
+        // If we want to be clean, we might want to remove the auto-generated attendance too?
+        // But attendance might have manual edits.
+        // Let's just delete the shift. The attendance record will remain but won't be linked to a shift type.
+        // However, if it was a business trip, the attendance record says "Business Trip".
+        // If we delete the shift, the attendance record is still there.
+        // Maybe we should clear the attendance record if it was auto-generated?
+        // That's complex. Let's stick to deleting the shift row.
+
+        const { error } = await supabase
+            .from('shifts')
+            .delete()
+            .eq('person_id', personId)
+            .eq('date', date)
+
+        if (error) throw error
+
+        revalidatePath('/admin/masterlist')
+        return { success: true }
+    } catch (error: any) {
+        console.error('Error in deleteShift:', error)
+        return { success: false, error: error.message }
+    }
+}

@@ -8,6 +8,7 @@ export async function updateEmployeeDetails(code: string, data: {
     category_id: string | null
     registration_date: string
     status: string
+    job_type: string
 }) {
     const supabase = await createClient()
 
@@ -18,6 +19,7 @@ export async function updateEmployeeDetails(code: string, data: {
             category_id: data.category_id,
             registration_date: data.registration_date,
             status: data.status,
+            job_type: data.job_type,
             updated_at: new Date().toISOString()
         })
         .eq('code', code)

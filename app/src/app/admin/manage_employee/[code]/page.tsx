@@ -53,6 +53,7 @@ export default function EmployeeDetailPage() {
     const [categoryId, setCategoryId] = useState('')
     const [registrationDate, setRegistrationDate] = useState('')
     const [status, setStatus] = useState('')
+    const [jobType, setJobType] = useState('')
     const [memo, setMemo] = useState('')
 
     // Edit states
@@ -101,6 +102,7 @@ export default function EmployeeDetailPage() {
             setCategoryId(employeeData.category_id || '')
             setRegistrationDate(employeeData.registration_date || '')
             setStatus(employeeData.status || 'active')
+            setJobType(employeeData.job_type || '')
             setMemo(employeeData.memo || '')
 
             // Fetch categories
@@ -136,7 +138,8 @@ export default function EmployeeDetailPage() {
             full_name: fullName,
             category_id: categoryId || null,
             registration_date: registrationDate,
-            status: status
+            status: status,
+            job_type: jobType
         })
 
         if (result.success) {
@@ -287,7 +290,16 @@ export default function EmployeeDetailPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="category">Category</Label>
-                                <Select value={categoryId} onValueChange={setCategoryId}>
+                                <Select
+                                    value={categoryId}
+                                    onValueChange={(val) => {
+                                        if (val === '_add_new_') {
+                                            router.push('/admin/settings/categories')
+                                            return
+                                        }
+                                        setCategoryId(val)
+                                    }}
+                                >
                                     <SelectTrigger id="category">
                                         <SelectValue placeholder="Select category" />
                                     </SelectTrigger>
@@ -298,6 +310,10 @@ export default function EmployeeDetailPage() {
                                                 {cat.name}
                                             </SelectItem>
                                         ))}
+                                        <div className="border-t my-1" />
+                                        <SelectItem value="_add_new_" className="text-blue-600 font-medium">
+                                            + Add Category
+                                        </SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -321,6 +337,15 @@ export default function EmployeeDetailPage() {
                                         <SelectItem value="inactive">Inactive</SelectItem>
                                     </SelectContent>
                                 </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="jobType">Job Type</Label>
+                                <Input
+                                    id="jobType"
+                                    value={jobType}
+                                    onChange={(e) => setJobType(e.target.value)}
+                                    placeholder="e.g. Developer, Designer"
+                                />
                             </div>
                         </div>
                         <div className="flex justify-end">

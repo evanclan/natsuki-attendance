@@ -36,6 +36,36 @@ export function ShiftEditDialog({
     const [paidLeaveHours, setPaidLeaveHours] = useState<number>(8)
     const [locations, setLocations] = useState<Location[]>([])
     const [fixHalf, setFixHalf] = useState(true)
+    const [color, setColor] = useState<string>('')
+    const [forceBreak, setForceBreak] = useState(false)
+
+    // Color history state
+    const [colorHistory, setColorHistory] = useState<string[]>([])
+
+    // Load color history on mount
+    useEffect(() => {
+        const savedHistory = localStorage.getItem('shift_color_history')
+        if (savedHistory) {
+            try {
+                setColorHistory(JSON.parse(savedHistory))
+            } catch (e) {
+                console.error('Failed to parse color history', e)
+            }
+        } else {
+            // Default initial colors if no history
+            setColorHistory([
+                '#FDE047', '#FDBA74', '#15803D', '#1D4ED8', '#86EFAC', '#FDA4AF'
+            ])
+        }
+    }, [])
+
+    const addToHistory = (newColor: string) => {
+        if (!newColor) return
+
+        const updatedHistory = [newColor, ...colorHistory.filter(c => c !== newColor)].slice(0, 6)
+        setColorHistory(updatedHistory)
+        localStorage.setItem('shift_color_history', JSON.stringify(updatedHistory))
+    }
 
     // Load locations on mount
     useEffect(() => {
@@ -56,13 +86,14 @@ export function ShiftEditDialog({
                 setEndTime(currentShift.end_time || '')
                 setLocation(currentShift.location || '')
                 setMemo(currentShift.memo || '')
-                setMemo(currentShift.memo || '')
                 setPaidLeaveHours(currentShift.paid_leave_hours || 8)
+                setColor(currentShift.color || '')
                 if (currentShift.shift_type === 'half_paid_leave') {
                     setFixHalf(!currentShift.start_time && !currentShift.end_time)
                 } else {
                     setFixHalf(true)
                 }
+                setForceBreak(currentShift.force_break || false)
             } else {
                 // Default values for new shift
                 setShiftType('work')
@@ -72,6 +103,8 @@ export function ShiftEditDialog({
                 setMemo('')
                 setPaidLeaveHours(8)
                 setFixHalf(true)
+                setColor('')
+                setForceBreak(false)
             }
         }
     }, [open, currentShift])
@@ -85,10 +118,18 @@ export function ShiftEditDialog({
                 shift_type: shiftType,
                 start_time: (shiftType === 'work' || shiftType === 'flex' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf)) ? startTime : undefined,
                 end_time: (shiftType === 'work' || shiftType === 'flex' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf)) ? endTime : undefined,
-                location: (shiftType === 'work' || shiftType === 'flex' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf)) ? location : undefined,
-                paid_leave_hours: shiftType === 'paid_leave' ? paidLeaveHours : undefined,
-                memo: memo
+                location: (shiftType === 'work' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf)) ? location : undefined,
+                paid_leave_hours: (shiftType === 'paid_leave' || shiftType === 'flex') ? paidLeaveHours : undefined,
+                memo: memo,
+                color: (shiftType === 'work') ? color : undefined,
+                force_break: (shiftType === 'work') ? forceBreak : undefined
             })
+
+            // Add to history if color is selected
+            if (shiftType === 'work' && color) {
+                addToHistory(color)
+            }
+
             onOpenChange(false)
         } catch (error) {
             console.error('Failed to save shift', error)
@@ -111,7 +152,18 @@ export function ShiftEditDialog({
                         <Label htmlFor="shift-type" className="text-right">
                             Status
                         </Label>
-                        <Select value={shiftType} onValueChange={(v) => setShiftType(v as ShiftType)}>
+                        <Select
+                            value={shiftType}
+                            onValueChange={(v) => {
+                                const newType = v as ShiftType
+                                setShiftType(newType)
+                                if (newType === 'half_paid_leave') {
+                                    setFixHalf(false)
+                                } else {
+                                    setFixHalf(true)
+                                }
+                            }}
+                        >
                             <SelectTrigger className="col-span-3">
                                 <SelectValue placeholder="Select status" />
                             </SelectTrigger>
@@ -123,6 +175,7 @@ export function ShiftEditDialog({
                                 <SelectItem value="special_leave">Special Leave</SelectItem>
                                 <SelectItem value="business_trip">Business Trip</SelectItem>
                                 <SelectItem value="rest">Rest</SelectItem>
+                                <SelectItem value="preferred_rest">Preferred Rest</SelectItem>
                                 <SelectItem value="absent">Absent</SelectItem>
                             </SelectContent>
                         </Select>
@@ -143,7 +196,7 @@ export function ShiftEditDialog({
                         </div>
                     )}
 
-                    {(shiftType === 'work' || shiftType === 'flex' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf)) && (
+                    {(shiftType === 'work' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf)) && (
                         <>
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="start-time" className="text-right">
@@ -199,19 +252,34 @@ export function ShiftEditDialog({
                                     </SelectContent>
                                 </Select>
                             </div>
+
+                            {shiftType === 'work' && (
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="force-break" className="text-right">
+                                        Break Taken (-1h)
+                                    </Label>
+                                    <div className="col-span-3 flex items-center">
+                                        <Switch
+                                            id="force-break"
+                                            checked={forceBreak}
+                                            onCheckedChange={setForceBreak}
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </>
                     )}
 
-                    {shiftType === 'paid_leave' && (
+                    {(shiftType === 'paid_leave' || shiftType === 'flex') && (
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="paid-leave-hours" className="text-right">
-                                Hours
+                                {shiftType === 'flex' ? 'Expected Hours' : 'Hours'}
                             </Label>
                             <Input
                                 id="paid-leave-hours"
                                 type="number"
                                 min="1"
-                                max="12"
+                                max="24"
                                 step="0.5"
                                 value={paidLeaveHours}
                                 onChange={(e) => setPaidLeaveHours(parseFloat(e.target.value) || 8)}
@@ -233,6 +301,47 @@ export function ShiftEditDialog({
                             placeholder="Optional note"
                         />
                     </div>
+
+                    {shiftType === 'work' && (
+                        <div className="grid grid-cols-4 items-start gap-4">
+                            <Label className="text-right pt-2">
+                                Color
+                            </Label>
+                            <div className="col-span-3 space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="relative">
+                                        <Input
+                                            type="color"
+                                            value={color || '#ffffff'}
+                                            onChange={(e) => setColor(e.target.value)}
+                                            className="w-12 h-12 p-1 rounded-md cursor-pointer"
+                                        />
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                        Pick a custom color
+                                    </div>
+                                </div>
+
+                                {colorHistory.length > 0 && (
+                                    <div className="space-y-1">
+                                        <div className="text-xs text-muted-foreground">Recent Colors:</div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {colorHistory.map((c, i) => (
+                                                <button
+                                                    key={`${c}-${i}`}
+                                                    type="button"
+                                                    className={`w-6 h-6 rounded-full border-2 transition-all ${color === c ? 'border-black scale-110' : 'border-transparent hover:scale-110'}`}
+                                                    style={{ backgroundColor: c }}
+                                                    onClick={() => setColor(c)}
+                                                    title={c}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => onOpenChange(false)}>
