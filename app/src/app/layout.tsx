@@ -22,6 +22,10 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "Natsuki Attendance",
   },
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({
