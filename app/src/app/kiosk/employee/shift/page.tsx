@@ -9,7 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
-export default function EmployeeShiftViewPage() {
+import { Suspense } from 'react'
+
+function ShiftContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const employeeId = searchParams?.get('id')
@@ -126,5 +128,20 @@ export default function EmployeeShiftViewPage() {
                 </div>
             </main>
         </div>
+    )
+}
+
+export default function EmployeeShiftViewPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-slate-100">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-800 mx-auto"></div>
+                    <p className="mt-4 text-slate-600">Loading...</p>
+                </div>
+            </div>
+        }>
+            <ShiftContent />
+        </Suspense>
     )
 }

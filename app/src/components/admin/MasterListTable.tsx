@@ -28,7 +28,7 @@ type Person = {
     job_type?: string
     categories?: {
         name: string
-    } | null
+    }[] | null
 }
 
 type MasterListTableProps = {
@@ -251,7 +251,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                 <div className="font-medium truncate" title={person.full_name}>{person.full_name}</div>
                 <div className="text-xs text-muted-foreground">{person.job_type || person.code}</div>
                 <div className="absolute bottom-1 right-1 text-[10px] text-muted-foreground/70 font-mono">
-                    {person.categories?.name || '-'}
+                    {person.categories?.[0]?.name || '-'}
                 </div>
             </div>
             {days.map(day => {
@@ -338,7 +338,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
             </div>
             <div className="min-w-[80px] p-2 border-r border-border flex items-center justify-center font-mono text-sm">
                 {(() => {
-                    const isPartTime = person.categories?.name === 'partime'
+                    const isPartTime = person.categories?.[0]?.name === 'partime'
 
                     if (isPartTime) {
                         // Count days for part-time
