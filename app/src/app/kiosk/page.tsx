@@ -2,6 +2,7 @@ import { PersonList } from '@/components/kiosk/PersonList'
 import { ActionLog } from '@/components/kiosk/ActionLog'
 import { Button } from '@/components/ui/button'
 import { LiveClock } from '@/components/kiosk/LiveClock'
+import { NewsCorner } from '@/components/kiosk/NewsCorner'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
@@ -9,7 +10,7 @@ export const dynamic = 'force-dynamic'
 export default function StudentKioskPage() {
     return (
         <div className="min-h-screen flex flex-col bg-gradient-to-br from-yellow-50 via-orange-50 to-pink-50 font-sans">
-            <header className="px-6 py-4 flex justify-between items-center sticky top-4 z-20 mx-4 mt-4 rounded-3xl bg-white/80 backdrop-blur-md shadow-lg border border-white/50">
+            <header className="px-6 py-4 flex justify-between items-center sticky top-4 z-20 mx-4 mt-4 mb-6 rounded-3xl bg-white/80 backdrop-blur-md shadow-lg border border-white/50">
                 <div className="flex items-center gap-3">
                     <div className="h-10 w-10 bg-orange-400 rounded-full flex items-center justify-center shadow-inner">
                         <span className="text-2xl">🌻</span>
@@ -32,7 +33,9 @@ export default function StudentKioskPage() {
                 </div>
             </header>
 
-            <main className="flex-1 overflow-y-auto p-6">
+            <NewsCorner />
+
+            <main className="flex-1 overflow-y-auto p-6 pt-0">
                 <PersonList role="student" />
             </main>
 

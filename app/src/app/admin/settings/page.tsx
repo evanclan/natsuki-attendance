@@ -73,6 +73,25 @@ export default function SettingsPage() {
                         </CardContent>
                     </Card>
                 </Link>
+
+                <Link href="/admin/settings/news">
+                    <Card className="hover:bg-accent/50 transition-colors cursor-pointer h-full">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <span className="text-xl">📰</span>
+                                News Settings
+                            </CardTitle>
+                            <CardDescription>
+                                Manage news and announcements
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-muted-foreground">
+                                Add and manage news items for Student and Employee kiosks.
+                            </p>
+                        </CardContent>
+                    </Card>
+                </Link>
             </div>
         </div>
     )
