@@ -37,16 +37,13 @@ export async function getNews(audience: 'student' | 'employee') {
         .eq('is_active', true)
         .lte('display_date', today)
         .order('display_date', { ascending: false })
-        .limit(1)
-        .single()
 
     if (error) {
-        if (error.code === 'PGRST116') return null // No rows found
         console.error('Error fetching news:', error)
-        return null
+        return []
     }
 
-    return data as NewsItem
+    return data as NewsItem[]
 }
 
 export async function getAllNews() {

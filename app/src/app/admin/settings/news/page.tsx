@@ -22,7 +22,6 @@ export default function NewsSettingsPage() {
     // Form state
     const [title, setTitle] = useState('')
     const [description, setDescription] = useState('')
-    const [imageUrl, setImageUrl] = useState('')
     const [targetAudience, setTargetAudience] = useState<'student' | 'employee'>('student')
     const [isActive, setIsActive] = useState(true)
     const [displayDate, setDisplayDate] = useState(new Date().toISOString().split('T')[0])
@@ -46,7 +45,6 @@ export default function NewsSettingsPage() {
     function resetForm() {
         setTitle('')
         setDescription('')
-        setImageUrl('')
         setTargetAudience('student')
         setIsActive(true)
         setDisplayDate(new Date().toISOString().split('T')[0])
@@ -57,7 +55,6 @@ export default function NewsSettingsPage() {
     function handleEdit(item: NewsItem) {
         setTitle(item.title)
         setDescription(item.description)
-        setImageUrl(item.image_url || '')
         setTargetAudience(item.target_audience)
         setIsActive(item.is_active)
         setDisplayDate(item.display_date)
@@ -72,7 +69,6 @@ export default function NewsSettingsPage() {
                 await updateNews(editingId, {
                     title,
                     description,
-                    image_url: imageUrl || undefined,
                     target_audience: targetAudience,
                     is_active: isActive,
                     display_date: displayDate
@@ -82,7 +78,6 @@ export default function NewsSettingsPage() {
                 await createNews({
                     title,
                     description,
-                    image_url: imageUrl || undefined,
                     target_audience: targetAudience,
                     is_active: isActive,
                     display_date: displayDate
@@ -158,15 +153,7 @@ export default function NewsSettingsPage() {
                                     />
                                 </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="imageUrl">Image URL (Optional)</Label>
-                                    <Input
-                                        id="imageUrl"
-                                        value={imageUrl}
-                                        onChange={(e) => setImageUrl(e.target.value)}
-                                        placeholder="https://..."
-                                    />
-                                </div>
+
 
                                 <div className="space-y-2">
                                     <Label htmlFor="audience">Target Audience</Label>
@@ -232,13 +219,7 @@ export default function NewsSettingsPage() {
                             {news.map((item) => (
                                 <Card key={item.id} className={!item.is_active ? 'opacity-60' : ''}>
                                     <CardContent className="p-4 flex gap-4">
-                                        {item.image_url && (
-                                            <img
-                                                src={item.image_url}
-                                                alt={item.title}
-                                                className="w-24 h-24 object-cover rounded-md"
-                                            />
-                                        )}
+
                                         <div className="flex-1 flex flex-col">
                                             <div className="flex justify-between items-start">
                                                 <div>
