@@ -3,6 +3,7 @@ import { ActionLog } from '@/components/kiosk/ActionLog'
 import { Button } from '@/components/ui/button'
 import { LiveClock } from '@/components/kiosk/LiveClock'
 import { ViewShiftButton } from '@/components/kiosk/ViewShiftButton'
+import { AutoRedirectController } from '@/components/kiosk/AutoRedirectController'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
@@ -34,6 +35,7 @@ export default function EmployeeKioskPage() {
                 </Link>
                 <ViewShiftButton />
             </div>
+            <AutoRedirectController />
         </div>
     )
 }
