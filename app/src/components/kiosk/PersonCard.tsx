@@ -20,65 +20,125 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
     const [loading, setLoading] = useState<string | null>(null)
     const [breakTimeRemaining, setBreakTimeRemaining] = useState<string | null>(null)
 
+    // Optimistic UI State
+    const [optimisticAttendance, setOptimisticAttendance] = useState(person.attendance_today)
+
+    // Sync optimistic state when prop updates (e.g. after router.refresh)
+    useEffect(() => {
+        setOptimisticAttendance(person.attendance_today)
+    }, [person.attendance_today])
+
     const handleAction = async (eventType: string) => {
         if (selectionMode) return
-        setLoading(eventType)
+
+        // 1. Optimistic Update
+        const previousAttendance = optimisticAttendance
+        const now = new Date().toISOString()
+
+        let newAttendance = optimisticAttendance ? { ...optimisticAttendance } : {
+            check_in_at: null,
+            check_out_at: null,
+            break_start_at: null,
+            break_end_at: null,
+            status: 'present'
+        }
+
+        if (eventType === 'check_in') {
+            newAttendance.check_in_at = now
+            newAttendance.status = 'present'
+        } else if (eventType === 'check_out') {
+            newAttendance.check_out_at = now
+        } else if (eventType === 'break_start') {
+            newAttendance.break_start_at = now
+        } else if (eventType === 'break_end') {
+            newAttendance.break_end_at = now
+        } else if (eventType === 'mark_absent') {
+            newAttendance.status = 'absent'
+        }
+
+        setOptimisticAttendance(newAttendance)
+
+        // Don't set loading state for optimistic actions to keep UI interactive
+        // setLoading(eventType) 
+
         try {
             const result = await logAttendance(person.id, eventType)
             if (!result.success) {
+                // Revert on failure
+                setOptimisticAttendance(previousAttendance)
                 alert('Failed to log attendance: ' + result.error)
             } else {
-                // Refresh data without full reload
+                // Refresh data in background
                 router.refresh()
             }
         } catch (error) {
             console.error(error)
+            setOptimisticAttendance(previousAttendance)
             alert('An error occurred')
-        } finally {
-            setLoading(null)
         }
     }
 
     const handleUndo = async () => {
         if (selectionMode) return
-        setLoading('undo')
+
+        // Optimistic Revert
+        const previousAttendance = optimisticAttendance
+        // For undo absent, we just clear the status if it was absent
+        // But actually, if we undo absent, we might go back to 'present' or null depending on history.
+        // For simplicity, let's assume it goes back to null (not checked in) or whatever it was.
+        // Since we don't know the previous state easily without complex logic, 
+        // maybe we just clear the 'absent' status.
+
+        const newAttendance = optimisticAttendance ? { ...optimisticAttendance } : null
+        if (newAttendance && newAttendance.status === 'absent') {
+            newAttendance.status = 'present' // Or null? 'present' is safer if they were checked in.
+            // Actually, if they were marked absent, they probably weren't checked in today yet, or were.
+            // Let's set status to 'present' as a safe default for "not absent".
+        }
+        setOptimisticAttendance(newAttendance)
+
         try {
             const result = await undoAbsent(person.id)
             if (!result.success) {
+                setOptimisticAttendance(previousAttendance)
                 alert('Failed to undo absent: ' + result.error)
             } else {
-                // Refresh data without full reload
                 router.refresh()
             }
         } catch (error) {
             console.error(error)
+            setOptimisticAttendance(previousAttendance)
             alert('An error occurred')
-        } finally {
-            setLoading(null)
         }
     }
 
     const handleUndoCheckIn = async () => {
         if (selectionMode) return
         if (!confirm('Are you sure you want to undo this check-in?')) return
-        setLoading('undo_check_in')
+
+        // Optimistic Revert
+        const previousAttendance = optimisticAttendance
+
+        // Clear check-in data
+        setOptimisticAttendance(null)
+
         try {
             const result = await undoCheckIn(person.id)
             if (!result.success) {
+                setOptimisticAttendance(previousAttendance)
                 alert('Failed to undo check-in: ' + result.error)
             } else {
-                // Refresh data without full reload
                 router.refresh()
             }
         } catch (error) {
             console.error(error)
+            setOptimisticAttendance(previousAttendance)
             alert('An error occurred')
-        } finally {
-            setLoading(null)
         }
     }
 
-    const { attendance_today } = person
+    // Use optimistic state for rendering
+    const attendance_today = optimisticAttendance
 
     // Determine state
     const isCheckedIn = !!attendance_today?.check_in_at
