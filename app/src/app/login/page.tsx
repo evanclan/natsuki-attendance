@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { login } from './actions'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -32,9 +33,16 @@ export default function LoginPage() {
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-blue-50 p-4">
             <Card className="w-full max-w-md shadow-xl">
                 <CardHeader className="space-y-1">
-                    <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                        Natsuki Attendance
-                    </CardTitle>
+                    <div className="flex justify-center mb-4">
+                        <Image
+                            src="/logo.png"
+                            alt="Natsuki Attendance"
+                            width={280}
+                            height={80}
+                            className="object-contain"
+                            priority
+                        />
+                    </div>
                     <CardDescription className="text-center text-base">
                         Admin Login
                     </CardDescription>

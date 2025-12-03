@@ -101,7 +101,7 @@ export default function CalendarSettingsPage() {
 
             // Weekend Logic
             const dayOfWeek = date.getDay()
-            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6 // 0 is Sunday, 6 is Saturday
+            const isWeekend = dayOfWeek === 0 // 0 is Sunday
 
             // Check for specific event types
             const isHolidayEvent = dayEvents.some(e => e.event_type === 'holiday' || e.is_holiday)

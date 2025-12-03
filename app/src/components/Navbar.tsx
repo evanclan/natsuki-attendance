@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/utils/supabase/server'
@@ -12,9 +13,14 @@ export async function Navbar() {
             <div className="flex h-16 items-center px-4 container mx-auto">
                 <div className="mr-4 hidden md:flex">
                     <Link href="/" className="mr-6 flex items-center space-x-2">
-                        <span className="hidden font-bold sm:inline-block">
-                            Natsuki Attendance
-                        </span>
+                        <Image
+                            src="/logo.png"
+                            alt="Natsuki Attendance"
+                            width={180}
+                            height={50}
+                            className="hidden sm:inline-block object-contain h-10 w-auto"
+                            priority
+                        />
                     </Link>
                     <nav className="flex items-center space-x-6 text-sm font-medium">
                         <Link
@@ -52,7 +58,7 @@ export async function Navbar() {
                     )}
                 </div>
             </div>
-        </nav>
+        </nav >
     )
 }
 

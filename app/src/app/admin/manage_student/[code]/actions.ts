@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 
 export async function updateStudentDetails(code: string, data: {
     full_name: string
+    japanese_name?: string
     category_id: string | null
     registration_date: string
     status: string
@@ -15,6 +16,7 @@ export async function updateStudentDetails(code: string, data: {
         .from('people')
         .update({
             full_name: data.full_name,
+            japanese_name: data.japanese_name,
             category_id: data.category_id,
             registration_date: data.registration_date,
             status: data.status,

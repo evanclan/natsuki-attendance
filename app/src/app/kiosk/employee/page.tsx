@@ -11,7 +11,7 @@ export default function EmployeeKioskPage() {
     return (
         <div className="min-h-screen flex flex-col bg-slate-100">
             <header className="bg-white shadow p-4 flex justify-between items-center sticky top-0 z-10 gap-4">
-                <h1 className="text-2xl font-bold text-slate-800">Employee Kiosk</h1>
+                <h1 className="text-2xl font-bold text-slate-800">Staff</h1>
                 <LiveClock />
                 <Link href="/kiosk">
                     <Button variant="secondary">Go to Student Kiosk</Button>
@@ -26,7 +26,14 @@ export default function EmployeeKioskPage() {
                 <ActionLog role="employee" />
             </footer>
 
-            <ViewShiftButton />
+            <div className="fixed bottom-4 right-4 flex items-end gap-4 z-50">
+                <Link href="/kiosk/employee/setdayoff">
+                    <Button variant="outline" className="h-14 px-6 text-lg shadow-lg bg-white/90 backdrop-blur hover:bg-white">
+                        Set Day Off
+                    </Button>
+                </Link>
+                <ViewShiftButton />
+            </div>
         </div>
     )
 }

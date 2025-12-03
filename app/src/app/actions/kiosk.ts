@@ -6,6 +6,8 @@ import { revalidatePath } from 'next/cache'
 export type Person = {
     id: string
     full_name: string
+    japanese_name: string | null
+    category: string | null
     role: 'student' | 'employee'
     code: string
     attendance_today: {
@@ -45,6 +47,10 @@ export async function getPeople(role: 'student' | 'employee') {
         .select(`
       id, 
       full_name, 
+      japanese_name,
+      categories (
+        name
+      ),
       role, 
       code,
       attendance_today:attendance_days(
@@ -68,6 +74,7 @@ export async function getPeople(role: 'student' | 'employee') {
     // Transform data to handle array return from join (even though it's 1:1 per day)
     const people = data.map((p: any) => ({
         ...p,
+        category: p.categories?.name || null,
         attendance_today: p.attendance_today?.[0] || null
     }))
 
@@ -248,18 +255,7 @@ export async function clearDailyLogs() {
 
     const today = getTodayJST()
 
-    // Delete attendance days for today first (to avoid foreign key constraints)
-    const { error: daysError, count: daysCount } = await supabase
-        .from('attendance_days')
-        .delete({ count: 'exact' })
-        .eq('date', today)
-
-    if (daysError) {
-        console.error('Error clearing attendance days:', daysError)
-        return { success: false, error: daysError.message }
-    }
-
-    // Delete events for today (JST day)
+    // 1. Delete events for today (JST day)
     // We need to calculate the UTC range for "Today JST"
     // Today JST 00:00 = Yesterday UTC 15:00
     // Today JST 23:59 = Today UTC 14:59
@@ -281,13 +277,29 @@ export async function clearDailyLogs() {
 
     if (eventsError) {
         console.error('Error clearing events:', eventsError)
-        return { success: false, error: eventsError.message }
+        return { success: false, error: 'Failed to clear events: ' + eventsError.message }
+    }
+
+    // 2. Delete attendance days for today
+    const { error: daysError, count: daysCount } = await supabase
+        .from('attendance_days')
+        .delete({ count: 'exact' })
+        .eq('date', today)
+
+    if (daysError) {
+        console.error('Error clearing attendance days:', daysError)
+        return { success: false, error: 'Failed to clear daily summary: ' + daysError.message }
     }
 
     console.log(`Cleared ${daysCount ?? 0} attendance days and ${eventsCount ?? 0} events for ${today}`)
 
     revalidatePath('/kiosk')
     revalidatePath('/kiosk/employee')
+
+    if ((daysCount === 0 || daysCount === null) && (eventsCount === 0 || eventsCount === null)) {
+        return { success: true, message: `No logs found for today (${today})` }
+    }
+
     return { success: true, message: `Cleared ${daysCount ?? 0} attendance records and ${eventsCount ?? 0} events` }
 }
 
@@ -378,6 +390,46 @@ export async function undoAbsent(personId: string) {
     return { success: true }
 }
 
+export async function undoCheckIn(personId: string) {
+    const supabase = await createClient()
+    const today = getTodayJST()
+
+    // 1. Log the undo event for audit trail
+    const { error: eventError } = await supabase
+        .from('attendance_events')
+        .insert({
+            person_id: personId,
+            event_type: 'undo_check_in',
+            source: 'kiosk'
+        })
+
+    if (eventError) {
+        console.error('Error logging undo event:', eventError)
+        return { success: false, error: eventError.message }
+    }
+
+    // 2. Delete the attendance_days record for today
+    // ONLY if it looks like a fresh check-in (no check-out, no break)
+    // We use delete() with match criteria
+    const { error: deleteError } = await supabase
+        .from('attendance_days')
+        .delete()
+        .eq('person_id', personId)
+        .eq('date', today)
+        .is('check_out_at', null)
+        .is('break_start_at', null)
+        .is('break_end_at', null)
+
+    if (deleteError) {
+        console.error('Error undoing check-in:', deleteError)
+        return { success: false, error: deleteError.message }
+    }
+
+    revalidatePath('/kiosk')
+    revalidatePath('/kiosk/employee')
+    return { success: true }
+}
+
 export async function getAllEmployees() {
     const supabase = await createClient()
 
@@ -394,4 +446,75 @@ export async function getAllEmployees() {
     }
 
     return data as { id: string; full_name: string; code: string }[]
+}
+
+export async function setPreferredRest(personId: string, date: string, memo?: string) {
+    const { upsertShift } = await import('@/app/admin/masterlist/actions')
+
+    // Check if there's already a shift on this day
+    // The requirement says "click a day... hit save... name written on that day"
+    // And "saved as a status 'Preferred Rest' on the master shift"
+
+    // We'll use upsertShift to set the status.
+    // Note: This overrides any existing shift.
+    // Since this is for "next month" usually, it's likely empty.
+
+    // However, if the user clicks again, maybe they want to unset it?
+    // The requirement doesn't explicitly say "toggle", but "user pick their name... click a day... hit save".
+    // Let's implement "set to Preferred Rest".
+
+    const result = await upsertShift(personId, {
+        date,
+        shift_type: 'preferred_rest',
+        memo: memo || '',
+        // No times for preferred rest
+    })
+
+    if (result.success) {
+        revalidatePath('/kiosk/employee/setdayoff')
+        return { success: true }
+    } else {
+        return { success: false, error: result.error }
+    }
+}
+
+export async function deletePreferredRest(personId: string, date: string) {
+    const { deleteShift } = await import('@/app/admin/masterlist/actions')
+
+    const result = await deleteShift(personId, date)
+
+    if (result.success) {
+        revalidatePath('/kiosk/employee/setdayoff')
+        return { success: true }
+    } else {
+        return { success: false, error: result.error }
+    }
+}
+
+export async function bulkCheckIn(personIds: string[]) {
+    const supabase = await createClient()
+    const today = getTodayJST()
+
+    // We'll iterate and log attendance for each person.
+    // Ideally, we could do a bulk insert, but logAttendance handles complex logic
+    // (creating attendance_days if needed, updating status, etc.)
+    // For a kiosk with < 50 people, sequential calls are acceptable for MVP.
+    // We can optimize later if needed.
+
+    const results = await Promise.all(
+        personIds.map(async (id) => {
+            return await logAttendance(id, 'check_in')
+        })
+    )
+
+    const failures = results.filter((r) => !r.success)
+
+    if (failures.length > 0) {
+        console.error('Some bulk check-ins failed', failures)
+        return { success: false, error: 'Some check-ins failed', details: failures }
+    }
+
+    revalidatePath('/kiosk')
+    revalidatePath('/kiosk/employee')
+    return { success: true }
 }

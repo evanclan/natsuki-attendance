@@ -1,5 +1,5 @@
-import { getPeople } from '@/app/actions/kiosk'
-import { PersonCard } from './PersonCard'
+import { getPeople, Person } from '@/app/actions/kiosk'
+import { MultiSelectPersonList } from './MultiSelectPersonList'
 
 export async function PersonList({ role }: { role: 'student' | 'employee' }) {
     const people = await getPeople(role)
@@ -13,10 +13,6 @@ export async function PersonList({ role }: { role: 'student' | 'employee' }) {
     }
 
     return (
-        <div className="grid grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-4">
-            {people.map((person) => (
-                <PersonCard key={person.id} person={person} role={role} />
-            ))}
-        </div>
+        <MultiSelectPersonList people={people} role={role} />
     )
 }

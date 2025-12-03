@@ -5,6 +5,13 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 import { ChevronLeft, ChevronRight, Plus, CheckSquare, Square, Trash2, Edit, X, Copy, Clipboard } from 'lucide-react'
 import { MasterListShiftData, upsertShift, deleteShift } from '@/app/admin/masterlist/actions'
 import { ShiftCell } from './ShiftCell'
@@ -63,6 +70,14 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
     const handleNextMonth = () => {
         const newDate = new Date(year, month + 1, 1)
         router.push(`/admin/masterlist?year=${newDate.getFullYear()}&month=${newDate.getMonth()}`)
+    }
+
+    const handleYearChange = (value: string) => {
+        router.push(`/admin/masterlist?year=${value}&month=${month}`)
+    }
+
+    const handleMonthChange = (value: string) => {
+        router.push(`/admin/masterlist?year=${year}&month=${value}`)
     }
 
     const handleCellClick = (person: Person, day: number) => {
@@ -195,7 +210,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
         }
 
         if (failCount > 0) {
-            alert(`Pasted to ${successCount} cells. Failed for ${failCount} cells.`)
+            alert(`Pasted to ${successCount} cells. Failed to for ${failCount} cells.`)
         }
 
         setSelectedCells([])
@@ -363,6 +378,16 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
 
     const monthName = new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
+    // Generate years for dropdown (current year +/- 5 years)
+    const currentYear = new Date().getFullYear()
+    const years = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i)
+
+    // Month names
+    const monthNames = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ]
+
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -390,6 +415,34 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                             {isSelectionMode ? <CheckSquare className="h-4 w-4 mr-2" /> : <Square className="h-4 w-4 mr-2" />}
                             Multiple Box Selection
                         </Button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <Select value={year.toString()} onValueChange={handleYearChange}>
+                            <SelectTrigger className="w-[100px]">
+                                <SelectValue placeholder="Year" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {years.map(y => (
+                                    <SelectItem key={y} value={y.toString()}>
+                                        {y}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        <Select value={month.toString()} onValueChange={handleMonthChange}>
+                            <SelectTrigger className="w-[120px]">
+                                <SelectValue placeholder="Month" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {monthNames.map((name, index) => (
+                                    <SelectItem key={index} value={index.toString()}>
+                                        {name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <div className="flex gap-2">

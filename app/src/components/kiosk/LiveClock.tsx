@@ -32,12 +32,12 @@ export function LiveClock() {
     }
 
     return (
-        <div className="flex flex-col items-center justify-center px-6 py-2 bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 rounded-lg border border-blue-200 shadow-sm">
-            <div className="flex items-center gap-2 text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 tabular-nums">
-                <Clock className="h-6 w-6 text-blue-500 animate-pulse" />
+        <div className="flex flex-col items-center justify-center px-6 py-2 bg-white rounded-2xl border-2 border-blue-100 shadow-[0_4px_0_0_rgba(219,234,254,1)] transform hover:-translate-y-0.5 transition-transform">
+            <div className="flex items-center gap-2 text-2xl font-black text-blue-500 tabular-nums tracking-wider">
+                <Clock className="h-5 w-5 text-blue-400 animate-bounce" />
                 {formatTime(time)}
             </div>
-            <div className="flex items-center gap-2 text-xs font-medium text-gray-600 mt-1">
+            <div className="flex items-center gap-2 text-xs font-bold text-blue-300 uppercase tracking-widest mt-0.5">
                 <Calendar className="h-3 w-3" />
                 {formatDate(time)}
             </div>

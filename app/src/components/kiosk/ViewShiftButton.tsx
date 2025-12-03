@@ -33,7 +33,7 @@ export function ViewShiftButton() {
     }
 
     return (
-        <div className="fixed bottom-4 right-4 z-50">
+        <div className={`z-50 ${isOpen ? '' : ''}`}>
             {!isOpen ? (
                 <Button
                     onClick={() => setIsOpen(true)}

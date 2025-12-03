@@ -49,6 +49,7 @@ export default function StudentDetailPage() {
 
     // Form states
     const [fullName, setFullName] = useState('')
+    const [japaneseName, setJapaneseName] = useState('')
     const [categoryId, setCategoryId] = useState('')
     const [registrationDate, setRegistrationDate] = useState('')
     const [status, setStatus] = useState('')
@@ -97,6 +98,7 @@ export default function StudentDetailPage() {
 
             setStudent(studentData)
             setFullName(studentData.full_name || '')
+            setJapaneseName(studentData.japanese_name || '')
             setCategoryId(studentData.category_id || '')
             setRegistrationDate(studentData.registration_date || '')
             setStatus(studentData.status || 'active')
@@ -133,6 +135,7 @@ export default function StudentDetailPage() {
         setSaving(true)
         const result = await updateStudentDetails(code, {
             full_name: fullName,
+            japanese_name: japaneseName,
             category_id: categoryId || null,
             registration_date: registrationDate,
             status: status
@@ -291,6 +294,14 @@ export default function StudentDetailPage() {
                                     id="fullName"
                                     value={fullName}
                                     onChange={(e) => setFullName(e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="japaneseName">Japanese Name</Label>
+                                <Input
+                                    id="japaneseName"
+                                    value={japaneseName}
+                                    onChange={(e) => setJapaneseName(e.target.value)}
                                 />
                             </div>
                             <div className="space-y-2">
