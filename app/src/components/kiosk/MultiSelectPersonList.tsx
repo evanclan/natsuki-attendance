@@ -118,7 +118,7 @@ export function MultiSelectPersonList({ people, role }: MultiSelectPersonListPro
                         <h2 className="text-2xl font-bold text-orange-600 pl-2 border-l-4 border-orange-400">
                             {category}
                         </h2>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                        <div className="grid grid-cols-2 min-[600px]:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 min-[600px]:gap-4">
                             {categoryPeople.map((person) => (
                                 <PersonCard
                                     key={person.id}
@@ -136,7 +136,7 @@ export function MultiSelectPersonList({ people, role }: MultiSelectPersonListPro
 
             {otherPeople.length > 0 && (
                 <div className="space-y-4">
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                    <div className="grid grid-cols-2 min-[600px]:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 min-[600px]:gap-4">
                         {otherPeople.map((person) => (
                             <PersonCard
                                 key={person.id}

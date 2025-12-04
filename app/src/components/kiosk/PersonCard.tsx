@@ -182,7 +182,7 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
                 <div className="absolute inset-0 bg-[radial-gradient(#fee2e2_1px,transparent_1px)] [background-size:16px_16px] opacity-50" />
                 <CardHeader className="py-2 px-2 relative z-10">
                     <div className="text-center">
-                        <CardTitle className="text-sm font-bold text-slate-700 truncate leading-tight" title={person.full_name}>
+                        <CardTitle className="text-base font-bold text-slate-700 truncate leading-tight" title={person.full_name}>
                             {person.full_name}
                         </CardTitle>
                         {person.japanese_name && (
@@ -223,7 +223,7 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
         >
             <CardHeader className="py-2 px-2">
                 <div className="text-center">
-                    <CardTitle className="text-sm font-bold text-slate-700 truncate leading-tight" title={person.full_name}>
+                    <CardTitle className="text-base font-bold text-slate-700 truncate leading-tight" title={person.full_name}>
                         {person.full_name}
                     </CardTitle>
                     {person.japanese_name && (

@@ -10,6 +10,18 @@ export function AutoRedirectController() {
     const [timeLeft, setTimeLeft] = useState(5)
     const router = useRouter()
 
+    useEffect(() => {
+        const stored = localStorage.getItem("kiosk-auto-redirect")
+        if (stored === "true") {
+            setIsEnabled(true)
+        }
+    }, [])
+
+    const handleToggle = (checked: boolean) => {
+        setIsEnabled(checked)
+        localStorage.setItem("kiosk-auto-redirect", String(checked))
+    }
+
     const resetTimer = useCallback(() => {
         setTimeLeft(5)
     }, [])
@@ -49,7 +61,7 @@ export function AutoRedirectController() {
             <Switch
                 id="auto-redirect-mode"
                 checked={isEnabled}
-                onCheckedChange={setIsEnabled}
+                onCheckedChange={handleToggle}
             />
             <Label htmlFor="auto-redirect-mode" className="font-medium cursor-pointer text-slate-700">
                 Auto {isEnabled && <span className="text-xs text-slate-500 font-normal ml-1">({timeLeft}s)</span>}

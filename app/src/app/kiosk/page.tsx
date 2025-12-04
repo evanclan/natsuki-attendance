@@ -10,29 +10,29 @@ export const dynamic = 'force-dynamic'
 export default function StudentKioskPage() {
     return (
         <div className="min-h-screen flex flex-col bg-gradient-to-br from-yellow-50 via-orange-50 to-pink-50 font-sans">
-            <header className="px-6 py-4 flex justify-between items-center sticky top-4 z-20 mx-4 mt-4 mb-6 rounded-3xl bg-white/80 backdrop-blur-md shadow-lg border border-white/50">
-                <div className="flex items-center gap-2">
+            <header className="px-3 py-2 md:px-6 md:py-4 flex flex-nowrap justify-between items-center sticky top-2 md:top-4 z-20 mx-2 md:mx-4 mt-2 md:mt-4 mb-4 md:mb-6 rounded-3xl bg-white/80 backdrop-blur-md shadow-lg border border-white/50 gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                     <img
                         src="/images/happy_island_logo_v4.jpg"
                         alt="Happy Island Logo"
-                        className="h-20 w-20 rounded-full object-contain bg-white shadow-lg border-4 border-white ring-2 ring-orange-200"
+                        className="h-14 w-14 md:h-20 md:w-20 rounded-full object-contain bg-white shadow-lg border-2 md:border-4 border-white ring-1 md:ring-2 ring-orange-200"
                     />
-                    <div className="flex flex-col justify-center h-16">
-                        <h1 className="text-2xl font-black text-orange-500 tracking-wide leading-none drop-shadow-sm font-comic">
+                    <div className="flex flex-col justify-center h-14 md:h-16">
+                        <h1 className="text-lg md:text-2xl font-black text-orange-500 tracking-wide leading-none drop-shadow-sm font-comic whitespace-nowrap">
                             HAPPY
                         </h1>
-                        <h1 className="text-2xl font-black text-sky-500 tracking-wide leading-none drop-shadow-sm font-comic">
+                        <h1 className="text-lg md:text-2xl font-black text-sky-500 tracking-wide leading-none drop-shadow-sm font-comic whitespace-nowrap">
                             ISLAND
                         </h1>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 md:gap-4 shrink-0">
                     <LiveClock />
                     <Link href="/kiosk/employee">
                         <Button
                             variant="secondary"
-                            className="rounded-full px-6 bg-sky-100 text-sky-700 hover:bg-sky-200 border border-sky-200 font-bold shadow-sm transition-all hover:scale-105 active:scale-95"
+                            className="rounded-full px-3 md:px-6 bg-sky-100 text-sky-700 hover:bg-sky-200 border border-sky-200 font-bold shadow-sm transition-all hover:scale-105 active:scale-95 text-xs md:text-sm h-8 md:h-10"
                         >
                             Staff Access
                         </Button>
