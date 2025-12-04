@@ -30,10 +30,9 @@ export default function AdminPage() {
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
 
-    // Get today's date in YYYY-MM-DD format
+    // Get today's date in YYYY-MM-DD format (JST)
     const getTodayDate = () => {
-        const today = new Date()
-        return today.toISOString().split('T')[0]
+        return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' })
     }
 
     // Format date to "Monday, September 16" format
