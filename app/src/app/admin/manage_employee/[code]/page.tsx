@@ -50,6 +50,7 @@ export default function EmployeeDetailPage() {
 
     // Form states
     const [fullName, setFullName] = useState('')
+    const [japaneseName, setJapaneseName] = useState('')
     const [categoryId, setCategoryId] = useState('')
     const [registrationDate, setRegistrationDate] = useState('')
     const [status, setStatus] = useState('')
@@ -99,6 +100,7 @@ export default function EmployeeDetailPage() {
 
             setEmployee(employeeData)
             setFullName(employeeData.full_name || '')
+            setJapaneseName(employeeData.japanese_name || '')
             setCategoryId(employeeData.category_id || '')
             setRegistrationDate(employeeData.registration_date || '')
             setStatus(employeeData.status || 'active')
@@ -136,6 +138,7 @@ export default function EmployeeDetailPage() {
         setSaving(true)
         const result = await updateEmployeeDetails(code, {
             full_name: fullName,
+            japanese_name: japaneseName,
             category_id: categoryId || null,
             registration_date: registrationDate,
             status: status,
@@ -286,6 +289,14 @@ export default function EmployeeDetailPage() {
                                     id="fullName"
                                     value={fullName}
                                     onChange={(e) => setFullName(e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="japaneseName">Japanese Name</Label>
+                                <Input
+                                    id="japaneseName"
+                                    value={japaneseName}
+                                    onChange={(e) => setJapaneseName(e.target.value)}
                                 />
                             </div>
                             <div className="space-y-2">

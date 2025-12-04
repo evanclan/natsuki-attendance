@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AddPersonDialog } from "@/components/admin/AddPersonDialog"
 import { Trash2 } from 'lucide-react'
@@ -31,6 +32,8 @@ import { deletePerson } from "@/app/actions/people"
 
 export default function ManageStudentPage() {
     const [students, setStudents] = useState<any[]>([])
+    const [filteredStudents, setFilteredStudents] = useState<any[]>([])
+    const [searchQuery, setSearchQuery] = useState('')
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
 
@@ -56,8 +59,17 @@ export default function ManageStudentPage() {
         }
 
         setStudents(data || [])
+        setFilteredStudents(data || [])
         setLoading(false)
     }
+
+    useEffect(() => {
+        const filtered = students.filter(student =>
+            student.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (student.code && student.code.toLowerCase().includes(searchQuery.toLowerCase()))
+        )
+        setFilteredStudents(filtered)
+    }, [searchQuery, students])
 
     useEffect(() => {
         fetchStudents()
@@ -85,6 +97,15 @@ export default function ManageStudentPage() {
                 <AddPersonDialog role="student" onSuccess={fetchStudents} />
             </div>
 
+            <div className="flex items-center space-x-2 mb-4">
+                <Input
+                    placeholder="Search students..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="max-w-sm"
+                />
+            </div>
+
             <Card>
                 <CardHeader>
                     <CardTitle>Manage Students</CardTitle>
@@ -107,7 +128,7 @@ export default function ManageStudentPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {students?.map((student) => (
+                                {filteredStudents?.map((student) => (
                                     <TableRow
                                         key={student.id}
                                         className="cursor-pointer hover:bg-muted/50"
@@ -190,7 +211,7 @@ export default function ManageStudentPage() {
                                         </TableCell>
                                     </TableRow>
                                 ))}
-                                {students?.length === 0 && (
+                                {filteredStudents?.length === 0 && (
                                     <TableRow>
                                         <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                                             No students found.

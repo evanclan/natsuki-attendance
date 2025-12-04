@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AddPersonDialog } from "@/components/admin/AddPersonDialog"
 import { Trash2 } from 'lucide-react'
@@ -31,6 +32,8 @@ import { deletePerson } from "@/app/actions/people"
 
 export default function ManageEmployeePage() {
     const [employees, setEmployees] = useState<any[]>([])
+    const [filteredEmployees, setFilteredEmployees] = useState<any[]>([])
+    const [searchQuery, setSearchQuery] = useState('')
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
 
@@ -56,8 +59,17 @@ export default function ManageEmployeePage() {
         }
 
         setEmployees(data || [])
+        setFilteredEmployees(data || [])
         setLoading(false)
     }
+
+    useEffect(() => {
+        const filtered = employees.filter(employee =>
+            employee.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (employee.code && employee.code.toLowerCase().includes(searchQuery.toLowerCase()))
+        )
+        setFilteredEmployees(filtered)
+    }, [searchQuery, employees])
 
     useEffect(() => {
         fetchEmployees()
@@ -85,6 +97,15 @@ export default function ManageEmployeePage() {
                 <AddPersonDialog role="employee" onSuccess={fetchEmployees} />
             </div>
 
+            <div className="flex items-center space-x-2 mb-4">
+                <Input
+                    placeholder="Search employees..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="max-w-sm"
+                />
+            </div>
+
             <Card>
                 <CardHeader>
                     <CardTitle>Manage Employees</CardTitle>
@@ -107,7 +128,7 @@ export default function ManageEmployeePage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {employees?.map((employee) => (
+                                {filteredEmployees?.map((employee) => (
                                     <TableRow
                                         key={employee.id}
                                         className="cursor-pointer hover:bg-muted/50"
@@ -190,7 +211,7 @@ export default function ManageEmployeePage() {
                                         </TableCell>
                                     </TableRow>
                                 ))}
-                                {employees?.length === 0 && (
+                                {filteredEmployees?.length === 0 && (
                                     <TableRow>
                                         <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                                             No employees found.
