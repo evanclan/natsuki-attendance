@@ -78,33 +78,56 @@ export default function AdminPage() {
         fetchData()
     }, [])
 
-    useEffect(() => {
+    const fetchAttendance = async () => {
         if (!selectedDate) return
 
-        const fetchAttendance = async () => {
-            const supabase = createClient()
+        const supabase = createClient()
 
-            const { data, error: fetchError } = await supabase
-                .from('attendance_days')
-                .select(`
-                    *,
-                    people (
-                        full_name,
-                        code
-                    )
-                `)
-                .eq('date', selectedDate)
-                .order('created_at', { ascending: false })
+        const { data, error: fetchError } = await supabase
+            .from('attendance_days')
+            .select(`
+                *,
+                people (
+                    full_name,
+                    code
+                )
+            `)
+            .eq('date', selectedDate)
+            .order('created_at', { ascending: false })
 
-            if (fetchError) {
-                setError(fetchError.message)
-                return
-            }
-
-            setAttendance(data || [])
+        if (fetchError) {
+            setError(fetchError.message)
+            return
         }
 
+        setAttendance(data || [])
+    }
+
+    useEffect(() => {
         fetchAttendance()
+
+        if (!selectedDate) return
+
+        const supabase = createClient()
+        const channel = supabase
+            .channel('admin_attendance_changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'attendance_days',
+                    filter: `date=eq.${selectedDate}`,
+                },
+                () => {
+                    fetchAttendance()
+                }
+            )
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
     }, [selectedDate])
 
     if (error) {
