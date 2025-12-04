@@ -78,7 +78,7 @@ export function MonthlyReport({ personId }: MonthlyReportProps) {
 
     const formatTime = (isoString: string | null) => {
         if (!isoString) return '-'
-        return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
     }
 
     // Helper to extract HH:MM from ISO string for input

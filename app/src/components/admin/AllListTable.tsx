@@ -93,7 +93,7 @@ export function AllListTable({ year, month, employees, attendance, events }: All
 
     const formatTime = (isoString: string | null) => {
         if (!isoString) return '-'
-        return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
     }
 
     const calculateMonthlyStats = (employeeId: string) => {
