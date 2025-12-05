@@ -430,6 +430,53 @@ export async function undoCheckIn(personId: string) {
     return { success: true }
 }
 
+export async function undoCheckOut(personId: string) {
+    const supabase = await createClient()
+    const today = getTodayJST()
+
+    // 1. Log the undo event for audit trail
+    const { error: eventError } = await supabase
+        .from('attendance_events')
+        .insert({
+            person_id: personId,
+            event_type: 'undo_check_out',
+            source: 'kiosk'
+        })
+
+    if (eventError) {
+        console.error('Error logging undo event:', eventError)
+        return { success: false, error: eventError.message }
+    }
+
+    // 2. Update the attendance_days record for today
+    // Reset check_out_at and calculated stats to null, set status back to 'present'
+    const { error: updateError } = await supabase
+        .from('attendance_days')
+        .update({
+            check_out_at: null,
+            total_work_minutes: null,
+            total_break_minutes: null,
+            break_exceeded: null,
+            overtime_minutes: null,
+            paid_leave_minutes: null,
+            rounded_check_in_at: null,
+            rounded_check_out_at: null,
+            status: 'present',
+            updated_at: new Date().toISOString()
+        })
+        .eq('person_id', personId)
+        .eq('date', today)
+
+    if (updateError) {
+        console.error('Error undoing check-out:', updateError)
+        return { success: false, error: updateError.message }
+    }
+
+    revalidatePath('/kiosk')
+    revalidatePath('/kiosk/employee')
+    return { success: true }
+}
+
 export async function getAllEmployees() {
     const supabase = await createClient()
 

@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Person, logAttendance, undoAbsent, undoCheckIn } from '@/app/actions/kiosk'
-import { Loader2, LogIn, LogOut, Coffee, XCircle, PlayCircle, Clock, Undo } from 'lucide-react'
+import { Person, logAttendance, undoAbsent, undoCheckIn, undoCheckOut } from '@/app/actions/kiosk'
+import { Loader2, LogIn, LogOut, Coffee, XCircle, PlayCircle, Clock, Undo, CheckCircle2 } from 'lucide-react'
 
 interface PersonCardProps {
     person: Person
@@ -137,6 +137,36 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
         }
     }
 
+    const handleUndoCheckOut = async () => {
+        if (selectionMode) return
+        if (!confirm('Are you sure you want to undo this check-out?')) return
+
+        // Optimistic Revert
+        const previousAttendance = optimisticAttendance
+
+        // Revert to checked in state
+        const newAttendance = optimisticAttendance ? { ...optimisticAttendance } : null
+        if (newAttendance) {
+            newAttendance.check_out_at = null
+            newAttendance.status = 'present'
+        }
+        setOptimisticAttendance(newAttendance)
+
+        try {
+            const result = await undoCheckOut(person.id)
+            if (!result.success) {
+                setOptimisticAttendance(previousAttendance)
+                alert('Failed to undo check-out: ' + result.error)
+            } else {
+                router.refresh()
+            }
+        } catch (error) {
+            console.error(error)
+            setOptimisticAttendance(previousAttendance)
+            alert('An error occurred')
+        }
+    }
+
     // Use optimistic state for rendering
     const attendance_today = optimisticAttendance
 
@@ -145,9 +175,15 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
     const isCheckedOut = !!attendance_today?.check_out_at
     const isOnBreak = !!attendance_today?.break_start_at && !attendance_today?.break_end_at
     const isAbsent = attendance_today?.status === 'absent'
+    const isDoneForToday = isCheckedIn && isCheckedOut
 
     // Reset state if checked out (as per "when everyone is out its back to original form")
-    const showInitialState = !isCheckedIn || isCheckedOut
+    // BUT if done for today, we want to show the greyed out state.
+    // So showInitialState should only be true if NOT checked in AND NOT absent.
+    // Wait, the original logic was `!isCheckedIn || isCheckedOut`.
+    // If `isCheckedOut` is true, it was showing initial state.
+    // We want to change this behavior.
+    const showInitialState = !isCheckedIn && !isAbsent
 
     // Break countdown timer (1 hour = 3600 seconds)
     useEffect(() => {
@@ -209,6 +245,51 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
                             title="Undo absent"
                         >
                             {loading === 'undo' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Undo className="h-3 w-3" />}
+                        </Button>
+                    )}
+                </CardContent>
+            </Card>
+        )
+    }
+
+    if (isDoneForToday) {
+        return (
+            <Card
+                className={`transition-all duration-300 border-2 border-slate-200 bg-slate-50 relative rounded-xl overflow-hidden group ${selectionMode ? 'cursor-pointer' : ''} ${isSelected ? 'ring-4 ring-orange-400 ring-offset-2' : ''}`}
+                onClick={selectionMode ? onSelect : undefined}
+            >
+                <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:16px_16px] opacity-50" />
+                <CardHeader className="py-2 px-2 relative z-10 opacity-75">
+                    <div className="text-center">
+                        <CardTitle className="text-base font-bold text-slate-600 truncate leading-tight" title={person.full_name}>
+                            {person.full_name}
+                        </CardTitle>
+                        {person.japanese_name && (
+                            <p className="text-[0.6rem] text-slate-400 font-medium truncate mt-0.5">
+                                {person.japanese_name}
+                            </p>
+                        )}
+                    </div>
+                </CardHeader>
+                <CardContent className="flex flex-col justify-center items-center pb-2 px-2 relative z-10 min-h-[40px]">
+                    <div className="flex items-center gap-1.5 text-slate-500 mb-1">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span className="text-[0.65rem] font-medium">気をつけて帰ってください</span>
+                    </div>
+
+                    {!selectionMode && (
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="absolute bottom-1 right-1 h-6 w-6 bg-white hover:bg-slate-100 text-slate-400 hover:text-slate-600 border-slate-200 shadow-sm rounded-full transition-colors"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                handleUndoCheckOut()
+                            }}
+                            disabled={!!loading}
+                            title="Undo check-out"
+                        >
+                            {loading === 'undo_check_out' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Undo className="h-3 w-3" />}
                         </Button>
                     )}
                 </CardContent>
