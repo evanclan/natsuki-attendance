@@ -35,9 +35,15 @@ export function AddPersonDialog({ role, onSuccess }: AddPersonDialogProps) {
     const [categories, setCategories] = useState<any[]>([])
     const [error, setError] = useState<string | null>(null)
 
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<{
+        full_name: string
+        category_id: string | string[]
+        job_type: string
+        registration_date: string
+        category_ids?: string[]
+    }>({
         full_name: '',
-        category_id: '',
+        category_id: [],
         job_type: '',
         registration_date: new Date().toISOString().split('T')[0]
     })
@@ -63,18 +69,24 @@ export function AddPersonDialog({ role, onSuccess }: AddPersonDialogProps) {
             return
         }
 
+        const categoryIds = Array.isArray(formData.category_id)
+            ? formData.category_id
+            : (formData.category_id ? [formData.category_id] : [])
+
         const result = await createPerson({
-            ...formData,
+            full_name: formData.full_name,
             role,
-            category_id: formData.category_id || null,
-            job_type: role === 'employee' ? formData.job_type : undefined
+            category_id: categoryIds[0] || null,
+            category_ids: categoryIds,
+            job_type: role === 'employee' ? formData.job_type : undefined,
+            registration_date: formData.registration_date
         })
 
         if (result.success) {
             setOpen(false)
             setFormData({
                 full_name: '',
-                category_id: '',
+                category_id: [],
                 job_type: '',
                 registration_date: new Date().toISOString().split('T')[0]
             })
@@ -117,23 +129,41 @@ export function AddPersonDialog({ role, onSuccess }: AddPersonDialogProps) {
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="category">Category</Label>
-                        <Select
-                            value={formData.category_id}
-                            onValueChange={(val) => setFormData({ ...formData, category_id: val })}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="none">None</SelectItem>
-                                {categories.map((cat) => (
-                                    <SelectItem key={cat.id} value={cat.id}>
+                        <Label>Category</Label>
+                        <div className="border rounded-md p-2 max-h-[200px] overflow-y-auto space-y-2">
+                            {categories.length === 0 && <div className="text-sm text-muted-foreground">No categories available</div>}
+                            {categories.map((cat) => (
+                                <div key={cat.id} className="flex items-center space-x-2">
+                                    <input
+                                        type="checkbox"
+                                        id={`cat-${cat.id}`}
+                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                        checked={Array.isArray(formData.category_id) ? formData.category_id.includes(cat.id) : formData.category_id === cat.id}
+                                        onChange={(e) => {
+                                            const isChecked = e.target.checked
+                                            let currentIds: string[] = []
+                                            if (Array.isArray(formData.category_id)) {
+                                                currentIds = [...formData.category_id]
+                                            } else if (formData.category_id) {
+                                                currentIds = [formData.category_id]
+                                            }
+
+                                            if (isChecked) {
+                                                currentIds.push(cat.id)
+                                            } else {
+                                                currentIds = currentIds.filter(id => id !== cat.id)
+                                            }
+
+                                            // @ts-ignore - temporary type hack as we transition formData
+                                            setFormData({ ...formData, category_id: currentIds, category_ids: currentIds })
+                                        }}
+                                    />
+                                    <Label htmlFor={`cat-${cat.id}`} className="font-normal cursor-pointer">
                                         {cat.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                                    </Label>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                     {role === 'employee' && (
                         <div className="space-y-2">

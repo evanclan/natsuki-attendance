@@ -50,7 +50,7 @@ export default function StudentDetailPage() {
     // Form states
     const [fullName, setFullName] = useState('')
     const [japaneseName, setJapaneseName] = useState('')
-    const [categoryId, setCategoryId] = useState('')
+    const [categoryIds, setCategoryIds] = useState<string[]>([])
     const [registrationDate, setRegistrationDate] = useState('')
     const [status, setStatus] = useState('')
     const [memo, setMemo] = useState('')
@@ -81,9 +81,11 @@ export default function StudentDetailPage() {
                 .from('people')
                 .select(`
                     *,
-                    categories (
-                        id,
-                        name
+                    person_categories (
+                        categories (
+                            id,
+                            name
+                        )
                     )
                 `)
                 .eq('code', code)
@@ -99,7 +101,15 @@ export default function StudentDetailPage() {
             setStudent(studentData)
             setFullName(studentData.full_name || '')
             setJapaneseName(studentData.japanese_name || '')
-            setCategoryId(studentData.category_id || '')
+
+            // Extract category IDs from person_categories
+            const extractedIds = studentData.person_categories?.map((pc: any) => pc.categories?.id).filter(Boolean) || []
+            // Fallback to legacy category_id if no person_categories found (migration safety)
+            if (extractedIds.length === 0 && studentData.category_id) {
+                extractedIds.push(studentData.category_id)
+            }
+            setCategoryIds(extractedIds)
+
             setRegistrationDate(studentData.registration_date || '')
             setStatus(studentData.status || 'active')
             setMemo(studentData.memo || '')
@@ -136,7 +146,8 @@ export default function StudentDetailPage() {
         const result = await updateStudentDetails(code, {
             full_name: fullName,
             japanese_name: japaneseName,
-            category_id: categoryId || null,
+            category_id: categoryIds[0] || null, // legacy
+            category_ids: categoryIds,
             registration_date: registrationDate,
             status: status
         })
@@ -305,20 +316,31 @@ export default function StudentDetailPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="category">Category</Label>
-                                <Select value={categoryId} onValueChange={setCategoryId}>
-                                    <SelectTrigger id="category">
-                                        <SelectValue placeholder="Select category" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">None</SelectItem>
-                                        {categories.map((cat) => (
-                                            <SelectItem key={cat.id} value={cat.id}>
+                                <Label>Category</Label>
+                                <div className="border rounded-md p-2 max-h-[150px] overflow-y-auto space-y-2">
+                                    {categories.length === 0 && <div className="text-sm text-muted-foreground">No categories available</div>}
+                                    {categories.map((cat) => (
+                                        <div key={cat.id} className="flex items-center space-x-2">
+                                            <input
+                                                type="checkbox"
+                                                id={`cat-edit-${cat.id}`}
+                                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                                checked={categoryIds.includes(cat.id)}
+                                                onChange={(e) => {
+                                                    const isChecked = e.target.checked
+                                                    if (isChecked) {
+                                                        setCategoryIds([...categoryIds, cat.id])
+                                                    } else {
+                                                        setCategoryIds(categoryIds.filter(id => id !== cat.id))
+                                                    }
+                                                }}
+                                            />
+                                            <Label htmlFor={`cat-edit-${cat.id}`} className="font-normal cursor-pointer">
                                                 {cat.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                            </Label>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="registrationDate">Registration Date</Label>

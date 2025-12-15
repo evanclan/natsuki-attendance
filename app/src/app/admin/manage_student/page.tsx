@@ -45,8 +45,10 @@ export default function ManageStudentPage() {
             .from('people')
             .select(`
                 *,
-                categories (
-                    name
+                person_categories (
+                    categories (
+                        name
+                    )
                 )
             `)
             .eq('role', 'student')
@@ -154,7 +156,8 @@ export default function ManageStudentPage() {
                                                 href={`/admin/manage_student/${student.code}`}
                                                 className="block w-full"
                                             >
-                                                {student.categories?.name || '-'}
+                                                {/* @ts-ignore */}
+                                                {student.person_categories?.map((pc: any) => pc.categories?.name).join(', ') || '-'}
                                             </Link>
                                         </TableCell>
                                         <TableCell>
