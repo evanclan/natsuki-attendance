@@ -27,7 +27,7 @@ export default async function MasterListPage({
             <MasterListTable
                 year={year}
                 month={month}
-                people={result.data.people}
+                people={result.data.people as any}
                 shifts={result.data.shifts}
                 events={result.data.events}
                 attendance={result.data.attendance}
