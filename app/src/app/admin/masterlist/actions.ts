@@ -71,7 +71,7 @@ export async function getMonthlyMasterList(year: number, month: number) {
         return {
             success: true,
             data: {
-                people: people || [],
+                people: (people as any) || [],
                 shifts: shifts || [],
                 events: events || [],
                 attendance: attendance || []
