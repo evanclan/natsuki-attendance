@@ -182,7 +182,6 @@ export default function AdminPage() {
                                 <TableHead>Check In</TableHead>
                                 <TableHead>Check Out</TableHead>
                                 <TableHead>Status</TableHead>
-                                <TableHead>Work Time</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -205,14 +204,11 @@ export default function AdminPage() {
                                             {record.status}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell>
-                                        {record.total_work_minutes ? `${Math.floor(record.total_work_minutes / 60)}h ${record.total_work_minutes % 60}m` : '-'}
-                                    </TableCell>
                                 </TableRow>
                             ))}
                             {attendance?.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                                         No attendance records found for this date.
                                     </TableCell>
                                 </TableRow>

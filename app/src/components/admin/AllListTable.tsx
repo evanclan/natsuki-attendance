@@ -39,11 +39,12 @@ type AllListTableProps = {
     year: number
     month: number
     employees: Employee[]
+    students: Employee[]
     attendance: AttendanceRecord[]
     events: SystemEvent[]
 }
 
-export function AllListTable({ year, month, employees, attendance, events }: AllListTableProps) {
+export function AllListTable({ year, month, employees, students, attendance, events }: AllListTableProps) {
     const router = useRouter()
     const [dialogOpen, setDialogOpen] = useState(false)
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
@@ -164,6 +165,44 @@ export function AllListTable({ year, month, employees, attendance, events }: All
 
     const monthName = new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
+    const renderTable = (people: Employee[], title: string) => (
+        <div className="border rounded-md overflow-hidden mb-8">
+            <div className="bg-muted px-4 py-2 border-b border-border font-semibold">
+                {title}
+            </div>
+            <div className="overflow-x-auto">
+                <div className="min-w-max">
+                    {/* Header Row */}
+                    <div className="flex border-b border-border bg-muted/50">
+                        <div className="sticky left-0 z-20 w-48 min-w-[192px] p-2 border-r border-border bg-muted/50 font-semibold flex items-center">
+                            Name
+                        </div>
+                        {days.map(day => {
+                            const date = new Date(year, month, day)
+                            const dayName = date.toLocaleDateString('en-US', { weekday: 'short' })
+                            const isWknd = isWeekend(day)
+                            return (
+                                <div
+                                    key={day}
+                                    className={`
+                                        min-w-[120px] p-1 border-r border-border text-center flex flex-col justify-center
+                                        ${isWknd ? 'text-red-500 bg-red-50/50' : ''}
+                                    `}
+                                >
+                                    <div className="text-sm font-bold">{day}</div>
+                                    <div className="text-xs">{dayName}</div>
+                                </div>
+                            )
+                        })}
+                    </div>
+
+                    {/* Person Rows */}
+                    {people.map(renderRow)}
+                </div>
+            </div>
+        </div>
+    )
+
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -178,38 +217,8 @@ export function AllListTable({ year, month, employees, attendance, events }: All
                 </div>
             </div>
 
-            <div className="border rounded-md overflow-hidden">
-                <div className="overflow-x-auto">
-                    <div className="min-w-max">
-                        {/* Header Row */}
-                        <div className="flex border-b border-border bg-muted/50">
-                            <div className="sticky left-0 z-20 w-48 min-w-[192px] p-2 border-r border-border bg-muted/50 font-semibold flex items-center">
-                                Employee
-                            </div>
-                            {days.map(day => {
-                                const date = new Date(year, month, day)
-                                const dayName = date.toLocaleDateString('en-US', { weekday: 'short' })
-                                const isWknd = isWeekend(day)
-                                return (
-                                    <div
-                                        key={day}
-                                        className={`
-                                            min-w-[120px] p-1 border-r border-border text-center flex flex-col justify-center
-                                            ${isWknd ? 'text-red-500 bg-red-50/50' : ''}
-                                        `}
-                                    >
-                                        <div className="text-sm font-bold">{day}</div>
-                                        <div className="text-xs">{dayName}</div>
-                                    </div>
-                                )
-                            })}
-                        </div>
-
-                        {/* Employee Rows */}
-                        {employees.map(renderRow)}
-                    </div>
-                </div>
-            </div>
+            {renderTable(employees, "Employees")}
+            {renderTable(students, "Students")}
 
             {selectedEmployee && selectedDate && (
                 <AttendanceEditDialog

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Person, logAttendance, undoAbsent, undoCheckIn, undoCheckOut } from '@/app/actions/kiosk'
+import { attendanceQueue } from '@/lib/attendance-queue'
 import { Loader2, LogIn, LogOut, Coffee, XCircle, PlayCircle, Clock, Undo, CheckCircle2 } from 'lucide-react'
 
 interface PersonCardProps {
@@ -61,21 +62,23 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
         // Don't set loading state for optimistic actions to keep UI interactive
         // setLoading(eventType) 
 
-        try {
-            const result = await logAttendance(person.id, eventType)
-            if (!result.success) {
-                // Revert on failure
+        attendanceQueue.enqueue(async () => {
+            try {
+                const result = await logAttendance(person.id, eventType)
+                if (!result.success) {
+                    // Revert on failure
+                    setOptimisticAttendance(previousAttendance)
+                    alert('Failed to log attendance: ' + result.error)
+                } else {
+                    // Refresh data in background
+                    router.refresh()
+                }
+            } catch (error) {
+                console.error(error)
                 setOptimisticAttendance(previousAttendance)
-                alert('Failed to log attendance: ' + result.error)
-            } else {
-                // Refresh data in background
-                router.refresh()
+                alert('An error occurred')
             }
-        } catch (error) {
-            console.error(error)
-            setOptimisticAttendance(previousAttendance)
-            alert('An error occurred')
-        }
+        })
     }
 
     const handleUndo = async () => {
@@ -97,19 +100,21 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
         }
         setOptimisticAttendance(newAttendance)
 
-        try {
-            const result = await undoAbsent(person.id)
-            if (!result.success) {
+        attendanceQueue.enqueue(async () => {
+            try {
+                const result = await undoAbsent(person.id)
+                if (!result.success) {
+                    setOptimisticAttendance(previousAttendance)
+                    alert('Failed to undo absent: ' + result.error)
+                } else {
+                    router.refresh()
+                }
+            } catch (error) {
+                console.error(error)
                 setOptimisticAttendance(previousAttendance)
-                alert('Failed to undo absent: ' + result.error)
-            } else {
-                router.refresh()
+                alert('An error occurred')
             }
-        } catch (error) {
-            console.error(error)
-            setOptimisticAttendance(previousAttendance)
-            alert('An error occurred')
-        }
+        })
     }
 
     const handleUndoCheckIn = async () => {
@@ -122,19 +127,21 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
         // Clear check-in data
         setOptimisticAttendance(null)
 
-        try {
-            const result = await undoCheckIn(person.id)
-            if (!result.success) {
+        attendanceQueue.enqueue(async () => {
+            try {
+                const result = await undoCheckIn(person.id)
+                if (!result.success) {
+                    setOptimisticAttendance(previousAttendance)
+                    alert('Failed to undo check-in: ' + result.error)
+                } else {
+                    router.refresh()
+                }
+            } catch (error) {
+                console.error(error)
                 setOptimisticAttendance(previousAttendance)
-                alert('Failed to undo check-in: ' + result.error)
-            } else {
-                router.refresh()
+                alert('An error occurred')
             }
-        } catch (error) {
-            console.error(error)
-            setOptimisticAttendance(previousAttendance)
-            alert('An error occurred')
-        }
+        })
     }
 
     const handleUndoCheckOut = async () => {
@@ -152,19 +159,21 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
         }
         setOptimisticAttendance(newAttendance)
 
-        try {
-            const result = await undoCheckOut(person.id)
-            if (!result.success) {
+        attendanceQueue.enqueue(async () => {
+            try {
+                const result = await undoCheckOut(person.id)
+                if (!result.success) {
+                    setOptimisticAttendance(previousAttendance)
+                    alert('Failed to undo check-out: ' + result.error)
+                } else {
+                    router.refresh()
+                }
+            } catch (error) {
+                console.error(error)
                 setOptimisticAttendance(previousAttendance)
-                alert('Failed to undo check-out: ' + result.error)
-            } else {
-                router.refresh()
+                alert('An error occurred')
             }
-        } catch (error) {
-            console.error(error)
-            setOptimisticAttendance(previousAttendance)
-            alert('An error occurred')
-        }
+        })
     }
 
     // Use optimistic state for rendering

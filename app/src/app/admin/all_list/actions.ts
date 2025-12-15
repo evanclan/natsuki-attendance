@@ -22,6 +22,16 @@ export async function getAllEmployeesAttendance(year: number, month: number) {
 
         if (employeesError) throw employeesError
 
+        // 1.5. Fetch all active students
+        const { data: students, error: studentsError } = await supabase
+            .from('people')
+            .select('id, full_name, code, role')
+            .eq('status', 'active')
+            .eq('role', 'student')
+            .order('code', { ascending: true })
+
+        if (studentsError) throw studentsError
+
         // 2. Fetch attendance records for the month
         const { data: attendance, error: attendanceError } = await supabase
             .from('attendance_days')
@@ -44,6 +54,7 @@ export async function getAllEmployeesAttendance(year: number, month: number) {
             success: true,
             data: {
                 employees: employees || [],
+                students: students || [],
                 attendance: attendance || [],
                 events: events || []
             }

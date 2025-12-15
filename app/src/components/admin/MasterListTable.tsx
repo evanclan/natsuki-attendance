@@ -311,68 +311,72 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                     />
                 )
             })}
-            <div className="min-w-[80px] p-2 border-r border-border flex items-center justify-center font-mono text-sm">
-                {(() => {
-                    const totalExpectedHours = days.reduce((sum, day) => {
-                        const date = new Date(year, month, day)
-                        const dateStr = date.toISOString().split('T')[0]
-                        const shift = shifts.find(s => s.person_id === person.id && s.date === dateStr)
-                        if (!shift) return sum
+            {person.role !== 'student' && (
+                <>
+                    <div className="min-w-[80px] p-2 border-r border-border flex items-center justify-center font-mono text-sm">
+                        {(() => {
+                            const totalExpectedHours = days.reduce((sum, day) => {
+                                const date = new Date(year, month, day)
+                                const dateStr = date.toISOString().split('T')[0]
+                                const shift = shifts.find(s => s.person_id === person.id && s.date === dateStr)
+                                if (!shift) return sum
 
-                        // Use the same helper function as ShiftCell
-                        return sum + calculateExpectedHours({
-                            date: shift.date,
-                            shift_type: shift.shift_type || 'work',
-                            shift_name: shift.shift_name,
-                            start_time: shift.start_time,
-                            end_time: shift.end_time,
-                            location: shift.location,
-                            paid_leave_hours: shift.paid_leave_hours,
-                            memo: shift.memo,
-                            color: shift.color,
-                            force_break: shift.force_break
-                        })
-                    }, 0)
-                    return `${totalExpectedHours}h`
-                })()}
-            </div>
-            <div className="min-w-[80px] p-2 border-r border-border flex items-center justify-center font-mono text-sm">
-                {(() => {
-                    const isPartTime = person.categories?.[0]?.name === 'partime'
+                                // Use the same helper function as ShiftCell
+                                return sum + calculateExpectedHours({
+                                    date: shift.date,
+                                    shift_type: shift.shift_type || 'work',
+                                    shift_name: shift.shift_name,
+                                    start_time: shift.start_time,
+                                    end_time: shift.end_time,
+                                    location: shift.location,
+                                    paid_leave_hours: shift.paid_leave_hours,
+                                    memo: shift.memo,
+                                    color: shift.color,
+                                    force_break: shift.force_break
+                                })
+                            }, 0)
+                            return `${totalExpectedHours}h`
+                        })()}
+                    </div>
+                    <div className="min-w-[80px] p-2 border-r border-border flex items-center justify-center font-mono text-sm">
+                        {(() => {
+                            const isPartTime = person.categories?.[0]?.name === 'partime'
 
-                    if (isPartTime) {
-                        // Count days for part-time
-                        const totalDays = days.reduce((count, day) => {
-                            const date = new Date(year, month, day)
-                            const dateStr = date.toISOString().split('T')[0]
-                            const shift = shifts.find(s => s.person_id === person.id && s.date === dateStr)
+                            if (isPartTime) {
+                                // Count days for part-time
+                                const totalDays = days.reduce((count, day) => {
+                                    const date = new Date(year, month, day)
+                                    const dateStr = date.toISOString().split('T')[0]
+                                    const shift = shifts.find(s => s.person_id === person.id && s.date === dateStr)
 
-                            if (shift && (shift.shift_type === 'paid_leave' || shift.shift_type === 'half_paid_leave')) {
-                                return count + 1
+                                    if (shift && (shift.shift_type === 'paid_leave' || shift.shift_type === 'half_paid_leave')) {
+                                        return count + 1
+                                    }
+                                    return count
+                                }, 0)
+                                return totalDays > 0 ? `${totalDays}d` : '-'
+                            } else {
+                                // Count hours for others
+                                const totalHours = days.reduce((sum, day) => {
+                                    const date = new Date(year, month, day)
+                                    const dateStr = date.toISOString().split('T')[0]
+                                    const shift = shifts.find(s => s.person_id === person.id && s.date === dateStr)
+
+                                    if (!shift) return sum
+
+                                    if (shift.shift_type === 'paid_leave') {
+                                        return sum + (shift.paid_leave_hours || 8)
+                                    } else if (shift.shift_type === 'half_paid_leave') {
+                                        return sum + 4
+                                    }
+                                    return sum
+                                }, 0)
+                                return totalHours > 0 ? `${totalHours}h` : '-'
                             }
-                            return count
-                        }, 0)
-                        return totalDays > 0 ? `${totalDays}d` : '-'
-                    } else {
-                        // Count hours for others
-                        const totalHours = days.reduce((sum, day) => {
-                            const date = new Date(year, month, day)
-                            const dateStr = date.toISOString().split('T')[0]
-                            const shift = shifts.find(s => s.person_id === person.id && s.date === dateStr)
-
-                            if (!shift) return sum
-
-                            if (shift.shift_type === 'paid_leave') {
-                                return sum + (shift.paid_leave_hours || 8)
-                            } else if (shift.shift_type === 'half_paid_leave') {
-                                return sum + 4
-                            }
-                            return sum
-                        }, 0)
-                        return totalHours > 0 ? `${totalHours}h` : '-'
-                    }
-                })()}
-            </div>
+                        })()}
+                    </div>
+                </>
+            )}
         </div>
     )
 
@@ -388,8 +392,93 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
         "July", "August", "September", "October", "November", "December"
     ]
 
+    const renderHeaderRow = (label: string, showSummary: boolean = true) => (
+        <div className="flex border-b border-border bg-muted sticky top-0 z-40">
+            <div className="sticky left-0 z-50 w-40 min-w-[160px] p-2 border-r border-border bg-muted font-semibold flex items-center">
+                {label}
+            </div>
+            {days.map(day => {
+                const date = new Date(year, month, day)
+                const dayName = date.toLocaleDateString('en-US', { weekday: 'short' })
+                const isWknd = isWeekend(day)
+                return (
+                    <div
+                        key={day}
+                        className={`
+                            min-w-[100px] p-1 border-r border-border text-center flex flex-col justify-center
+                            ${isWknd ? 'text-red-500 bg-red-50/50' : ''}
+                        `}
+                    >
+                        <div className="text-sm font-bold">{day}</div>
+                        <div className="text-xs">{dayName}</div>
+                    </div>
+                )
+            })}
+            {showSummary && (
+                <>
+                    <div className="min-w-[80px] p-2 border-r border-border bg-muted font-semibold flex items-center justify-center text-xs">
+                        Working hours
+                    </div>
+                    <div className="min-w-[80px] p-2 border-r border-border bg-muted font-semibold flex items-center justify-center text-xs">
+                        Paid Leave
+                    </div>
+                </>
+            )}
+        </div>
+    )
+
+    const renderEventsRow = () => (
+        <div className="flex border-b border-border bg-blue-50/30">
+            <div className="sticky left-0 z-20 w-40 min-w-[160px] p-2 border-r border-border bg-blue-50/30 font-semibold flex items-center text-blue-700">
+                Events
+            </div>
+            {days.map(day => {
+                const date = new Date(year, month, day)
+                const dayEvents = getDayEvents(day)
+                const isWknd = isWeekend(day)
+
+                return (
+                    <div
+                        key={day}
+                        className={`
+                            min-w-[100px] p-1 border-r border-border relative group cursor-pointer hover:bg-blue-100/50 transition-colors
+                            ${isWknd ? 'bg-red-50/30' : ''}
+                        `}
+                        onClick={() => handleEventClick(date)}
+                    >
+                        <div className="space-y-1 min-h-[40px]">
+                            {dayEvents.map(event => (
+                                <div
+                                    key={event.id}
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleEventClick(date, event)
+                                    }}
+                                    className={`
+                                        text-[10px] p-1 rounded px-2 truncate cursor-pointer hover:opacity-80
+                                        ${(event.event_type === 'holiday' || event.is_holiday || event.event_type === 'rest_day') ? 'bg-red-100 text-red-700 border border-red-200' :
+                                            event.event_type === 'work_day' ? 'bg-green-100 text-green-700 border border-green-200' :
+                                                'bg-blue-100 text-blue-700 border border-blue-200'}
+                                    `}
+                                    title={event.title}
+                                >
+                                    {event.title}
+                                </div>
+                            ))}
+                            {dayEvents.length === 0 && (
+                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none">
+                                    <Plus className="h-4 w-4 text-blue-400" />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )
+            })}
+        </div>
+    )
+
     return (
-        <div className="space-y-4">
+        <div className="space-y-8 pb-32">
             <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold">{monthName}</h2>
                 <div className="flex items-center gap-4">
@@ -456,108 +545,37 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                 </div>
             </div>
 
-            <div className="border rounded-md overflow-hidden">
-                <div className="overflow-auto h-[calc(100vh-220px)]">
-                    <div className="min-w-max">
-                        {/* Header Row */}
-                        <div className="flex border-b border-border bg-muted sticky top-0 z-40">
-                            <div className="sticky left-0 z-50 w-40 min-w-[160px] p-2 border-r border-border bg-muted font-semibold flex items-center">
-                                Employees
-                            </div>
-                            {days.map(day => {
-                                const date = new Date(year, month, day)
-                                const dayName = date.toLocaleDateString('en-US', { weekday: 'short' })
-                                const isWknd = isWeekend(day)
-                                return (
-                                    <div
-                                        key={day}
-                                        className={`
-                                            min-w-[100px] p-1 border-r border-border text-center flex flex-col justify-center
-                                            ${isWknd ? 'text-red-500 bg-red-50/50' : ''}
-                                        `}
-                                    >
-                                        <div className="text-sm font-bold">{day}</div>
-                                        <div className="text-xs">{dayName}</div>
-                                    </div>
-                                )
-                            })}
-                            <div className="min-w-[80px] p-2 border-r border-border bg-muted font-semibold flex items-center justify-center text-xs">
-                                Working hours
-                            </div>
-                            <div className="min-w-[80px] p-2 border-r border-border bg-muted font-semibold flex items-center justify-center text-xs">
-                                Paid Leave
-                            </div>
-                        </div>
-
-                        {/* Events Row */}
-                        <div className="flex border-b border-border bg-blue-50/30">
-                            <div className="sticky left-0 z-20 w-40 min-w-[160px] p-2 border-r border-border bg-blue-50/30 font-semibold flex items-center text-blue-700">
-                                Events
-                            </div>
-                            {days.map(day => {
-                                const date = new Date(year, month, day)
-                                const dayEvents = getDayEvents(day)
-                                const isWknd = isWeekend(day)
-
-                                return (
-                                    <div
-                                        key={day}
-                                        className={`
-                                            min-w-[100px] p-1 border-r border-border relative group cursor-pointer hover:bg-blue-100/50 transition-colors
-                                            ${isWknd ? 'bg-red-50/30' : ''}
-                                        `}
-                                        onClick={() => handleEventClick(date)}
-                                    >
-                                        <div className="space-y-1 min-h-[40px]">
-                                            {dayEvents.map(event => (
-                                                <div
-                                                    key={event.id}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation()
-                                                        handleEventClick(date, event)
-                                                    }}
-                                                    className={`
-                                                        text-[10px] p-1 rounded px-2 truncate cursor-pointer hover:opacity-80
-                                                        ${(event.event_type === 'holiday' || event.is_holiday || event.event_type === 'rest_day') ? 'bg-red-100 text-red-700 border border-red-200' :
-                                                            event.event_type === 'work_day' ? 'bg-green-100 text-green-700 border border-green-200' :
-                                                                'bg-blue-100 text-blue-700 border border-blue-200'}
-                                                    `}
-                                                    title={event.title}
-                                                >
-                                                    {event.title}
-                                                </div>
-                                            ))}
-                                            {dayEvents.length === 0 && (
-                                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none">
-                                                    <Plus className="h-4 w-4 text-blue-400" />
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )
-                            })}
-                        </div>
-
-                        {/* Employees Section */}
-                        {employees.length > 0 && (
-                            <>
-                                {/* Removed the "Employees" section header as requested */}
+            {/* Employees Section */}
+            {employees.length > 0 && (
+                <div className="space-y-2">
+                    <h3 className="text-lg font-semibold">Employees</h3>
+                    <div className="border rounded-md overflow-hidden bg-background">
+                        <div className="overflow-auto max-h-[60vh]">
+                            <div className="min-w-max">
+                                {renderHeaderRow("Employees")}
+                                {renderEventsRow()}
                                 {employees.map(renderRow)}
-                            </>
-                        )}
-
-                        {/* Students Section */}
-                        {students.length > 0 && (
-                            <>
-                                <div className="sticky left-0 z-10 bg-slate-100 p-2 font-semibold border-b border-border mt-2">
-                                    Students
-                                </div>
-                                {students.map(renderRow)}
-                            </>
-                        )}
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
+
+            {/* Students Section */}
+            {students.length > 0 && (
+                <div className="space-y-2">
+                    <h3 className="text-lg font-semibold">Students</h3>
+                    <div className="border rounded-md overflow-hidden bg-background">
+                        <div className="overflow-auto max-h-[60vh]">
+                            <div className="min-w-max">
+                                {renderHeaderRow("Students", false)}
+                                {renderEventsRow()}
+                                {students.map(renderRow)}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {
                 selectedPerson && selectedDate && (
@@ -644,4 +662,3 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
         </div >
     )
 }
-

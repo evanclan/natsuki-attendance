@@ -28,6 +28,7 @@ export default async function AllListPage({
                 year={year}
                 month={month}
                 employees={result.data.employees}
+                students={result.data.students}
                 attendance={result.data.attendance}
                 events={result.data.events}
             />
