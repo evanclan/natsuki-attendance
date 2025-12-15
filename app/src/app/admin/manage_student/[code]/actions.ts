@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { addStatusPeriod } from '@/actions/status_history'
 
 export async function updateStudentDetails(code: string, data: {
     full_name: string
@@ -19,6 +20,13 @@ export async function updateStudentDetails(code: string, data: {
         primaryCategoryId = data.category_ids[0]
     }
 
+    // Get current status before update to check for changes
+    const { data: currentData } = await supabase
+        .from('people')
+        .select('status')
+        .eq('code', code)
+        .single()
+
     const { data: person, error } = await supabase
         .from('people')
         .update({
@@ -35,6 +43,19 @@ export async function updateStudentDetails(code: string, data: {
 
     if (error) {
         return { success: false, error: error.message }
+    }
+
+    // If status changed, add a history record
+    if (currentData && currentData.status !== data.status) {
+        const today = new Date().toISOString().split('T')[0]
+
+        await addStatusPeriod({
+            person_id: person.id,
+            status: data.status as 'active' | 'inactive',
+            valid_from: today,
+            valid_until: null,
+            note: 'Changed via profile settings'
+        })
     }
 
     // Update person_categories

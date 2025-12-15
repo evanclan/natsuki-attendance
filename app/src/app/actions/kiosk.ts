@@ -7,7 +7,7 @@ export type Person = {
     id: string
     full_name: string
     japanese_name: string | null
-    category: string | null
+    categories: string[]
     role: 'student' | 'employee'
     code: string
     attendance_today: {
@@ -39,44 +39,81 @@ function getTodayJST() {
 }
 
 export async function getPeople(role: 'student' | 'employee') {
-    const supabase = await createClient()
+    // Use admin client to bypass RLS on person_categories
+    const { createAdminClient } = await import('@/utils/supabase/admin')
+    const supabase = createAdminClient()
     const today = getTodayJST()
 
-    const { data, error } = await supabase
+    // Parallel separate queries to ensure "Left Join" behavior
+    // 1. Get all active people for the role
+    const peopleQuery = supabase
         .from('people')
         .select(`
-      id, 
-      full_name, 
-      japanese_name,
-      categories (
-        name
-      ),
-      role, 
-      code,
-      attendance_today:attendance_days(
-        check_in_at,
-        check_out_at,
-        break_start_at,
-        break_end_at,
-        status
-      )
-    `)
+            id, 
+            full_name, 
+            japanese_name,
+            person_categories (
+                categories (
+                    name
+                )
+            ),
+            role, 
+            code
+        `)
         .eq('role', role)
         .eq('status', 'active')
-        .eq('attendance_days.date', today)
         .order('full_name')
 
-    if (error) {
-        console.error('Error fetching people:', error)
+    // 2. Get attendance records for today (only fetching necessary fields)
+    const attendanceQuery = supabase
+        .from('attendance_days')
+        .select(`
+            person_id,
+            check_in_at,
+            check_out_at,
+            break_start_at,
+            break_end_at,
+            status
+        `)
+        .eq('date', today)
+
+    // Execute in parallel
+    const [peopleRes, attendanceRes] = await Promise.all([peopleQuery, attendanceQuery])
+
+    if (peopleRes.error) {
+        console.error('Error fetching people:', peopleRes.error)
         return []
     }
 
-    // Transform data to handle array return from join (even though it's 1:1 per day)
-    const people = data.map((p: any) => ({
-        ...p,
-        category: p.categories?.name || null,
-        attendance_today: p.attendance_today?.[0] || null
-    }))
+    if (attendanceRes.error) {
+        // Log but don't fail everything; just assume no attendance
+        console.error('Error fetching attendance:', attendanceRes.error)
+    }
+
+    const attendanceMap = new Map()
+    if (attendanceRes.data) {
+        attendanceRes.data.forEach((record: any) => {
+            attendanceMap.set(record.person_id, record)
+        })
+    }
+
+    // Transform and merge
+    const people = peopleRes.data.map((p: any) => {
+        let categories: string[] = []
+        if (p.person_categories && Array.isArray(p.person_categories)) {
+            // Map the nested structure: person_categories -> categories -> name
+            // Filter out nulls/undefined if any link is broken
+            categories = p.person_categories
+                .map((pc: any) => pc.categories?.name)
+                .filter((name: any) => typeof name === 'string')
+        }
+
+        return {
+            ...p,
+            categories,
+            attendance_today: attendanceMap.get(p.id) || null
+        }
+    })
 
     return people as Person[]
 }

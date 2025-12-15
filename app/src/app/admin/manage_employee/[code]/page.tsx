@@ -29,6 +29,7 @@ import { updateEmployeeDetails, updateEmployeeMemo } from './actions'
 import { updateAttendanceRecord } from '../../attendance-actions/actions'
 import { ShiftCalendar } from '@/components/admin/ShiftCalendar'
 import { MonthlyReport } from '@/components/admin/MonthlyReport'
+import { StatusHistoryManager } from '@/components/admin/StatusHistoryManager'
 import { Pencil, Save, X, AlertCircle } from 'lucide-react'
 import {
     Tooltip,
@@ -565,6 +566,14 @@ export default function EmployeeDetailPage() {
                         {employee && <ShiftCalendar personId={employee.id} />}
                     </CardContent>
                 </Card>
+
+                {/* Status History Section */}
+                {employee && (
+                    <StatusHistoryManager
+                        personId={employee.id}
+                        currentStatus={status}
+                    />
+                )}
             </div>
         </div>
     )

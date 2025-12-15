@@ -12,9 +12,10 @@ const CATEGORY_ORDER = ['Academy', 'Ex', 'C-Lab', 'Satasaurus']
 interface MultiSelectPersonListProps {
     people: Person[]
     role: 'student' | 'employee'
+    visibleCategories?: string[]
 }
 
-export function MultiSelectPersonList({ people, role }: MultiSelectPersonListProps) {
+export function MultiSelectPersonList({ people, role, visibleCategories }: MultiSelectPersonListProps) {
     const router = useRouter()
     const [isSelectionMode, setIsSelectionMode] = useState(false)
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -25,13 +26,53 @@ export function MultiSelectPersonList({ people, role }: MultiSelectPersonListPro
     const otherPeople: Person[] = []
 
     people.forEach((person) => {
-        if (person.category && CATEGORY_ORDER.includes(person.category)) {
-            if (!groupedPeople[person.category]) {
-                groupedPeople[person.category] = []
+        let hasCategory = false
+        person.categories.forEach((category) => {
+            const isCategoryVisible = !visibleCategories || visibleCategories.includes(category)
+            if (CATEGORY_ORDER.includes(category) && isCategoryVisible) {
+                if (!groupedPeople[category]) {
+                    groupedPeople[category] = []
+                }
+                groupedPeople[category].push(person)
+                hasCategory = true
             }
-            groupedPeople[person.category].push(person)
-        } else {
-            otherPeople.push(person)
+        })
+
+        if (!hasCategory) {
+            // Only add to "Other" if we're not filtering strictly by category
+            // OR if the user truly has no categories that are in the order list.
+            // But if we have visibleCategories, we likely only want to show matches for those.
+
+            // Logic refind: 
+            // If visibleCategories is defined, we ONLY show people who match at least one visible category.
+            // If a person has NO matching categories in CATEGORY_ORDER, they go to "Other".
+            // BUT if visibleCategories excludes "Other" type behavior...
+
+            // To keep it simple: "Other" collects people who didn't fit into any of the *displayed* named categories.
+            // But wait, if someone is in "Satasaurus" (hidden) and "Academy" (visible), they go to Academy.
+            // If someone is ONLY in "Satasaurus" (hidden), they shouldn't show up in "Other" effectively undoing the hide.
+
+            // So:
+            // 1. We iterate visible categories.
+            // 2. If a person falls into NO visible categories, should they be in "Other"?
+            //    - In Regular mode: Yes (if they have no categories or non-standard ones).
+            //    - In Satasaurus mode: we generally only want Satasaurus.
+
+            // Let's assume "Other" is only for people who truly have NO mapped categories.
+            // But if I have a category that isn't in visibleCategories, I shouldn't be shown at all?
+            // Actually, `otherPeople` rendering is outside the category loop.
+            // Let's restrict `otherPeople` to only those who have NO categories from `CATEGORY_ORDER` at all.
+            // AND we should probably filter `otherPeople` out if we are in a strict mode like Satasaurus.
+
+            // For now, let's just protect the main loop.
+
+            const hasAnyStandardCategory = person.categories.some(c => CATEGORY_ORDER.includes(c))
+            if (!hasAnyStandardCategory) {
+                // Check if we want to show "other" people.
+                // If visibleCategories is provided, maybe we assume strict mode?
+                // Let's rely on the parent (StudentKioskClient) to filter `people` passed in.
+                otherPeople.push(person)
+            }
         }
     })
 
@@ -110,6 +151,8 @@ export function MultiSelectPersonList({ people, role }: MultiSelectPersonListPro
             </div>
 
             {CATEGORY_ORDER.map((category) => {
+                if (visibleCategories && !visibleCategories.includes(category)) return null
+
                 const categoryPeople = groupedPeople[category]
                 if (!categoryPeople || categoryPeople.length === 0) return null
 

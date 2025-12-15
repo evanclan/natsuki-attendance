@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { addStatusPeriod } from '@/actions/status_history'
 
 export async function updateEmployeeDetails(code: string, data: {
     full_name: string
@@ -13,7 +14,21 @@ export async function updateEmployeeDetails(code: string, data: {
 }) {
     const supabase = await createClient()
 
-    const { error } = await supabase
+    // Get current status before update to check for changes
+    const { data: currentData, error: fetchError } = await supabase
+        .from('people')
+        .select('id, status')
+        .eq('code', code)
+        .single()
+
+    if (fetchError) {
+        return { success: false, error: fetchError.message }
+    }
+
+    const person = currentData
+
+    // Update the person record
+    const { error: updateError } = await supabase
         .from('people')
         .update({
             full_name: data.full_name,
@@ -26,8 +41,21 @@ export async function updateEmployeeDetails(code: string, data: {
         })
         .eq('code', code)
 
-    if (error) {
-        return { success: false, error: error.message }
+    if (updateError) {
+        return { success: false, error: updateError.message }
+    }
+
+    // If status changed, add a history record
+    if (person.status !== data.status) {
+        const today = new Date().toISOString().split('T')[0]
+
+        await addStatusPeriod({
+            person_id: person.id,
+            status: data.status as 'active' | 'inactive',
+            valid_from: today,
+            valid_until: null,
+            note: 'Changed via profile settings'
+        })
     }
 
     revalidatePath(`/admin/manage_employee/${code}`)

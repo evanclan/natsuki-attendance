@@ -28,6 +28,7 @@ import {
 import { updateStudentDetails, updateStudentMemo } from './actions'
 import { updateAttendanceRecord } from '../../attendance-actions/actions'
 import { ShiftCalendar } from '@/components/admin/ShiftCalendar'
+import { StatusHistoryManager } from '@/components/admin/StatusHistoryManager'
 import { Pencil, Save, X, AlertCircle } from 'lucide-react'
 import {
     Tooltip,
@@ -568,6 +569,14 @@ export default function StudentDetailPage() {
                         {student && <ShiftCalendar personId={student.id} />}
                     </CardContent>
                 </Card>
+
+                {/* Status History Section */}
+                {student && (
+                    <StatusHistoryManager
+                        personId={student.id}
+                        currentStatus={status}
+                    />
+                )}
             </div>
         </div >
     )

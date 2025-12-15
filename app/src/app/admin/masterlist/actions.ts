@@ -29,11 +29,14 @@ export async function getMonthlyMasterList(year: number, month: number) {
         const endDateStr = endDate.toISOString().split('T')[0]
 
         // Get all active people
+        // 2. Fetch active people via RPC for the month
         const { data: people, error: peopleError } = await supabase
-            .from('people')
+            .rpc('get_active_people_in_range', {
+                range_start: startDateStr,
+                range_end: endDateStr
+            })
             .select('id, full_name, code, role, job_type, categories(name)')
-            .eq('status', 'active')
-            .order('role', { ascending: true }) // Employees first, then students (alphabetical usually, but role enum might order differently)
+            .order('role', { ascending: true })
             .order('code', { ascending: true })
 
         if (peopleError) throw peopleError
