@@ -246,10 +246,32 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
         return events.filter(e => e.event_date === dateStr)
     }
 
-    const isWeekend = (day: number) => {
+    const getDayStatus = (day: number) => {
         const date = new Date(year, month, day)
         const dayOfWeek = date.getDay()
-        return dayOfWeek === 0 || dayOfWeek === 6
+        const dayEvents = getDayEvents(day)
+
+        const isHolidayEvent = dayEvents.some(e => e.event_type === 'holiday' || e.is_holiday)
+        const isRestDayEvent = dayEvents.some(e => e.event_type === 'rest_day')
+        const isWorkDayEvent = dayEvents.some(e => e.event_type === 'work_day')
+
+        let isRestDay = false
+        // Default: Sunday is rest
+        if (dayOfWeek === 0) {
+            isRestDay = true
+        }
+
+        // Overrides
+        if (isWorkDayEvent) {
+            isRestDay = false
+        } else if (isRestDayEvent || isHolidayEvent) {
+            isRestDay = true
+        }
+
+        return {
+            isRestDay,
+            isWeekend: dayOfWeek === 0 || dayOfWeek === 6 // Keep track of weekend for visual/legacy logic if needed, but 'isRestDay' controls the red cell
+        }
     }
 
     // Group people by role
@@ -321,7 +343,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                             force_break: shift.force_break
                         } : undefined}
                         isHoliday={isHoliday}
-                        isWeekend={isWeekend(day)}
+                        isWeekend={getDayStatus(day).isRestDay}
                         workHours={workHours}
                         showComputedHours={person.role !== 'student' && showComputedHours}
                         isSelected={selectedCells.some(c => c.personId === person.id && c.date === dateStr)}
@@ -419,13 +441,13 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
             {days.map(day => {
                 const date = new Date(year, month, day)
                 const dayName = date.toLocaleDateString('en-US', { weekday: 'short' })
-                const isWknd = isWeekend(day)
+                // const isWknd = isWeekend(day) // Removed, using getDayStatus inside render
                 return (
                     <div
                         key={day}
                         className={`
                             min-w-[100px] p-1 border-r border-border text-center flex flex-col justify-center
-                            ${isWknd ? 'text-red-500 bg-red-50/50' : ''}
+                            ${getDayStatus(day).isRestDay ? 'text-red-500 bg-red-50/50' : ''}
                         `}
                     >
                         <div className="text-sm font-bold">{day}</div>
@@ -454,14 +476,14 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
             {days.map(day => {
                 const date = new Date(year, month, day)
                 const dayEvents = getDayEvents(day)
-                const isWknd = isWeekend(day)
+                // const isWknd = isWeekend(day)
 
                 return (
                     <div
                         key={day}
                         className={`
                             min-w-[100px] p-1 border-r border-border relative group cursor-pointer hover:bg-blue-100/50 transition-colors
-                            ${isWknd ? 'bg-red-50/30' : ''}
+                            ${getDayStatus(day).isRestDay ? 'bg-red-50/30' : ''}
                         `}
                         onClick={() => handleEventClick(date)}
                     >

@@ -332,13 +332,33 @@ export function ShiftEditDialog({
                             </Label>
                             <div className="col-span-3 space-y-3">
                                 <div className="flex items-center gap-3">
-                                    <div className="relative">
+                                    <div className="relative flex items-center gap-2">
                                         <Input
                                             type="color"
                                             value={color || '#ffffff'}
                                             onChange={(e) => setColor(e.target.value)}
                                             className="w-12 h-12 p-1 rounded-md cursor-pointer"
                                         />
+                                        <div className="flex flex-col gap-1">
+                                            <Label htmlFor="hex-color" className="text-xs text-muted-foreground">HEX Code</Label>
+                                            <Input
+                                                id="hex-color"
+                                                type="text"
+                                                value={color || ''}
+                                                onChange={(e) => {
+                                                    const val = e.target.value
+                                                    // Allow typing, but only update if it looks like it could be a hex
+                                                    // or if we want to allow partial updates we might need a separate state for the input text.
+                                                    // For simplicity, let's just set it. The color input might complain if invalid,
+                                                    // so let's maybe be a bit smarter or just direct bind.
+                                                    // Direct bind is usually fine, but let's check validation.
+                                                    setColor(val)
+                                                }}
+                                                placeholder="#000000"
+                                                className="w-28 font-mono uppercase"
+                                                maxLength={7}
+                                            />
+                                        </div>
                                     </div>
                                     <div className="text-sm text-muted-foreground">
                                         Pick a custom color
