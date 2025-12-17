@@ -174,3 +174,89 @@
     display: table-header-group;
   }
 }
+
+/* Print styles for Masterlist Employees Table - A4 Landscape */
+@media print {
+  body.printing-masterlist-employees {
+    visibility: hidden;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body.printing-masterlist-employees #printable-masterlist-employees,
+  body.printing-masterlist-employees #printable-masterlist-employees * {
+    visibility: visible;
+  }
+
+  body.printing-masterlist-employees #printable-masterlist-employees {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    margin: 0;
+    padding: 0;
+    border: none !important;
+    box-shadow: none !important;
+    background: white;
+    border-radius: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Specific page settings for masterlist - no margins */
+  @page masterlist-landscape {
+    size: A4 landscape;
+    margin: 0;
+  }
+
+  body.printing-masterlist-employees {
+    page: masterlist-landscape;
+  }
+
+  /* Use zoom to scale - smaller value to fit full width */
+  body.printing-masterlist-employees .masterlist-print-table {
+    zoom: 0.22;
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+
+  /* Make all text smaller for print */
+  body.printing-masterlist-employees .masterlist-print-table * {
+    font-size: 8px !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Compact cells for print */
+  body.printing-masterlist-employees .masterlist-print-table>div>div {
+    min-width: 18px !important;
+    padding: 1px !important;
+  }
+
+  /* Name column - remove sticky for print */
+  body.printing-masterlist-employees .masterlist-print-table .sticky {
+    min-width: 50px !important;
+    width: 50px !important;
+    padding: 1px 2px !important;
+    position: relative !important;
+  }
+
+  /* Hide elements that shouldn't print */
+  body.printing-masterlist-employees .print-no-show {
+    display: none !important;
+  }
+
+  /* Month title styling */
+  body.printing-masterlist-employees .print-month-title {
+    font-size: 14px !important;
+    font-weight: bold;
+    padding: 1mm 0 1mm 1mm;
+  }
+
+  /* Ensure all containers don't clip */
+  body.printing-masterlist-employees .masterlist-print-table,
+  body.printing-masterlist-employees .masterlist-print-table>div,
+  body.printing-masterlist-employees .masterlist-print-table>div>div {
+    overflow: visible !important;
+    max-width: none !important;
+  }
+}

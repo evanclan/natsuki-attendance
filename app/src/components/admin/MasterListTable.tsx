@@ -12,10 +12,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { ChevronLeft, ChevronRight, Plus, CheckSquare, Square, Trash2, Edit, X, Copy, Clipboard, Maximize2, Minimize2, Check } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, CheckSquare, Square, Trash2, Edit, X, Copy, Clipboard, Maximize2, Minimize2, Check, Printer, CalendarDays } from 'lucide-react'
 import { MasterListShiftData, upsertShift, deleteShift } from '@/app/admin/masterlist/actions'
 import { ShiftCell } from './ShiftCell'
 import { ShiftEditDialog } from './ShiftEditDialog'
+import { MonthlyStatusDialog } from './MonthlyStatusDialog'
 import { SystemEventDialog } from '@/components/admin/SystemEventDialog'
 import { SystemEvent, Location } from '@/app/admin/settings/actions'
 import { ShiftLegend } from '@/app/admin/settings/legends/actions'
@@ -66,9 +67,21 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
     // Full Screen Mode State
     const [fullScreenMode, setFullScreenMode] = useState<'none' | 'employee' | 'student'>('none')
 
+    // Satasaurus Section Visibility (hidden by default)
+    const [showSatasaurus, setShowSatasaurus] = useState(false)
+
+    // Monthly Status Dialog State
+    const [monthlyStatusDialogOpen, setMonthlyStatusDialogOpen] = useState(false)
+    const [monthlyStatusPerson, setMonthlyStatusPerson] = useState<Person | null>(null)
+
 
     const daysInMonth = new Date(year, month + 1, 0).getDate()
     const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
+    // Saturday days only (for Satasaurus table)
+    const saturdayDays = days.filter(day => {
+        const date = new Date(year, month, day)
+        return date.getDay() === 6 // Saturday
+    })
 
     const handlePreviousMonth = () => {
         const newDate = new Date(year, month - 1, 1)
@@ -240,6 +253,19 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
         router.refresh()
     }
 
+    const handlePrintEmployees = () => {
+        // Add class to body to trigger print-specific styles
+        document.body.classList.add('printing-masterlist-employees')
+
+        // Trigger print dialog
+        window.print()
+
+        // Remove class after print (with a delay to ensure print starts)
+        setTimeout(() => {
+            document.body.classList.remove('printing-masterlist-employees')
+        }, 1000)
+    }
+
     const getDayEvents = (day: number) => {
         const date = new Date(year, month, day)
         const dateStr = date.toISOString().split('T')[0]
@@ -276,7 +302,22 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
 
     // Group people by role
     const employees = people.filter(p => p.role === 'employee')
-    const students = people.filter(p => p.role === 'student')
+    const students = people.filter(p => {
+        if (p.role !== 'student') return false
+        // Hide students with ONLY the "Satasaurus" category
+        // Students with multiple categories (e.g., Academy + Satasaurus) should still be shown
+        const categories = p.categories || []
+        if (categories.length === 1 && categories[0]?.name?.toLowerCase() === 'satasaurus') {
+            return false
+        }
+        return true
+    })
+    // Satasaurus students: any student with a "Satasaurus" category (including dual-category)
+    const satasaurusStudents = people.filter(p => {
+        if (p.role !== 'student') return false
+        const categories = p.categories || []
+        return categories.some(c => c?.name?.toLowerCase() === 'satasaurus')
+    })
 
     const renderRow = (person: Person) => (
         <div key={person.id} className="flex border-b border-border hover:bg-slate-50">
@@ -290,9 +331,22 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                         : (person.job_type || person.code)}
                 </div>
                 {person.role !== 'student' && (
-                    <div className="absolute bottom-1 right-1 text-[10px] text-muted-foreground/70 font-mono">
-                        {Array.isArray(person.categories) ? person.categories?.[0]?.name : (person.categories as any)?.name || '-'}
-                    </div>
+                    <>
+                        <button
+                            className="absolute top-1 right-1 p-1 rounded hover:bg-muted transition-colors opacity-50 hover:opacity-100"
+                            title="Set monthly status for all weekdays"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                setMonthlyStatusPerson(person)
+                                setMonthlyStatusDialogOpen(true)
+                            }}
+                        >
+                            <CalendarDays className="h-3.5 w-3.5" />
+                        </button>
+                        <div className="absolute bottom-1 right-1 text-[10px] text-muted-foreground/70 font-mono">
+                            {Array.isArray(person.categories) ? person.categories?.[0]?.name : (person.categories as any)?.name || '-'}
+                        </div>
+                    </>
                 )}
             </div>
             {days.map(day => {
@@ -482,12 +536,12 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                     <div
                         key={day}
                         className={`
-                            min-w-[100px] p-1 border-r border-border relative group cursor-pointer hover:bg-blue-100/50 transition-colors
+                            w-[100px] min-w-[100px] max-w-[100px] h-[48px] p-1 border-r border-border relative group cursor-pointer hover:bg-blue-100/50 transition-colors overflow-hidden
                             ${getDayStatus(day).isRestDay ? 'bg-red-50/30' : ''}
                         `}
                         onClick={() => handleEventClick(date)}
                     >
-                        <div className="space-y-1 min-h-[40px]">
+                        <div className="space-y-1 h-full overflow-hidden">
                             {dayEvents.map(event => (
                                 <div
                                     key={event.id}
@@ -496,7 +550,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                                         handleEventClick(date, event)
                                     }}
                                     className={`
-                                        text-[10px] p-1 rounded px-2 truncate cursor-pointer hover:opacity-80
+                                        text-[10px] p-1 rounded px-2 cursor-pointer hover:opacity-80 overflow-hidden text-ellipsis whitespace-nowrap max-w-full
                                         ${(event.event_type === 'holiday' || event.is_holiday || event.event_type === 'rest_day') ? 'bg-red-100 text-red-700 border border-red-200' :
                                             event.event_type === 'work_day' ? 'bg-green-100 text-green-700 border border-green-200' :
                                                 'bg-blue-100 text-blue-700 border border-blue-200'}
@@ -594,7 +648,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
             {/* Employees Section */}
             {employees.length > 0 && (
                 <div className={fullScreenMode === 'employee' ? "fixed inset-0 z-50 bg-background p-6 flex flex-col" : "space-y-2"}>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between print-no-show">
                         <div className="flex items-center gap-6">
                             <h3 className="text-lg font-semibold">Employees</h3>
 
@@ -675,14 +729,33 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                             </Button>
                         </div>
                     </div>
-                    <div className={`border rounded-md overflow-hidden bg-background ${fullScreenMode === 'employee' ? "flex-1" : ""}`}>
-                        <div className={`overflow-auto ${fullScreenMode === 'employee' ? "h-full" : "max-h-[60vh]"}`}>
+                    <div
+                        id="printable-masterlist-employees"
+                        className={`border rounded-md overflow-hidden bg-background ${fullScreenMode === 'employee' ? "flex-1" : ""}`}
+                    >
+                        {/* Print Header - Only visible when printing */}
+                        <div className="hidden print:block print-month-title">
+                            {monthName}
+                        </div>
+                        <div className={`overflow-auto masterlist-print-table ${fullScreenMode === 'employee' ? "h-full" : "max-h-[60vh]"}`}>
                             <div className="min-w-max">
                                 {renderHeaderRow("Employees")}
                                 {renderEventsRow()}
                                 {employees.map(renderRow)}
                             </div>
                         </div>
+                    </div>
+                    {/* Print Button - Bottom Right */}
+                    <div className="flex justify-end mt-2 print-no-show">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handlePrintEmployees}
+                            className="gap-2"
+                        >
+                            <Printer className="h-4 w-4" />
+                            Print Table
+                        </Button>
                     </div>
                 </div>
             )}
@@ -731,6 +804,190 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                 </div>
             )}
 
+            {/* Satasaurus Students Section */}
+            {satasaurusStudents.length > 0 && (
+                <div className="space-y-2">
+                    {/* Toggle Button - Always visible */}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowSatasaurus(!showSatasaurus)}
+                        className="gap-2"
+                    >
+                        {showSatasaurus ? (
+                            <>
+                                <ChevronLeft className="h-4 w-4 rotate-90" />
+                                Hide Satasaurus
+                            </>
+                        ) : (
+                            <>
+                                <ChevronRight className="h-4 w-4 rotate-90" />
+                                Open Satasaurus
+                            </>
+                        )}
+                        <span className="text-muted-foreground">({satasaurusStudents.length} students)</span>
+                    </Button>
+
+                    {/* Satasaurus Content - Only visible when toggled */}
+                    {showSatasaurus && (
+                        <div className={fullScreenMode === 'student' ? "fixed inset-0 z-50 bg-background p-6 flex flex-col" : "space-y-2"}>
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-semibold">Satasaurus Students <span className="text-sm font-normal text-muted-foreground">(Saturdays only)</span></h3>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant={selectionMode === 'student' ? "secondary" : "outline"}
+                                        size="sm"
+                                        onClick={() => {
+                                            if (selectionMode === 'student') {
+                                                setSelectionMode('none')
+                                                setSelectedCells([])
+                                            } else {
+                                                setSelectionMode('student')
+                                                setSelectedCells([])
+                                            }
+                                        }}
+                                        className={selectionMode === 'student' ? "bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200" : ""}
+                                    >
+                                        {selectionMode === 'student' ? <CheckSquare className="h-4 w-4 mr-2" /> : <Square className="h-4 w-4 mr-2" />}
+                                        Satasaurus Selection
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setFullScreenMode(fullScreenMode === 'student' ? 'none' : 'student')}
+                                    >
+                                        {fullScreenMode === 'student' ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                                    </Button>
+                                </div>
+                            </div>
+                            <div className={`border rounded-md overflow-hidden bg-background ${fullScreenMode === 'student' ? "flex-1" : ""}`}>
+                                <div className={`overflow-auto ${fullScreenMode === 'student' ? "h-full" : "max-h-[60vh]"}`}>
+                                    <div className="min-w-max">
+                                        {/* Satasaurus Header Row - Saturdays Only */}
+                                        <div className="flex border-b border-border bg-muted sticky top-0 z-40">
+                                            <div className="sticky left-0 z-50 w-40 min-w-[160px] p-2 border-r border-border bg-muted font-semibold flex items-center">
+                                                Satasaurus Students
+                                            </div>
+                                            {saturdayDays.map(day => {
+                                                const date = new Date(year, month, day)
+                                                const dayName = date.toLocaleDateString('en-US', { weekday: 'short' })
+                                                return (
+                                                    <div
+                                                        key={day}
+                                                        className="min-w-[100px] p-1 border-r border-border text-center flex flex-col justify-center"
+                                                    >
+                                                        <div className="text-sm font-bold">{day}</div>
+                                                        <div className="text-xs">{dayName}</div>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                        {/* Satasaurus Events Row - Saturdays Only */}
+                                        <div className="flex border-b border-border bg-blue-50/30">
+                                            <div className="sticky left-0 z-20 w-40 min-w-[160px] p-2 border-r border-border bg-blue-50/30 font-semibold flex items-center text-blue-700">
+                                                Events
+                                            </div>
+                                            {saturdayDays.map(day => {
+                                                const date = new Date(year, month, day)
+                                                const dayEvents = getDayEvents(day)
+                                                return (
+                                                    <div
+                                                        key={day}
+                                                        className="w-[100px] min-w-[100px] max-w-[100px] h-[48px] p-1 border-r border-border relative group cursor-pointer hover:bg-blue-100/50 transition-colors overflow-hidden"
+                                                        onClick={() => handleEventClick(date)}
+                                                    >
+                                                        <div className="space-y-1 h-full overflow-hidden">
+                                                            {dayEvents.map(event => (
+                                                                <div
+                                                                    key={event.id}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation()
+                                                                        handleEventClick(date, event)
+                                                                    }}
+                                                                    className={`
+                                                                text-[10px] p-1 rounded px-2 cursor-pointer hover:opacity-80 overflow-hidden text-ellipsis whitespace-nowrap max-w-full
+                                                                ${(event.event_type === 'holiday' || event.is_holiday || event.event_type === 'rest_day') ? 'bg-red-100 text-red-700 border border-red-200' :
+                                                                            event.event_type === 'work_day' ? 'bg-green-100 text-green-700 border border-green-200' :
+                                                                                'bg-blue-100 text-blue-700 border border-blue-200'}
+                                                            `}
+                                                                    title={event.title}
+                                                                >
+                                                                    {event.title}
+                                                                </div>
+                                                            ))}
+                                                            {dayEvents.length === 0 && (
+                                                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none">
+                                                                    <Plus className="h-4 w-4 text-blue-400" />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                        {/* Satasaurus Student Rows - Saturdays Only */}
+                                        {satasaurusStudents.map(person => (
+                                            <div key={person.id} className="flex border-b border-border hover:bg-slate-50">
+                                                <div className="sticky left-0 z-30 w-40 min-w-[160px] p-2 border-r border-border bg-background flex flex-col justify-center relative">
+                                                    <div className="font-medium truncate" title={person.full_name}>{person.full_name}</div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {Array.isArray(person.categories)
+                                                            ? person.categories.map(c => c.name).join(', ')
+                                                            : (person.categories as any)?.name || '-'}
+                                                    </div>
+                                                </div>
+                                                {saturdayDays.map(day => {
+                                                    const date = new Date(year, month, day)
+                                                    const dateStr = date.toISOString().split('T')[0]
+                                                    const shift = shifts.find(s => s.person_id === person.id && s.date === dateStr)
+                                                    const dayEvents = getDayEvents(day)
+                                                    const isHoliday = dayEvents.some(e => e.is_holiday)
+                                                    const attendanceRecord = attendance.find(a => a.person_id === person.id && a.date === dateStr)
+
+                                                    let workHours: number | undefined
+                                                    if (attendanceRecord) {
+                                                        if (attendanceRecord.paid_leave_minutes && attendanceRecord.paid_leave_minutes > 0) {
+                                                            workHours = attendanceRecord.paid_leave_minutes / 60
+                                                        } else {
+                                                            workHours = attendanceRecord.total_work_minutes / 60
+                                                        }
+                                                    }
+
+                                                    return (
+                                                        <ShiftCell
+                                                            key={day}
+                                                            shift={shift ? {
+                                                                date: shift.date,
+                                                                shift_type: shift.shift_type || 'work',
+                                                                shift_name: shift.shift_name,
+                                                                start_time: shift.start_time,
+                                                                end_time: shift.end_time,
+                                                                location: shift.location,
+                                                                paid_leave_hours: shift.paid_leave_hours,
+                                                                memo: shift.memo,
+                                                                color: shift.color,
+                                                                force_break: shift.force_break
+                                                            } : undefined}
+                                                            isHoliday={isHoliday}
+                                                            isWeekend={false}
+                                                            workHours={workHours}
+                                                            showComputedHours={false}
+                                                            isSelected={selectedCells.some(c => c.personId === person.id && c.date === dateStr)}
+                                                            isSelectionMode={selectionMode === 'student'}
+                                                            onClick={() => handleCellClick(person, day)}
+                                                        />
+                                                    )
+                                                })}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {
                 selectedPerson && selectedDate && (
                     <ShiftEditDialog
@@ -752,6 +1009,17 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                 existingEvent={selectedSystemEvent}
                 onEventSaved={handleEventSaved}
             />
+
+            {monthlyStatusPerson && (
+                <MonthlyStatusDialog
+                    open={monthlyStatusDialogOpen}
+                    onOpenChange={setMonthlyStatusDialogOpen}
+                    personId={monthlyStatusPerson.id}
+                    personName={monthlyStatusPerson.full_name}
+                    year={year}
+                    month={month}
+                />
+            )}
 
 
             {/* Bulk Actions Bar */}
