@@ -171,22 +171,41 @@ export async function upsertAttendanceRecord(
     } else {
         // Create new record
 
-        // Calculate work minutes (simplified logic for new record)
+        // 1b. Fetch shift for proper rounding (mirroring update logic)
+        const { data: shift } = await supabase
+            .from('shifts')
+            .select('shift_type, start_time, end_time')
+            .eq('person_id', personId)
+            .eq('date', date)
+            .single()
+
+        // Calculate work minutes using shared utility
         let total_work_minutes = 0
         let total_break_minutes = 0
+        let break_exceeded = false
+        let overtime_minutes = 0
+        let paid_leave_minutes = 0
+        let rounded_check_in_at = data.check_in_at
+        let rounded_check_out_at = data.check_out_at
 
         if (data.check_in_at && data.check_out_at) {
-            const checkIn = new Date(data.check_in_at)
-            const checkOut = new Date(data.check_out_at)
-            const grossMinutes = Math.floor((checkOut.getTime() - checkIn.getTime()) / 60000)
-            const grossHours = grossMinutes / 60
+            const { calculateDailyStats } = await import('@/app/actions/kiosk-utils')
 
-            // Default break logic for new records created manually
-            if (grossHours >= 6) {
-                total_break_minutes = 60
-            }
+            const calculation = calculateDailyStats(
+                data.check_in_at,
+                data.check_out_at,
+                null, // No break times for simple manual creation yet
+                null,
+                shift
+            )
 
-            total_work_minutes = Math.max(0, grossMinutes - total_break_minutes)
+            total_work_minutes = calculation.total_work_minutes
+            total_break_minutes = calculation.total_break_minutes
+            break_exceeded = calculation.break_exceeded
+            overtime_minutes = calculation.overtime_minutes
+            paid_leave_minutes = calculation.paid_leave_minutes
+            rounded_check_in_at = calculation.rounded_check_in_at
+            rounded_check_out_at = calculation.rounded_check_out_at
         }
 
         const { error: insertError } = await supabase
@@ -199,6 +218,11 @@ export async function upsertAttendanceRecord(
                 status: data.status,
                 total_work_minutes,
                 total_break_minutes,
+                break_exceeded,
+                overtime_minutes,
+                paid_leave_minutes,
+                rounded_check_in_at,
+                rounded_check_out_at,
                 is_edited: true,
                 admin_note: data.admin_note || 'Created manually by admin'
             })

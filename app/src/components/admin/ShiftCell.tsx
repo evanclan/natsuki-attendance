@@ -26,7 +26,8 @@ export function ShiftCell({
     // Determine background color
     let bgColor = 'bg-white'
     let textColor = 'text-foreground'
-    let content = ''
+    let mainContent: React.ReactNode = ''
+    let memoContent: string | undefined = undefined
 
     const formatTime = (timeStr?: string) => {
         if (!timeStr) return ''
@@ -38,35 +39,60 @@ export function ShiftCell({
         if (shift.shift_type === 'rest') {
             bgColor = 'bg-red-50'
             textColor = 'text-red-700'
-            content = 'Rest'
+            mainContent = 'Rest'
         } else if (shift.shift_type === 'preferred_rest') {
             bgColor = 'bg-red-50'
             textColor = 'text-red-700'
-            content = 'Preferred\nRest'
+            mainContent = 'Preferred\nRest'
         } else if (shift.shift_type === 'absent') {
             bgColor = 'bg-gray-100'
             textColor = 'text-gray-500'
-            content = 'Absent'
+            mainContent = 'Absent'
         } else if (shift.shift_type === 'paid_leave') {
             bgColor = 'bg-green-50'
             textColor = 'text-green-700'
-            content = 'Paid Leave'
+            mainContent = 'Paid Leave'
         } else if (shift.shift_type === 'half_paid_leave') {
             bgColor = 'bg-green-50'
             textColor = 'text-green-700'
-            content = 'Half Paid\nLeave'
+            mainContent = 'Half Paid\nLeave'
         } else if (shift.shift_type === 'special_leave') {
             bgColor = 'bg-yellow-50'
             textColor = 'text-yellow-700'
-            content = 'Special\nLeave'
+            mainContent = 'Special\nLeave'
         } else if (shift.shift_type === 'business_trip') {
             bgColor = 'bg-purple-50'
             textColor = 'text-purple-700'
-            content = 'Business\nTrip'
+            mainContent = 'Business\nTrip'
         } else if (shift.shift_type === 'flex') {
             bgColor = 'bg-blue-50'
             textColor = 'text-blue-700'
-            content = 'Flex'
+            mainContent = 'Flex'
+        } else if (shift.shift_type === 'present') {
+            bgColor = 'bg-blue-50'
+            textColor = 'text-blue-700'
+            mainContent = 'Present'
+            memoContent = shift.memo
+        } else if (shift.shift_type === 'sick_absent') {
+            bgColor = 'bg-red-50'
+            textColor = 'text-red-700'
+            mainContent = 'Sick\nAbsent'
+            memoContent = shift.memo
+        } else if (shift.shift_type === 'planned_absent') {
+            bgColor = 'bg-orange-50'
+            textColor = 'text-orange-700'
+            mainContent = 'Planned\nAbsent'
+            memoContent = shift.memo
+        } else if (shift.shift_type === 'family_reason') {
+            bgColor = 'bg-purple-50'
+            textColor = 'text-purple-700'
+            mainContent = 'Family\nMatters'
+            memoContent = shift.memo
+        } else if (shift.shift_type === 'other_reason') {
+            bgColor = 'bg-gray-50'
+            textColor = 'text-gray-700'
+            mainContent = 'Other\nReason'
+            memoContent = shift.memo
         } else if (shift.shift_type === 'work') {
             bgColor = 'bg-white'
             if (shift.color) {
@@ -75,9 +101,9 @@ export function ShiftCell({
             }
             const start = formatTime(shift.start_time)
             const end = formatTime(shift.end_time)
-            content = `${start} - ${end}`
+            mainContent = `${start} - ${end}`
             if (shift.location) {
-                content += `\n${shift.location}`
+                mainContent += `\n${shift.location}`
             }
         }
     } else {
@@ -85,9 +111,9 @@ export function ShiftCell({
         if (isHoliday || isWeekend) {
             bgColor = 'bg-red-50'
             textColor = 'text-red-700'
-            content = 'Rest'
+            mainContent = 'Rest'
         } else {
-            content = '-'
+            mainContent = '-'
             textColor = 'text-muted-foreground'
         }
     }
@@ -116,15 +142,23 @@ export function ShiftCell({
                 </div>
             )}
 
-            <div className="line-clamp-2 leading-tight">
-                {content}
+            <div className="flex flex-col items-center justify-center w-full h-full p-0.5">
+                <div className="font-medium leading-tight whitespace-pre-line overflow-visible text-[10px]">{mainContent}</div>
+                {memoContent && (
+                    <div className="text-[9px] opacity-80 line-clamp-1 leading-tight mt-0.5 w-full overflow-hidden text-ellipsis px-0.5" title={memoContent}>
+                        {memoContent}
+                    </div>
+                )}
             </div>
+
             {/* Expected Shift Hours (Top Middle) */}
-            {shift && (
-                <div className="absolute top-0.5 left-1/2 -translate-x-1/2 text-[9px] font-mono text-muted-foreground bg-white/80 px-1 rounded">
-                    {`${calculateExpectedHours(shift)}h`}
-                </div>
-            )}
+            {!['present', 'sick_absent', 'planned_absent', 'family_reason', 'other_reason'].includes(shift?.shift_type || '') && shift && (() => {
+                const expected = calculateExpectedHours(shift)
+                if (expected > 0) {
+                    return <div className="absolute top-0.5 left-1/2 -translate-x-1/2 text-[9px] font-bold opacity-60 tabular-nums tracking-tighter">{expected}h</div>
+                }
+                return null
+            })()}
             {showComputedHours && (
                 <div className="absolute bottom-0.5 right-1 text-[9px] font-mono text-muted-foreground bg-white/80 px-1 rounded">
                     {workHours !== undefined ? `${formatWorkHours(workHours)}h` : '-'}

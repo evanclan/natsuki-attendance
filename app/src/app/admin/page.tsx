@@ -88,7 +88,8 @@ export default function AdminPage() {
                 *,
                 people (
                     full_name,
-                    code
+                    code,
+                    role
                 )
             `)
             .eq('date', selectedDate)
@@ -186,7 +187,14 @@ export default function AdminPage() {
                         </TableHeader>
                         <TableBody>
                             {attendance?.map((record) => (
-                                <TableRow key={record.id}>
+                                <TableRow
+                                    key={record.id}
+                                    className={
+                                        record.people?.role === 'employee' ? 'bg-red-50 hover:bg-red-100' :
+                                            record.people?.role === 'student' ? 'bg-blue-50 hover:bg-blue-100' :
+                                                ''
+                                    }
+                                >
                                     <TableCell className="font-medium">
                                         {record.people?.full_name || 'Unknown'}
                                         <span className="ml-2 text-xs text-muted-foreground">

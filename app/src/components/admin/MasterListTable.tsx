@@ -12,7 +12,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { ChevronLeft, ChevronRight, Plus, CheckSquare, Square, Trash2, Edit, X, Copy, Clipboard } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, CheckSquare, Square, Trash2, Edit, X, Copy, Clipboard, Maximize2, Minimize2 } from 'lucide-react'
 import { MasterListShiftData, upsertShift, deleteShift } from '@/app/admin/masterlist/actions'
 import { ShiftCell } from './ShiftCell'
 import { ShiftEditDialog } from './ShiftEditDialog'
@@ -46,7 +46,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
     const [selectedPerson, setSelectedPerson] = useState<Person | null>(null)
     const [selectedDate, setSelectedDate] = useState<Date | null>(null)
     const [selectedShift, setSelectedShift] = useState<MasterListShiftData | null>(null)
-    const [showComputedHours, setShowComputedHours] = useState(true)
+    const [showComputedHours, setShowComputedHours] = useState(false)
 
     // Event Dialog State
     const [eventDialogOpen, setEventDialogOpen] = useState(false)
@@ -54,9 +54,12 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
     const [selectedSystemEvent, setSelectedSystemEvent] = useState<SystemEvent | null>(null)
 
     // Selection Mode State
-    const [isSelectionMode, setIsSelectionMode] = useState(false)
+    const [selectionMode, setSelectionMode] = useState<'none' | 'employee' | 'student'>('none')
     const [selectedCells, setSelectedCells] = useState<{ personId: string, date: string }[]>([])
     const [copiedShift, setCopiedShift] = useState<MasterListShiftData | null>(null)
+
+    // Full Screen Mode State
+    const [fullScreenMode, setFullScreenMode] = useState<'none' | 'employee' | 'student'>('none')
 
 
     const daysInMonth = new Date(year, month + 1, 0).getDate()
@@ -84,7 +87,10 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
         const date = new Date(year, month, day)
         const dateStr = date.toISOString().split('T')[0]
 
-        if (isSelectionMode) {
+        if (selectionMode !== 'none') {
+            // Only allow selecting valid targets for the current mode
+            if (person.role !== selectionMode) return
+
             setSelectedCells(prev => {
                 const exists = prev.some(c => c.personId === person.id && c.date === dateStr)
                 if (exists) {
@@ -134,7 +140,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
             }
 
             setSelectedCells([])
-            setIsSelectionMode(false)
+            setSelectionMode('none')
             router.refresh()
         } else {
             // Single Save
@@ -166,7 +172,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
         }
 
         setSelectedCells([])
-        setIsSelectionMode(false)
+        setSelectionMode('none')
         router.refresh()
     }
 
@@ -214,7 +220,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
         }
 
         setSelectedCells([])
-        setIsSelectionMode(false)
+        setSelectionMode('none')
         setCopiedShift(null) // Optional: clear clipboard after paste, or keep it for multiple pastes
         router.refresh()
     }
@@ -249,10 +255,18 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
         <div key={person.id} className="flex border-b border-border hover:bg-slate-50">
             <div className="sticky left-0 z-30 w-40 min-w-[160px] p-2 border-r border-border bg-background flex flex-col justify-center relative">
                 <div className="font-medium truncate" title={person.full_name}>{person.full_name}</div>
-                <div className="text-xs text-muted-foreground">{person.job_type || person.code}</div>
-                <div className="absolute bottom-1 right-1 text-[10px] text-muted-foreground/70 font-mono">
-                    {person.categories?.[0]?.name || '-'}
+                <div className="text-xs text-muted-foreground">
+                    {person.role === 'student'
+                        ? (Array.isArray(person.categories)
+                            ? person.categories.map(c => c.name).join(', ')
+                            : (person.categories as any)?.name || '-')
+                        : (person.job_type || person.code)}
                 </div>
+                {person.role !== 'student' && (
+                    <div className="absolute bottom-1 right-1 text-[10px] text-muted-foreground/70 font-mono">
+                        {Array.isArray(person.categories) ? person.categories?.[0]?.name : (person.categories as any)?.name || '-'}
+                    </div>
+                )}
             </div>
             {days.map(day => {
                 const date = new Date(year, month, day)
@@ -304,9 +318,9 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                         isHoliday={isHoliday}
                         isWeekend={isWeekend(day)}
                         workHours={workHours}
-                        showComputedHours={showComputedHours}
+                        showComputedHours={person.role !== 'student' && showComputedHours}
                         isSelected={selectedCells.some(c => c.personId === person.id && c.date === dateStr)}
-                        isSelectionMode={isSelectionMode}
+                        isSelectionMode={selectionMode === person.role}
                         onClick={() => handleCellClick(person, day)}
                     />
                 )
@@ -493,16 +507,21 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
 
                     <div className="flex items-center space-x-2">
                         <Button
-                            variant={isSelectionMode ? "secondary" : "outline"}
+                            variant={selectionMode === 'employee' ? "secondary" : "outline"}
                             size="sm"
                             onClick={() => {
-                                setIsSelectionMode(!isSelectionMode)
-                                if (isSelectionMode) setSelectedCells([]) // Clear selection when exiting
+                                if (selectionMode === 'employee') {
+                                    setSelectionMode('none')
+                                    setSelectedCells([])
+                                } else {
+                                    setSelectionMode('employee')
+                                    setSelectedCells([])
+                                }
                             }}
-                            className={isSelectionMode ? "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200" : ""}
+                            className={selectionMode === 'employee' ? "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200" : ""}
                         >
-                            {isSelectionMode ? <CheckSquare className="h-4 w-4 mr-2" /> : <Square className="h-4 w-4 mr-2" />}
-                            Multiple Box Selection
+                            {selectionMode === 'employee' ? <CheckSquare className="h-4 w-4 mr-2" /> : <Square className="h-4 w-4 mr-2" />}
+                            Employee Selection
                         </Button>
                     </div>
 
@@ -547,10 +566,40 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
 
             {/* Employees Section */}
             {employees.length > 0 && (
-                <div className="space-y-2">
-                    <h3 className="text-lg font-semibold">Employees</h3>
-                    <div className="border rounded-md overflow-hidden bg-background">
-                        <div className="overflow-auto max-h-[60vh]">
+                <div className={fullScreenMode === 'employee' ? "fixed inset-0 z-50 bg-background p-6 flex flex-col" : "space-y-2"}>
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold">Employees</h3>
+                        <div className="flex items-center gap-2">
+                            {fullScreenMode === 'employee' && (
+                                <Button
+                                    variant={selectionMode === 'employee' ? "secondary" : "outline"}
+                                    size="sm"
+                                    onClick={() => {
+                                        if (selectionMode === 'employee') {
+                                            setSelectionMode('none')
+                                            setSelectedCells([])
+                                        } else {
+                                            setSelectionMode('employee')
+                                            setSelectedCells([])
+                                        }
+                                    }}
+                                    className={selectionMode === 'employee' ? "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200" : ""}
+                                >
+                                    {selectionMode === 'employee' ? <CheckSquare className="h-4 w-4 mr-2" /> : <Square className="h-4 w-4 mr-2" />}
+                                    Employee Selection
+                                </Button>
+                            )}
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setFullScreenMode(fullScreenMode === 'employee' ? 'none' : 'employee')}
+                            >
+                                {fullScreenMode === 'employee' ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                            </Button>
+                        </div>
+                    </div>
+                    <div className={`border rounded-md overflow-hidden bg-background ${fullScreenMode === 'employee' ? "flex-1" : ""}`}>
+                        <div className={`overflow-auto ${fullScreenMode === 'employee' ? "h-full" : "max-h-[60vh]"}`}>
                             <div className="min-w-max">
                                 {renderHeaderRow("Employees")}
                                 {renderEventsRow()}
@@ -563,10 +612,38 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
 
             {/* Students Section */}
             {students.length > 0 && (
-                <div className="space-y-2">
-                    <h3 className="text-lg font-semibold">Students</h3>
-                    <div className="border rounded-md overflow-hidden bg-background">
-                        <div className="overflow-auto max-h-[60vh]">
+                <div className={fullScreenMode === 'student' ? "fixed inset-0 z-50 bg-background p-6 flex flex-col" : "space-y-2"}>
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold">Students</h3>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant={selectionMode === 'student' ? "secondary" : "outline"}
+                                size="sm"
+                                onClick={() => {
+                                    if (selectionMode === 'student') {
+                                        setSelectionMode('none')
+                                        setSelectedCells([])
+                                    } else {
+                                        setSelectionMode('student')
+                                        setSelectedCells([])
+                                    }
+                                }}
+                                className={selectionMode === 'student' ? "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200" : ""}
+                            >
+                                {selectionMode === 'student' ? <CheckSquare className="h-4 w-4 mr-2" /> : <Square className="h-4 w-4 mr-2" />}
+                                Student Selection
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setFullScreenMode(fullScreenMode === 'student' ? 'none' : 'student')}
+                            >
+                                {fullScreenMode === 'student' ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                            </Button>
+                        </div>
+                    </div>
+                    <div className={`border rounded-md overflow-hidden bg-background ${fullScreenMode === 'student' ? "flex-1" : ""}`}>
+                        <div className={`overflow-auto ${fullScreenMode === 'student' ? "h-full" : "max-h-[60vh]"}`}>
                             <div className="min-w-max">
                                 {renderHeaderRow("Students", false)}
                                 {renderEventsRow()}
@@ -583,6 +660,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                         open={dialogOpen}
                         onOpenChange={setDialogOpen}
                         personName={selectedPerson.full_name}
+                        role={selectedPerson.role}
                         date={selectedDate}
                         currentShift={selectedShift}
                         onSave={handleSaveShift}
@@ -601,8 +679,8 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
 
             {/* Bulk Actions Bar */}
             {
-                isSelectionMode && selectedCells.length > 0 && (
-                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white shadow-lg border rounded-full px-6 py-3 flex items-center gap-4 z-50 animate-in slide-in-from-bottom-10 fade-in">
+                selectionMode !== 'none' && selectedCells.length > 0 && (
+                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white shadow-lg border rounded-full px-6 py-3 flex items-center gap-4 z-[60] animate-in slide-in-from-bottom-10 fade-in">
                         <div className="font-medium text-sm">
                             {selectedCells.length} selected
                         </div>
@@ -611,7 +689,12 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                             size="sm"
                             onClick={() => {
                                 // Open dialog for bulk edit
-                                setSelectedPerson({ id: 'bulk', full_name: `${selectedCells.length} Employees`, code: '', role: 'employee' }) // Dummy person
+                                setSelectedPerson({
+                                    id: 'bulk',
+                                    full_name: `${selectedCells.length} People`,
+                                    code: '',
+                                    role: selectionMode === 'student' ? 'student' : 'employee'
+                                })
                                 setSelectedDate(new Date()) // Dummy date
                                 setSelectedShift(null) // Default new shift
                                 setDialogOpen(true)
