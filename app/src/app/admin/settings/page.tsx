@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { CalendarDays, ArrowLeft, MapPin, Users } from 'lucide-react'
+import { CalendarDays, ArrowLeft, MapPin, Users, Palette } from 'lucide-react'
 
 export default function SettingsPage() {
     return (
@@ -88,6 +88,25 @@ export default function SettingsPage() {
                         <CardContent>
                             <p className="text-sm text-muted-foreground">
                                 Add and manage news items for Student and Employee kiosks.
+                            </p>
+                        </CardContent>
+                    </Card>
+                </Link>
+
+                <Link href="/admin/settings/legends">
+                    <Card className="hover:bg-accent/50 transition-colors cursor-pointer h-full">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Palette className="h-5 w-5" />
+                                Legend Creation
+                            </CardTitle>
+                            <CardDescription>
+                                Manage shift color legends
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-muted-foreground">
+                                Create color legends for shift location changes (From X to Y).
                             </p>
                         </CardContent>
                     </Card>

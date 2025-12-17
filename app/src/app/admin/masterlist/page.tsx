@@ -1,4 +1,5 @@
 import { getMonthlyMasterList } from './actions'
+import { getLegends } from '@/app/admin/settings/legends/actions'
 import { MasterListTable } from '@/components/admin/MasterListTable'
 
 export default async function MasterListPage({
@@ -12,6 +13,7 @@ export default async function MasterListPage({
     const month = params.month ? parseInt(params.month as string) : now.getMonth()
 
     const result = await getMonthlyMasterList(year, month)
+    const legendsResult = await getLegends()
 
     if (!result.success || !result.data) {
         return (
@@ -31,6 +33,7 @@ export default async function MasterListPage({
                 shifts={result.data.shifts}
                 events={result.data.events}
                 attendance={result.data.attendance}
+                legends={legendsResult.success && legendsResult.data ? legendsResult.data : []}
             />
         </div>
     )

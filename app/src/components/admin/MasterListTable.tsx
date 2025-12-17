@@ -12,13 +12,15 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { ChevronLeft, ChevronRight, Plus, CheckSquare, Square, Trash2, Edit, X, Copy, Clipboard, Maximize2, Minimize2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, CheckSquare, Square, Trash2, Edit, X, Copy, Clipboard, Maximize2, Minimize2, Check } from 'lucide-react'
 import { MasterListShiftData, upsertShift, deleteShift } from '@/app/admin/masterlist/actions'
 import { ShiftCell } from './ShiftCell'
 import { ShiftEditDialog } from './ShiftEditDialog'
 import { SystemEventDialog } from '@/components/admin/SystemEventDialog'
-import { SystemEvent } from '@/app/admin/settings/actions'
+import { SystemEvent, Location } from '@/app/admin/settings/actions'
+import { ShiftLegend } from '@/app/admin/settings/legends/actions'
 import { calculateExpectedHours } from '@/lib/utils'
+import { useToast } from '@/components/ui/use-toast'
 
 type Person = {
     id: string
@@ -38,15 +40,18 @@ type MasterListTableProps = {
     shifts: any[] // Using any for now to match raw DB result, will map to MasterListShiftData
     events: SystemEvent[]
     attendance: any[]
+    legends?: ShiftLegend[]
 }
 
-export function MasterListTable({ year, month, people, shifts, events, attendance }: MasterListTableProps) {
+export function MasterListTable({ year, month, people, shifts, events, attendance, legends = [] }: MasterListTableProps) {
     const router = useRouter()
+    const { toast } = useToast()
     const [dialogOpen, setDialogOpen] = useState(false)
     const [selectedPerson, setSelectedPerson] = useState<Person | null>(null)
     const [selectedDate, setSelectedDate] = useState<Date | null>(null)
     const [selectedShift, setSelectedShift] = useState<MasterListShiftData | null>(null)
     const [showComputedHours, setShowComputedHours] = useState(false)
+    const [copiedLegendId, setCopiedLegendId] = useState<string | null>(null)
 
     // Event Dialog State
     const [eventDialogOpen, setEventDialogOpen] = useState(false)
@@ -568,7 +573,57 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
             {employees.length > 0 && (
                 <div className={fullScreenMode === 'employee' ? "fixed inset-0 z-50 bg-background p-6 flex flex-col" : "space-y-2"}>
                     <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold">Employees</h3>
+                        <div className="flex items-center gap-6">
+                            <h3 className="text-lg font-semibold">Employees</h3>
+
+                            {/* Legends Display */}
+                            {legends && legends.length > 0 && (
+                                <div className="flex items-center gap-3 overflow-x-auto max-w-[60vw] scrollbar-hide">
+                                    {legends.map(legend => (
+                                        <div key={legend.id} className="flex items-center gap-1.5 text-xs bg-muted/50 px-2 py-1 rounded-full border flex-shrink-0 transition-all hover:bg-muted">
+                                            <div
+                                                className="w-4 h-4 rounded-full border shadow-sm cursor-pointer hover:scale-110 transition-all flex items-center justify-center relative overflow-hidden group"
+                                                style={{ backgroundColor: legend.color }}
+                                                title="Click to copy color code"
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    navigator.clipboard.writeText(legend.color)
+
+                                                    // Trigger animation state
+                                                    setCopiedLegendId(legend.id)
+                                                    setTimeout(() => setCopiedLegendId(null), 1500)
+
+                                                    // Show toast
+                                                    toast({
+                                                        description: (
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-3 h-3 rounded-full border" style={{ backgroundColor: legend.color }} />
+                                                                <span>Copied <strong>{legend.color}</strong> to clipboard</span>
+                                                            </div>
+                                                        ),
+                                                        duration: 2000,
+                                                    })
+                                                }}
+                                            >
+                                                {/* Checkmark overlay */}
+                                                <div
+                                                    className={`
+                                                        absolute inset-0 flex items-center justify-center bg-black/20 text-white transition-opacity duration-200
+                                                        ${copiedLegendId === legend.id ? 'opacity-100' : 'opacity-0 hover:opacity-100'}
+                                                    `}
+                                                >
+                                                    {copiedLegendId === legend.id && <Check className="w-3 h-3 animate-in zoom-in duration-200" />}
+                                                </div>
+                                            </div>
+                                            <span className="font-medium whitespace-nowrap">
+                                                {legend.from_location} <span className="text-muted-foreground">→</span> {legend.to_location}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
                         <div className="flex items-center gap-2">
                             {fullScreenMode === 'employee' && (
                                 <Button
