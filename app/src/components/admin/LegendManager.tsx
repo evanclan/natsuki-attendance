@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Plus, Trash2, Edit2, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog'
@@ -21,11 +22,13 @@ export function LegendManager({ initialLegends }: { initialLegends: ShiftLegend[
     // Form states
     const [fromLocation, setFromLocation] = useState('')
     const [toLocation, setToLocation] = useState('')
+    const [isOneLocation, setIsOneLocation] = useState(false)
     const [color, setColor] = useState('#FDBA74')
 
     const resetForm = () => {
         setFromLocation('')
         setToLocation('')
+        setIsOneLocation(false)
         setColor('#FDBA74')
     }
 
@@ -33,15 +36,19 @@ export function LegendManager({ initialLegends }: { initialLegends: ShiftLegend[
         setCurrentLegend(legend)
         setFromLocation(legend.from_location)
         setToLocation(legend.to_location)
+        setIsOneLocation(legend.from_location === legend.to_location)
         setColor(legend.color)
         setIsEditOpen(true)
     }
 
     const handleCreate = async () => {
-        if (!fromLocation || !toLocation) {
+        const finalFrom = isOneLocation ? fromLocation : fromLocation
+        const finalTo = isOneLocation ? fromLocation : toLocation
+
+        if (!finalFrom || (!isOneLocation && !finalTo)) {
             toast({
                 title: "Error",
-                description: "Both 'From' and 'To' locations are required.",
+                description: isOneLocation ? "Location is required." : "Both 'From' and 'To' locations are required.",
                 variant: "destructive"
             })
             return
@@ -50,8 +57,8 @@ export function LegendManager({ initialLegends }: { initialLegends: ShiftLegend[
         setLoading(true)
         try {
             const result = await createLegend({
-                from_location: fromLocation,
-                to_location: toLocation,
+                from_location: finalFrom,
+                to_location: finalTo,
                 color: color
             })
 
@@ -73,10 +80,14 @@ export function LegendManager({ initialLegends }: { initialLegends: ShiftLegend[
 
     const handleUpdate = async () => {
         if (!currentLegend) return
-        if (!fromLocation || !toLocation) {
+
+        const finalFrom = isOneLocation ? fromLocation : fromLocation
+        const finalTo = isOneLocation ? fromLocation : toLocation
+
+        if (!finalFrom || (!isOneLocation && !finalTo)) {
             toast({
                 title: "Error",
-                description: "Both 'From' and 'To' locations are required.",
+                description: isOneLocation ? "Location is required." : "Both 'From' and 'To' locations are required.",
                 variant: "destructive"
             })
             return
@@ -85,8 +96,8 @@ export function LegendManager({ initialLegends }: { initialLegends: ShiftLegend[
         setLoading(true)
         try {
             const result = await updateLegend(currentLegend.id, {
-                from_location: fromLocation,
-                to_location: toLocation,
+                from_location: finalFrom,
+                to_location: finalTo,
                 color: color
             })
 
@@ -142,24 +153,49 @@ export function LegendManager({ initialLegends }: { initialLegends: ShiftLegend[
                             <DialogTitle>Add New Legend</DialogTitle>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label className="text-right">From</Label>
-                                <Input
-                                    value={fromLocation}
-                                    onChange={e => setFromLocation(e.target.value)}
-                                    className="col-span-3"
-                                    placeholder="e.g. Branch X"
+                            <div className="flex items-center space-x-2 py-2">
+                                <Switch
+                                    id="one-location-mode"
+                                    checked={isOneLocation}
+                                    onCheckedChange={setIsOneLocation}
                                 />
+                                <Label htmlFor="one-location-mode" className="text-sm font-normal text-muted-foreground">
+                                    One location (no transfer)
+                                </Label>
                             </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label className="text-right">To</Label>
-                                <Input
-                                    value={toLocation}
-                                    onChange={e => setToLocation(e.target.value)}
-                                    className="col-span-3"
-                                    placeholder="e.g. Branch Y"
-                                />
-                            </div>
+
+                            {isOneLocation ? (
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right">Location</Label>
+                                    <Input
+                                        value={fromLocation}
+                                        onChange={e => setFromLocation(e.target.value)}
+                                        className="col-span-3"
+                                        placeholder="e.g. Headquarters"
+                                    />
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label className="text-right">From</Label>
+                                        <Input
+                                            value={fromLocation}
+                                            onChange={e => setFromLocation(e.target.value)}
+                                            className="col-span-3"
+                                            placeholder="e.g. Branch X"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label className="text-right">To</Label>
+                                        <Input
+                                            value={toLocation}
+                                            onChange={e => setToLocation(e.target.value)}
+                                            className="col-span-3"
+                                            placeholder="e.g. Branch Y"
+                                        />
+                                    </div>
+                                </>
+                            )}
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label className="text-right">Color</Label>
                                 <div className="col-span-3 flex items-center gap-3">
@@ -189,22 +225,46 @@ export function LegendManager({ initialLegends }: { initialLegends: ShiftLegend[
                         <DialogTitle>Edit Legend</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label className="text-right">From</Label>
-                            <Input
-                                value={fromLocation}
-                                onChange={e => setFromLocation(e.target.value)}
-                                className="col-span-3"
+                        <div className="flex items-center space-x-2 py-2">
+                            <Switch
+                                id="edit-one-location-mode"
+                                checked={isOneLocation}
+                                onCheckedChange={setIsOneLocation}
                             />
+                            <Label htmlFor="edit-one-location-mode" className="text-sm font-normal text-muted-foreground">
+                                One location (no transfer)
+                            </Label>
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label className="text-right">To</Label>
-                            <Input
-                                value={toLocation}
-                                onChange={e => setToLocation(e.target.value)}
-                                className="col-span-3"
-                            />
-                        </div>
+
+                        {isOneLocation ? (
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label className="text-right">Location</Label>
+                                <Input
+                                    value={fromLocation}
+                                    onChange={e => setFromLocation(e.target.value)}
+                                    className="col-span-3"
+                                />
+                            </div>
+                        ) : (
+                            <>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right">From</Label>
+                                    <Input
+                                        value={fromLocation}
+                                        onChange={e => setFromLocation(e.target.value)}
+                                        className="col-span-3"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right">To</Label>
+                                    <Input
+                                        value={toLocation}
+                                        onChange={e => setToLocation(e.target.value)}
+                                        className="col-span-3"
+                                    />
+                                </div>
+                            </>
+                        )}
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label className="text-right">Color</Label>
                             <div className="col-span-3 flex items-center gap-3">
@@ -239,8 +299,12 @@ export function LegendManager({ initialLegends }: { initialLegends: ShiftLegend[
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 text-sm font-medium mb-1">
                                         <span className="truncate" title={legend.from_location}>{legend.from_location}</span>
-                                        <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                        <span className="truncate" title={legend.to_location}>{legend.to_location}</span>
+                                        {legend.from_location !== legend.to_location && (
+                                            <>
+                                                <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                                <span className="truncate" title={legend.to_location}>{legend.to_location}</span>
+                                            </>
+                                        )}
                                     </div>
                                     <div className="text-xs text-muted-foreground uppercase">{legend.color}</div>
                                 </div>

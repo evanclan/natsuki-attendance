@@ -102,7 +102,8 @@ export function ShiftCell({
             const start = formatTime(shift.start_time)
             const end = formatTime(shift.end_time)
             mainContent = `${start} - ${end}`
-            if (shift.location) {
+            // Only show location if it's NOT "academy" (since 80% are academy, no need to show it)
+            if (shift.location && shift.location.toLowerCase() !== 'academy') {
                 mainContent += `\n${shift.location}`
             }
         }

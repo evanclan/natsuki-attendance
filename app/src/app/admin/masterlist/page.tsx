@@ -9,8 +9,12 @@ export default async function MasterListPage({
 }) {
     const params = await searchParams
     const now = new Date()
-    const year = params.year ? parseInt(params.year as string) : now.getFullYear()
-    const month = params.month ? parseInt(params.month as string) : now.getMonth()
+    // Default to next month (advance by 1 month for shift preparation)
+    const nextMonth = now.getMonth() + 1
+    const defaultYear = nextMonth > 11 ? now.getFullYear() + 1 : now.getFullYear()
+    const defaultMonth = nextMonth > 11 ? 0 : nextMonth
+    const year = params.year ? parseInt(params.year as string) : defaultYear
+    const month = params.month ? parseInt(params.month as string) : defaultMonth
 
     const result = await getMonthlyMasterList(year, month)
     const legendsResult = await getLegends()

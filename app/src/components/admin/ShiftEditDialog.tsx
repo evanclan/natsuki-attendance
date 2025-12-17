@@ -99,7 +99,7 @@ export function ShiftEditDialog({
             } else {
                 // Default values for new shift
                 if (role === 'student') {
-                    setShiftType('present')
+                    setShiftType('sick_absent')
                     setMemo('')
                     setColor('#FDBA74') // Default color for students? Or keep empty.
                 } else {
@@ -178,7 +178,7 @@ export function ShiftEditDialog({
                             <SelectContent>
                                 {role === 'student' ? (
                                     <>
-                                        <SelectItem value="present">Present</SelectItem>
+
                                         <SelectItem value="sick_absent">Sick Absent</SelectItem>
                                         <SelectItem value="planned_absent">Planned Absent</SelectItem>
                                         <SelectItem value="family_reason">Family Matters</SelectItem>

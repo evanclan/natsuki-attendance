@@ -692,7 +692,13 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                                                 </div>
                                             </div>
                                             <span className="font-medium whitespace-nowrap">
-                                                {legend.from_location} <span className="text-muted-foreground">→</span> {legend.to_location}
+                                                {legend.from_location === legend.to_location ? (
+                                                    legend.from_location
+                                                ) : (
+                                                    <>
+                                                        {legend.from_location} <span className="text-muted-foreground">→</span> {legend.to_location}
+                                                    </>
+                                                )}
                                             </span>
                                         </div>
                                     ))}

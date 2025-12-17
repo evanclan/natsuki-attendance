@@ -10,7 +10,15 @@ import { SystemEventDialog } from '@/components/admin/SystemEventDialog'
 import { Badge } from "@/components/ui/badge"
 
 export default function CalendarSettingsPage() {
-    const [currentDate, setCurrentDate] = useState(new Date())
+    // Default to next month (advance by 1 month for shift preparation)
+    const [currentDate, setCurrentDate] = useState(() => {
+        const now = new Date()
+        const nextMonth = now.getMonth() + 1
+        if (nextMonth > 11) {
+            return new Date(now.getFullYear() + 1, 0, 1) // January of next year
+        }
+        return new Date(now.getFullYear(), nextMonth, 1)
+    })
     const [events, setEvents] = useState<SystemEvent[]>([])
     const [loading, setLoading] = useState(false)
     const [dialogOpen, setDialogOpen] = useState(false)
