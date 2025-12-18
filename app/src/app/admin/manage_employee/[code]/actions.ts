@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { addStatusPeriod } from '@/actions/status_history'
+import { formatLocalDate } from '@/lib/utils'
 
 export async function updateEmployeeDetails(code: string, data: {
     full_name: string
@@ -47,7 +48,7 @@ export async function updateEmployeeDetails(code: string, data: {
 
     // If status changed, add a history record
     if (person.status !== data.status) {
-        const today = new Date().toISOString().split('T')[0]
+        const today = formatLocalDate(new Date())
 
         await addStatusPeriod({
             person_id: person.id,
@@ -149,8 +150,8 @@ export async function getMonthlyAttendanceReport(
         .from('attendance_days')
         .select('*')
         .eq('person_id', personId)
-        .gte('date', firstDay.toISOString().split('T')[0])
-        .lte('date', lastDay.toISOString().split('T')[0])
+        .gte('date', formatLocalDate(firstDay))
+        .lte('date', formatLocalDate(lastDay))
 
     if (attendanceError) {
         return { success: false, error: attendanceError.message }
@@ -160,8 +161,8 @@ export async function getMonthlyAttendanceReport(
     const { data: systemEvents, error: eventsError } = await supabase
         .from('system_events')
         .select('*')
-        .gte('event_date', firstDay.toISOString().split('T')[0])
-        .lte('event_date', lastDay.toISOString().split('T')[0])
+        .gte('event_date', formatLocalDate(firstDay))
+        .lte('event_date', formatLocalDate(lastDay))
 
     const events = eventsError ? [] : (systemEvents || [])
 
@@ -170,8 +171,8 @@ export async function getMonthlyAttendanceReport(
         .from('shifts')
         .select('date, start_time, end_time, shift_type')
         .eq('person_id', personId)
-        .gte('date', firstDay.toISOString().split('T')[0])
-        .lte('date', lastDay.toISOString().split('T')[0])
+        .gte('date', formatLocalDate(firstDay))
+        .lte('date', formatLocalDate(lastDay))
 
     const shifts = shiftsData || []
 
@@ -187,7 +188,7 @@ export async function getMonthlyAttendanceReport(
 
     for (let day = 1; day <= daysInMonth; day++) {
         const currentDate = new Date(year, month - 1, day)
-        const dateStr = currentDate.toISOString().split('T')[0]
+        const dateStr = formatLocalDate(currentDate)
         const dayOfWeek = currentDate.toLocaleDateString('en-US', { weekday: 'short' })
         const dayNum = currentDate.getDay() // 0 = Sunday, 6 = Saturday
 

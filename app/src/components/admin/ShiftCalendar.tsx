@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { getShiftsByPerson, getShiftByPersonAndDate } from '@/app/admin/shift-actions/actions'
 import { getSystemEvents, SystemEvent } from '@/app/admin/settings/actions'
 import { ShiftDialog } from './ShiftDialog'
+import { formatLocalDate } from '@/lib/utils'
 
 type Shift = {
     id: number
@@ -55,8 +56,8 @@ export function ShiftCalendar({ personId, readOnly = false }: ShiftCalendarProps
         const firstDay = new Date(currentYear, currentMonth, 1)
         const lastDay = new Date(currentYear, currentMonth + 1, 0)
         const eventsPromise = getSystemEvents(
-            firstDay.toISOString().split('T')[0],
-            lastDay.toISOString().split('T')[0]
+            formatLocalDate(firstDay),
+            formatLocalDate(lastDay)
         )
 
         const [shiftsResult, eventsResult] = await Promise.all([shiftsPromise, eventsPromise])
@@ -78,7 +79,7 @@ export function ShiftCalendar({ personId, readOnly = false }: ShiftCalendarProps
         setSelectedDate(date)
 
         // Check if there's an existing shift for this date
-        const dateStr = date.toISOString().split('T')[0]
+        const dateStr = formatLocalDate(date)
         const result = await getShiftByPersonAndDate(personId, dateStr)
 
         if (result.success && result.data) {
@@ -103,12 +104,12 @@ export function ShiftCalendar({ personId, readOnly = false }: ShiftCalendarProps
     }
 
     const getShiftForDate = (date: Date): Shift | undefined => {
-        const dateStr = date.toISOString().split('T')[0]
+        const dateStr = formatLocalDate(date)
         return shifts.find(shift => shift.date === dateStr)
     }
 
     const getEventsForDate = (date: Date) => {
-        const dateStr = date.toISOString().split('T')[0]
+        const dateStr = formatLocalDate(date)
         return systemEvents.filter(e => e.event_date === dateStr)
     }
 

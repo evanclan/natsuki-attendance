@@ -22,6 +22,7 @@ import {
 import { Plus } from 'lucide-react'
 import { createPerson, getAvailableCategories } from '@/app/actions/people'
 import { useRouter } from 'next/navigation'
+import { formatLocalDate } from '@/lib/utils'
 
 interface AddPersonDialogProps {
     role: 'employee' | 'student'
@@ -45,7 +46,7 @@ export function AddPersonDialog({ role, onSuccess }: AddPersonDialogProps) {
         full_name: '',
         category_id: [],
         job_type: '',
-        registration_date: new Date().toISOString().split('T')[0]
+        registration_date: formatLocalDate(new Date())
     })
 
     useEffect(() => {
@@ -88,7 +89,7 @@ export function AddPersonDialog({ role, onSuccess }: AddPersonDialogProps) {
                 full_name: '',
                 category_id: [],
                 job_type: '',
-                registration_date: new Date().toISOString().split('T')[0]
+                registration_date: formatLocalDate(new Date())
             })
             router.refresh()
             if (onSuccess) {

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { formatLocalDate } from '@/lib/utils'
 
 export type StatusPeriod = {
     id: number
@@ -57,7 +58,7 @@ export async function addStatusPeriod(data: {
         // Close it the day before the new period starts
         const newStart = new Date(data.valid_from)
         newStart.setDate(newStart.getDate() - 1)
-        const closeDate = newStart.toISOString().split('T')[0]
+        const closeDate = formatLocalDate(newStart)
 
         // Ensure closeDate is not before valid_from (sanity check)
         if (closeDate >= openPeriod.valid_from) {
@@ -118,7 +119,7 @@ export async function deleteStatusPeriod(id: number, personId: string) {
 
 async function syncCurrentStatus(personId: string) {
     const supabase = await createClient()
-    const today = new Date().toISOString().split('T')[0]
+    const today = formatLocalDate(new Date())
 
     // Find the period that covers today
     const { data, error } = await supabase

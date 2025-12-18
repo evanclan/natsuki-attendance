@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import { MasterListShiftData, ShiftType, upsertShift } from '@/app/admin/masterlist/actions'
 import { getLocations, Location } from '@/app/admin/settings/actions'
 import { useRouter } from 'next/navigation'
+import { formatLocalDate } from '@/lib/utils'
 
 type MonthlyStatusDialogProps = {
     open: boolean
@@ -112,7 +113,7 @@ export function MonthlyStatusDialog({
             let failCount = 0
 
             for (const date of weekdays) {
-                const dateStr = date.toISOString().split('T')[0]
+                const dateStr = formatLocalDate(date)
                 const shiftData: MasterListShiftData = {
                     date: dateStr,
                     shift_type: shiftType,

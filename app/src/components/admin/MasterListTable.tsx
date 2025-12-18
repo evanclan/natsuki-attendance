@@ -20,7 +20,7 @@ import { MonthlyStatusDialog } from './MonthlyStatusDialog'
 import { SystemEventDialog } from '@/components/admin/SystemEventDialog'
 import { SystemEvent, Location } from '@/app/admin/settings/actions'
 import { ShiftLegend } from '@/app/admin/settings/legends/actions'
-import { calculateExpectedHours } from '@/lib/utils'
+import { calculateExpectedHours, formatLocalDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
 
 type Person = {
@@ -103,7 +103,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
 
     const handleCellClick = (person: Person, day: number) => {
         const date = new Date(year, month, day)
-        const dateStr = date.toISOString().split('T')[0]
+        const dateStr = formatLocalDate(date)
 
         if (selectionMode !== 'none') {
             // Only allow selecting valid targets for the current mode
@@ -268,7 +268,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
 
     const getDayEvents = (day: number) => {
         const date = new Date(year, month, day)
-        const dateStr = date.toISOString().split('T')[0]
+        const dateStr = formatLocalDate(date)
         return events.filter(e => e.event_date === dateStr)
     }
 
@@ -351,7 +351,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
             </div>
             {days.map(day => {
                 const date = new Date(year, month, day)
-                const dateStr = date.toISOString().split('T')[0]
+                const dateStr = formatLocalDate(date)
                 const shift = shifts.find(s => s.person_id === person.id && s.date === dateStr)
                 const dayEvents = getDayEvents(day)
                 const isHoliday = dayEvents.some(e => e.is_holiday)
@@ -412,7 +412,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                         {(() => {
                             const totalExpectedHours = days.reduce((sum, day) => {
                                 const date = new Date(year, month, day)
-                                const dateStr = date.toISOString().split('T')[0]
+                                const dateStr = formatLocalDate(date)
                                 const shift = shifts.find(s => s.person_id === person.id && s.date === dateStr)
                                 if (!shift) return sum
 
@@ -441,7 +441,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                                 // Count days for part-time
                                 const totalDays = days.reduce((count, day) => {
                                     const date = new Date(year, month, day)
-                                    const dateStr = date.toISOString().split('T')[0]
+                                    const dateStr = formatLocalDate(date)
                                     const shift = shifts.find(s => s.person_id === person.id && s.date === dateStr)
 
                                     if (shift && (shift.shift_type === 'paid_leave' || shift.shift_type === 'half_paid_leave')) {
@@ -454,7 +454,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                                 // Count hours for others
                                 const totalHours = days.reduce((sum, day) => {
                                     const date = new Date(year, month, day)
-                                    const dateStr = date.toISOString().split('T')[0]
+                                    const dateStr = formatLocalDate(date)
                                     const shift = shifts.find(s => s.person_id === person.id && s.date === dateStr)
 
                                     if (!shift) return sum
@@ -944,7 +944,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                                                 </div>
                                                 {saturdayDays.map(day => {
                                                     const date = new Date(year, month, day)
-                                                    const dateStr = date.toISOString().split('T')[0]
+                                                    const dateStr = formatLocalDate(date)
                                                     const shift = shifts.find(s => s.person_id === person.id && s.date === dateStr)
                                                     const dayEvents = getDayEvents(day)
                                                     const isHoliday = dayEvents.some(e => e.is_holiday)

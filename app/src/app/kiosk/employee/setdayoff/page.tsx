@@ -10,6 +10,7 @@ import { getAllEmployees, setPreferredRest, deletePreferredRest, Person } from '
 import { getSystemEvents, SystemEvent } from '@/app/admin/settings/actions'
 import { getMonthlyMasterList, MasterListShiftData } from '@/app/admin/masterlist/actions'
 import { toast } from "sonner"
+import { formatLocalDate } from '@/lib/utils'
 
 export default function SetDayOffPage() {
     const [employees, setEmployees] = useState<{ id: string; full_name: string; code: string }[]>([])
@@ -47,8 +48,8 @@ export default function SetDayOffPage() {
         const lastDay = new Date(currentYear, currentMonth + 1, 0)
 
         const eventsResult = await getSystemEvents(
-            firstDay.toISOString().split('T')[0],
-            lastDay.toISOString().split('T')[0]
+            formatLocalDate(firstDay),
+            formatLocalDate(lastDay)
         )
 
         if (eventsResult.success && eventsResult.data) {
@@ -121,7 +122,7 @@ export default function SetDayOffPage() {
             return
         }
 
-        const dateStr = date.toISOString().split('T')[0]
+        const dateStr = formatLocalDate(date)
 
         // Check if user already has a preferred rest on this day
         const existingShift = shifts.find(s =>
@@ -143,7 +144,7 @@ export default function SetDayOffPage() {
     const handleSaveWithMemo = async () => {
         if (!selectedDateForMemo || !selectedEmployeeId) return
 
-        const dateStr = selectedDateForMemo.toISOString().split('T')[0]
+        const dateStr = formatLocalDate(selectedDateForMemo)
         const result = await setPreferredRest(selectedEmployeeId, dateStr, memoText)
 
         if (result.success) {
@@ -170,12 +171,12 @@ export default function SetDayOffPage() {
     }
 
     const getEventsForDate = (date: Date) => {
-        const dateStr = date.toISOString().split('T')[0]
+        const dateStr = formatLocalDate(date)
         return events.filter(e => e.event_date === dateStr)
     }
 
     const getPreferredRestShiftsForDate = (date: Date) => {
-        const dateStr = date.toISOString().split('T')[0]
+        const dateStr = formatLocalDate(date)
         return shifts.filter(s => s.date === dateStr && s.shift_type === 'preferred_rest')
     }
 

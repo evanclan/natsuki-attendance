@@ -22,6 +22,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Loader2 } from 'lucide-react'
 import { upsertAttendanceRecord } from '@/app/admin/attendance-actions/actions'
+import { formatLocalDate } from '@/lib/utils'
 
 type AttendanceRecord = {
     id: number
@@ -80,7 +81,7 @@ export function AttendanceEditDialog({
             return dateObj.toISOString()
         }
 
-        const dateStr = date.toISOString().split('T')[0]
+        const dateStr = formatLocalDate(date)
 
         const result = await upsertAttendanceRecord(employeeId, dateStr, {
             check_in_at: constructDateTime(checkIn),

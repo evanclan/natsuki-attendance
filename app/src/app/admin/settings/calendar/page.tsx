@@ -8,6 +8,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { getSystemEvents, SystemEvent } from '@/app/admin/settings/actions'
 import { SystemEventDialog } from '@/components/admin/SystemEventDialog'
 import { Badge } from "@/components/ui/badge"
+import { formatLocalDate } from '@/lib/utils'
 
 export default function CalendarSettingsPage() {
     // Default to next month (advance by 1 month for shift preparation)
@@ -39,8 +40,8 @@ export default function CalendarSettingsPage() {
         const lastDay = new Date(currentYear, currentMonth + 1, 0)
 
         const result = await getSystemEvents(
-            firstDay.toISOString().split('T')[0],
-            lastDay.toISOString().split('T')[0]
+            formatLocalDate(firstDay),
+            formatLocalDate(lastDay)
         )
 
         if (result.success && result.data) {
@@ -76,7 +77,7 @@ export default function CalendarSettingsPage() {
     }
 
     const getEventsForDate = (date: Date) => {
-        const dateStr = date.toISOString().split('T')[0]
+        const dateStr = formatLocalDate(date)
         return events.filter(e => e.event_date === dateStr)
     }
 

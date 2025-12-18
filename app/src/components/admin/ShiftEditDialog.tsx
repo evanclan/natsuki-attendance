@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { MasterListShiftData, ShiftType } from '@/app/admin/masterlist/actions'
 import { getLocations, Location } from '@/app/admin/settings/actions'
+import { formatLocalDate } from '@/lib/utils'
 
 type ShiftEditDialogProps = {
     open: boolean
@@ -120,7 +121,7 @@ export function ShiftEditDialog({
     const handleSave = async () => {
         setLoading(true)
         try {
-            const dateStr = date.toISOString().split('T')[0]
+            const dateStr = formatLocalDate(date)
             await onSave({
                 date: dateStr,
                 shift_type: shiftType,

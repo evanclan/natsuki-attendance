@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { createSystemEvent, updateSystemEvent, deleteSystemEvent, SystemEvent } from '@/app/admin/settings/actions'
+import { formatLocalDate } from '@/lib/utils'
 
 type SystemEventDialogProps = {
     open: boolean
@@ -63,7 +64,7 @@ export function SystemEventDialog({
         if (!selectedDate) return
 
         setLoading(true)
-        const dateStr = selectedDate.toISOString().split('T')[0]
+        const dateStr = formatLocalDate(selectedDate)
 
         const eventData = {
             title,

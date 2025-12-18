@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
+import { formatLocalDate } from '@/lib/utils'
 
 export async function getAllEmployeesAttendance(year: number, month: number) {
     try {
@@ -9,8 +10,8 @@ export async function getAllEmployeesAttendance(year: number, month: number) {
         // Calculate the first and last day of the month
         const startDate = new Date(year, month, 1)
         const endDate = new Date(year, month + 1, 0)
-        const startDateStr = startDate.toISOString().split('T')[0]
-        const endDateStr = endDate.toISOString().split('T')[0]
+        const startDateStr = formatLocalDate(startDate)
+        const endDateStr = formatLocalDate(endDate)
 
         // 1. Fetch all active employees (not students)
         const { data: employees, error: employeesError } = await supabase

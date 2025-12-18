@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { createShift, updateShift, deleteShift, type ShiftData } from '@/app/admin/shift-actions/actions'
+import { formatLocalDate } from '@/lib/utils'
 
 type Shift = {
     id: number
@@ -105,7 +106,7 @@ export function ShiftDialog({
     }
 
     const formatDateForDB = (date: Date) => {
-        return date.toISOString().split('T')[0]
+        return formatLocalDate(date)
     }
 
     const handleSave = async () => {

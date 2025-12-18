@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch"
 import { ArrowLeft, Plus, Trash2, Edit, Save, X, Eye, EyeOff } from 'lucide-react'
 import { getAllNews, createNews, updateNews, deleteNews, NewsItem } from '@/app/actions/news'
 import { toast } from 'sonner'
+import { formatLocalDate } from '@/lib/utils'
 
 export default function NewsSettingsPage() {
     const [news, setNews] = useState<NewsItem[]>([])
@@ -24,7 +25,7 @@ export default function NewsSettingsPage() {
     const [description, setDescription] = useState('')
     const [targetAudience, setTargetAudience] = useState<'student' | 'employee'>('student')
     const [isActive, setIsActive] = useState(true)
-    const [displayDate, setDisplayDate] = useState(new Date().toISOString().split('T')[0])
+    const [displayDate, setDisplayDate] = useState(formatLocalDate(new Date()))
 
     useEffect(() => {
         loadNews()
@@ -47,7 +48,7 @@ export default function NewsSettingsPage() {
         setDescription('')
         setTargetAudience('student')
         setIsActive(true)
-        setDisplayDate(new Date().toISOString().split('T')[0])
+        setDisplayDate(formatLocalDate(new Date()))
         setIsEditing(false)
         setEditingId(null)
     }
@@ -73,7 +74,7 @@ export default function NewsSettingsPage() {
                     is_active: isActive,
                     display_date: displayDate
                 })
-                toast.success('News updated successfully')
+                toast.success('Announcement updated successfully')
             } else {
                 await createNews({
                     title,
@@ -82,30 +83,30 @@ export default function NewsSettingsPage() {
                     is_active: isActive,
                     display_date: displayDate
                 })
-                toast.success('News created successfully')
+                toast.success('Announcement created successfully')
             }
             resetForm()
             loadNews()
         } catch (error) {
-            toast.error('Failed to save news')
+            toast.error('Failed to save announcement')
         }
     }
 
     async function handleDelete(id: string) {
-        if (!confirm('Are you sure you want to delete this news item?')) return
+        if (!confirm('Are you sure you want to delete this announcement?')) return
         try {
             await deleteNews(id)
-            toast.success('News deleted successfully')
+            toast.success('Announcement deleted successfully')
             loadNews()
         } catch (error) {
-            toast.error('Failed to delete news')
+            toast.error('Failed to delete announcement')
         }
     }
 
     async function toggleVisibility(item: NewsItem) {
         try {
             await updateNews(item.id, { is_active: !item.is_active })
-            toast.success(item.is_active ? 'News hidden' : 'News visible')
+            toast.success(item.is_active ? 'Announcement hidden' : 'Announcement visible')
             loadNews()
         } catch (error) {
             toast.error('Failed to update visibility')
@@ -121,7 +122,7 @@ export default function NewsSettingsPage() {
                         Back to Settings
                     </Button>
                 </Link>
-                <h1 className="text-2xl font-bold">News Settings</h1>
+                <h1 className="text-2xl font-bold">Announcement Settings</h1>
             </div>
 
             <div className="grid gap-6 lg:grid-cols-3">
@@ -129,7 +130,7 @@ export default function NewsSettingsPage() {
                 <div className="lg:col-span-1">
                     <Card>
                         <CardHeader>
-                            <CardTitle>{isEditing ? 'Edit News' : 'Add New News'}</CardTitle>
+                            <CardTitle>{isEditing ? 'Edit Announcement' : 'Add New Announcement'}</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <form onSubmit={handleSubmit} className="space-y-4">
@@ -209,11 +210,11 @@ export default function NewsSettingsPage() {
 
                 {/* List Section */}
                 <div className="lg:col-span-2 space-y-4">
-                    <h2 className="text-xl font-semibold">News List</h2>
+                    <h2 className="text-xl font-semibold">Announcements List</h2>
                     {loading ? (
                         <p>Loading...</p>
                     ) : news.length === 0 ? (
-                        <p className="text-muted-foreground">No news items found.</p>
+                        <p className="text-muted-foreground">No announcements found.</p>
                     ) : (
                         <div className="grid gap-4">
                             {news.map((item) => (

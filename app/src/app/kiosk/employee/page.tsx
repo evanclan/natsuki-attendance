@@ -33,6 +33,11 @@ export default function EmployeeKioskPage() {
                         Set Day Off
                     </Button>
                 </Link>
+                <Link href="/kiosk/employee/schedule">
+                    <Button variant="outline" className="h-14 px-6 text-lg shadow-lg bg-white/90 backdrop-blur hover:bg-white">
+                        Today's Schedule
+                    </Button>
+                </Link>
                 <ViewShiftButton />
             </div>
             <AutoRedirectController />

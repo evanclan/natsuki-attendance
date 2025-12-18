@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { formatLocalDate } from '@/lib/utils'
 
 export type ShiftType = 'work' | 'rest' | 'absent' | 'paid_leave' | 'half_paid_leave' | 'business_trip' | 'flex' | 'special_leave' | 'preferred_rest' | 'present' | 'sick_absent' | 'planned_absent' | 'family_reason' | 'other_reason'
 
@@ -25,8 +26,10 @@ export async function getMonthlyMasterList(year: number, month: number) {
         // Calculate the first and last day of the month
         const startDate = new Date(year, month, 1)
         const endDate = new Date(year, month + 1, 0)
-        const startDateStr = startDate.toISOString().split('T')[0]
-        const endDateStr = endDate.toISOString().split('T')[0]
+        const startDateStr = formatLocalDate(startDate)
+        const endDateStr = formatLocalDate(endDate)
+
+        console.log('[getMonthlyMasterList] Date range:', startDateStr, 'to', endDateStr)
 
         // Get all active people
         // 2. Fetch active people via RPC for the month
@@ -49,6 +52,10 @@ export async function getMonthlyMasterList(year: number, month: number) {
             .lte('date', endDateStr)
 
         if (shiftsError) throw shiftsError
+
+        // DEBUG: Log shifts for Dec 17 only
+        const dec17Shifts = shifts?.filter(s => s.date === '2025-12-17')
+        console.log('[getMonthlyMasterList] Total shifts in Dec:', shifts?.length, '| Dec 17 only:', dec17Shifts?.length, dec17Shifts?.map(s => s.person_id))
 
         // 3. Fetch system events for the month
         const { data: events, error: eventsError } = await supabase

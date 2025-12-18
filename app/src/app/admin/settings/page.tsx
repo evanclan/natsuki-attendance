@@ -79,15 +79,15 @@ export default function SettingsPage() {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <span className="text-xl">📰</span>
-                                News Settings
+                                Announcements
                             </CardTitle>
                             <CardDescription>
-                                Manage news and announcements
+                                Manage announcements for Kiosks
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <p className="text-sm text-muted-foreground">
-                                Add and manage news items for Student and Employee kiosks.
+                                Add and manage announcements for Student and Employee kiosks.
                             </p>
                         </CardContent>
                     </Card>

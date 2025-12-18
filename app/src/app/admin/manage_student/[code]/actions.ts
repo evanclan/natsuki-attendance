@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { addStatusPeriod } from '@/actions/status_history'
+import { formatLocalDate } from '@/lib/utils'
 
 export async function updateStudentDetails(code: string, data: {
     full_name: string
@@ -47,7 +48,7 @@ export async function updateStudentDetails(code: string, data: {
 
     // If status changed, add a history record
     if (currentData && currentData.status !== data.status) {
-        const today = new Date().toISOString().split('T')[0]
+        const today = formatLocalDate(new Date())
 
         await addStatusPeriod({
             person_id: person.id,

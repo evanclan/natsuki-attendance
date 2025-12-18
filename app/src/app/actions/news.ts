@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { formatLocalDate } from '@/lib/utils'
 
 export type NewsItem = {
     id: string
@@ -28,7 +29,7 @@ export type UpdateNewsInput = Partial<CreateNewsInput>
 
 export async function getNews(audience: 'student' | 'employee') {
     const supabase = await createClient()
-    const today = new Date().toISOString().split('T')[0]
+    const today = formatLocalDate(new Date())
 
     const { data, error } = await supabase
         .from('news')
@@ -69,7 +70,7 @@ export async function createNews(input: CreateNewsInput) {
         .from('news')
         .insert([{
             ...input,
-            display_date: input.display_date || new Date().toISOString().split('T')[0]
+            display_date: input.display_date || formatLocalDate(new Date())
         }])
         .select()
         .single()

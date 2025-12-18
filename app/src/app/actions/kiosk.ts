@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { formatLocalDate } from '@/lib/utils'
 
 export type Person = {
     id: string
@@ -351,7 +352,7 @@ export async function clearAllRecentData() {
     const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000)
     const jstYesterday = new Date(jstNow)
     jstYesterday.setDate(jstYesterday.getDate() - 1)
-    const yesterdayStr = jstYesterday.toISOString().split('T')[0]
+    const yesterdayStr = formatLocalDate(jstYesterday)
 
     console.log(`Clearing data for ${yesterdayStr} and ${todayStr}`)
 

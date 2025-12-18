@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { AttendanceEditDialog } from '@/components/admin/AttendanceEditDialog'
+import { formatLocalDate } from '@/lib/utils'
 
 type Employee = {
     id: string
@@ -66,7 +67,7 @@ export function AllListTable({ year, month, employees, students, attendance, eve
 
     const handleCellClick = (employee: Employee, day: number) => {
         const date = new Date(year, month, day)
-        const dateStr = date.toISOString().split('T')[0]
+        const dateStr = formatLocalDate(date)
         const attendanceRecord = attendance.find(a => a.person_id === employee.id && a.date === dateStr)
 
         setSelectedEmployee(employee)
@@ -82,7 +83,7 @@ export function AllListTable({ year, month, employees, students, attendance, eve
 
     const getDayEvents = (day: number) => {
         const date = new Date(year, month, day)
-        const dateStr = date.toISOString().split('T')[0]
+        const dateStr = formatLocalDate(date)
         return events.filter(e => e.event_date === dateStr)
     }
 
@@ -123,7 +124,7 @@ export function AllListTable({ year, month, employees, students, attendance, eve
                 </div>
                 {days.map(day => {
                     const date = new Date(year, month, day)
-                    const dateStr = date.toISOString().split('T')[0]
+                    const dateStr = formatLocalDate(date)
                     const attendanceRecord = attendance.find(a => a.person_id === employee.id && a.date === dateStr)
                     const dayEvents = getDayEvents(day)
                     const isHoliday = dayEvents.some(e => e.is_holiday)

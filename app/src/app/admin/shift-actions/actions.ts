@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { formatLocalDate } from '@/lib/utils'
 
 export type ShiftData = {
     date: string
@@ -125,8 +126,8 @@ export async function getShiftsByPerson(personId: string, year: number, month: n
             .from('shifts')
             .select('*')
             .eq('person_id', personId)
-            .gte('date', startDate.toISOString().split('T')[0])
-            .lte('date', endDate.toISOString().split('T')[0])
+            .gte('date', formatLocalDate(startDate))
+            .lte('date', formatLocalDate(endDate))
             .order('date', { ascending: true })
 
         if (error) {
