@@ -5,7 +5,30 @@
  * - Late check-in: Round UP to next 15-minute mark (9:01 → 9:15, 9:16 → 9:30)
  * - Early check-out: Round DOWN to previous 15-minute mark (5:50 → 5:45, 5:44 → 5:30)
  * - Overtime: Round to nearest 15-minute interval
+ *
+ * NOTE: All functions here should be timezone-agnostic (Math-only) or strictly handled in JST.
  */
+
+/**
+ * Construct a Date object from a base date and time string (HH:MM)
+ * Interprets the time as Asia/Tokyo time.
+ * @param baseDate The date component
+ * @param timeStr HH:MM
+ */
+export function constructJSTDate(baseDate: Date, timeStr: string): Date {
+    // 1. Get YYYY-MM-DD in JST from baseDate
+    const jstDateStr = baseDate.toLocaleDateString('sv-SE', {
+        timeZone: 'Asia/Tokyo'
+    })
+
+    // 2. Append time and timezone offset for JST (+09:00)
+    // Format: YYYY-MM-DDTHH:MM:00+09:00
+    // Ensure timeStr is HH:MM (take first 5 chars if HH:MM:SS provided)
+    const normalizedTime = timeStr.slice(0, 5)
+    const isoString = `${jstDateStr}T${normalizedTime}:00+09:00`
+
+    return new Date(isoString)
+}
 
 /**
  * Round time UP to the next 15-minute interval
@@ -114,10 +137,8 @@ export function getRoundedCheckIn(
         return roundTimeUp15(checkInTime)
     }
 
-    // Parse shift start time
-    const [hours, minutes] = shiftStartTime.split(':').map(Number)
-    const shiftStart = new Date(checkInDate)
-    shiftStart.setHours(hours, minutes, 0, 0)
+    // Parse shift start time in JST context
+    const shiftStart = constructJSTDate(checkInDate, shiftStartTime)
 
     if (checkInTime <= shiftStart) {
         // Early check-in: use shift start time (no credit for early arrival)
@@ -153,10 +174,8 @@ export function getRoundedCheckOut(
         }
     }
 
-    // Parse shift end time
-    const [hours, minutes] = shiftEndTime.split(':').map(Number)
-    const shiftEnd = new Date(checkOutDate)
-    shiftEnd.setHours(hours, minutes, 0, 0)
+    // Parse shift end time in JST context
+    const shiftEnd = constructJSTDate(checkOutDate, shiftEndTime)
 
     if (checkOutTime <= shiftEnd) {
         // Early or on-time check-out: round DOWN to previous 15-min interval

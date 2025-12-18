@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
@@ -200,15 +200,18 @@ export default function EmployeeDetailPage() {
         if (!employee) return
 
         // Convert local time back to ISO
-        const toISO = (localStr: string) => {
-            if (!localStr) return null
-            return new Date(localStr).toISOString()
+        // Convert local time input (e.g. "2024-12-09T09:00") to JST ISO string
+        const toJSTISO = (localDateTimeStr: string) => {
+            if (!localDateTimeStr) return null
+            // Input from datetime-local is "YYYY-MM-DDTHH:MM"
+            // We want to force this to be interpreted as JST
+            return `${localDateTimeStr}:00+09:00`
         }
 
         setSaving(true)
         const result = await updateAttendanceRecord(recordId, employee.id, {
-            check_in_at: toISO(editForm.check_in_at),
-            check_out_at: toISO(editForm.check_out_at),
+            check_in_at: toJSTISO(editForm.check_in_at),
+            check_out_at: toJSTISO(editForm.check_out_at),
             break_start_at: null,
             break_end_at: null,
             status: editForm.status,
@@ -395,8 +398,8 @@ export default function EmployeeDetailPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {attendanceHistory.map((record) => (
-                                        <>
-                                            <TableRow key={record.id} className={editingId === record.id ? "bg-muted/50 border-b-0" : ""}>
+                                        <React.Fragment key={record.id}>
+                                            <TableRow className={editingId === record.id ? "bg-muted/50 border-b-0" : ""}>
                                                 <TableCell>
                                                     <div className="flex items-center gap-2">
                                                         {new Date(record.date).toLocaleDateString('en-US', {
@@ -519,7 +522,7 @@ export default function EmployeeDetailPage() {
                                                     </TableCell>
                                                 </TableRow>
                                             )}
-                                        </>
+                                        </React.Fragment>
                                     ))}
                                 </TableBody>
                             </Table>

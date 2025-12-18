@@ -38,13 +38,12 @@ export function calculateExpectedHours(shift: MasterListShiftData): number {
 }
 
 /**
- * Format a Date object to YYYY-MM-DD string in LOCAL timezone.
- * This avoids the timezone shift issue that occurs with toISOString().split('T')[0]
- * which converts to UTC first (causing dates to shift by -1 day in JST timezone).
+ * Format a Date object to YYYY-MM-DD string in JST timezone (Asia/Tokyo).
+ * This forces the date to be interpreted in Japan time regardless of server/local timezone.
  */
 export function formatLocalDate(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  // 'sv-SE' locale formats as YYYY-MM-DD
+  return date.toLocaleDateString('sv-SE', {
+    timeZone: 'Asia/Tokyo'
+  })
 }

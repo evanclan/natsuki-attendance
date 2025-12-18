@@ -75,10 +75,10 @@ export function AttendanceEditDialog({
         // Construct ISO strings for the backend
         const constructDateTime = (timeStr: string) => {
             if (!timeStr) return null
-            const [hours, minutes] = timeStr.split(':').map(Number)
-            const dateObj = new Date(date)
-            dateObj.setHours(hours, minutes, 0, 0)
-            return dateObj.toISOString()
+            // Use JST construction logic
+            const dateStr = formatLocalDate(date) // This uses our new JST-aware formatter
+            // Manually construct correct ISO with +09:00 to ensure backend receives exact JST time
+            return `${dateStr}T${timeStr}:00+09:00`
         }
 
         const dateStr = formatLocalDate(date)

@@ -140,12 +140,13 @@ export function MonthlyReport({ personId }: MonthlyReportProps) {
 
         // Construct ISO strings for the backend
         // We use the date from the row and time from the input
+        // Construct ISO strings for the backend
+        // We use the date from the row (which is already YYYY-MM-DD from server) and time from input
         const constructDateTime = (timeStr: string) => {
             if (!timeStr) return null
-            const [hours, minutes] = timeStr.split(':').map(Number)
-            const date = new Date(dateStr)
-            date.setHours(hours, minutes, 0, 0)
-            return date.toISOString()
+            // dateStr is already YYYY-MM-DD from the dailyRecord which came from the server actions
+            // We just need to append time and JST offset
+            return `${dateStr}T${timeStr}:00+09:00`
         }
 
         const result = await upsertAttendanceRecord(personId, dateStr, {

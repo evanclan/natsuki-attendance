@@ -250,14 +250,25 @@ export async function getMonthlyAttendanceReport(
         }
 
         if (attendance) {
+            // Helper to get minutes from midnight in JST
+            const getMinutesFromMidnightJST = (isoString: string) => {
+                const date = new Date(isoString)
+                const jstDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }))
+                return jstDate.getHours() * 60 + jstDate.getMinutes()
+            }
+
+            // Helper to get minutes from midnight from HH:MM string
+            const getMinutesFromTimeStr = (timeStr: string) => {
+                const [hours, minutes] = timeStr.split(':').map(Number)
+                return hours * 60 + minutes
+            }
+
             // Check for late arrival
             if (!isRestDay && shift?.start_time && attendance.check_in_at) {
-                const checkInTime = new Date(attendance.check_in_at)
-                const [hours, minutes] = shift.start_time.split(':').map(Number)
-                const shiftStart = new Date(checkInTime)
-                shiftStart.setHours(hours, minutes, 0, 0)
-
-                if (checkInTime > shiftStart) {
+                const checkInMinutes = getMinutesFromMidnightJST(attendance.check_in_at)
+                const shiftStartMinutes = getMinutesFromTimeStr(shift.start_time)
+                // Add a small buffer (e.g. 1 minute) if needed, but strictly:
+                if (checkInMinutes > shiftStartMinutes) {
                     notifications.push({
                         type: 'late',
                         message: `Late check-in (shift starts at ${shift.start_time})`
@@ -267,12 +278,10 @@ export async function getMonthlyAttendanceReport(
 
             // Check for early out
             if (!isRestDay && shift?.end_time && attendance.check_out_at) {
-                const checkOutTime = new Date(attendance.check_out_at)
-                const [hours, minutes] = shift.end_time.split(':').map(Number)
-                const shiftEnd = new Date(checkOutTime)
-                shiftEnd.setHours(hours, minutes, 0, 0)
+                const checkOutMinutes = getMinutesFromMidnightJST(attendance.check_out_at)
+                const shiftEndMinutes = getMinutesFromTimeStr(shift.end_time)
 
-                if (checkOutTime < shiftEnd) {
+                if (checkOutMinutes < shiftEndMinutes) {
                     notifications.push({
                         type: 'early_out',
                         message: `Early out (shift ends at ${shift.end_time})`
