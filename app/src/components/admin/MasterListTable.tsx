@@ -1261,7 +1261,7 @@ export function MasterListTable({
                         open={dialogOpen}
                         onOpenChange={setDialogOpen}
                         personName={selectedPerson.full_name}
-                        role={selectedPerson.role}
+                        role={selectedPerson.role as "student" | "employee"}
                         date={selectedDate}
                         currentShift={selectedShift}
                         onSave={handleSaveShift}
