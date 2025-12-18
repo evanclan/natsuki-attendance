@@ -1,8 +1,21 @@
 import { MasterListShiftData } from '@/app/admin/masterlist/actions'
 import { Check } from 'lucide-react'
 import { calculateExpectedHours } from '@/lib/utils'
+import { memo } from 'react'
+
+type Person = {
+    id: string
+    full_name: string
+    code: string
+    role: string
+    job_type?: string
+    display_order?: number
+    categories?: { name: string }[] | any
+}
 
 type ShiftCellProps = {
+    person: Person
+    day: number
     shift?: MasterListShiftData
     isHoliday?: boolean
     isWeekend?: boolean
@@ -10,10 +23,12 @@ type ShiftCellProps = {
     showComputedHours?: boolean
     isSelected?: boolean
     isSelectionMode?: boolean
-    onClick: () => void
+    onCellClick: (person: Person, day: number) => void
 }
 
-export function ShiftCell({
+export const ShiftCell = memo(function ShiftCell({
+    person,
+    day,
     shift,
     isHoliday,
     isWeekend,
@@ -21,7 +36,7 @@ export function ShiftCell({
     showComputedHours = true,
     isSelected = false,
     isSelectionMode = false,
-    onClick
+    onCellClick
 }: ShiftCellProps) {
     // Determine background color
     let bgColor = 'bg-white'
@@ -135,7 +150,7 @@ export function ShiftCell({
                 ${isSelected ? 'ring-2 ring-inset ring-blue-500 z-10' : ''}
             `}
             style={shift?.color ? { backgroundColor: shift.color } : undefined}
-            onClick={onClick}
+            onClick={() => onCellClick(person, day)}
         >
             {isSelected && (
                 <div className="absolute top-0.5 right-0.5 bg-blue-500 text-white rounded-full p-0.5 z-20">
@@ -167,4 +182,4 @@ export function ShiftCell({
             )}
         </div>
     )
-}
+})

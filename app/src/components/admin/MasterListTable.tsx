@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -13,108 +13,260 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { ChevronLeft, ChevronRight, Plus, CheckSquare, Square, Trash2, Edit, X, Copy, Clipboard, Maximize2, Minimize2, Check, Printer, CalendarDays } from 'lucide-react'
-import { MasterListShiftData, upsertShift, deleteShift } from '@/app/admin/masterlist/actions'
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragOverlay,
+    DragEndEvent
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { MasterListShiftData, upsertShift, upsertShifts, deleteShift, deleteShifts, updatePeopleOrder } from '@/app/admin/masterlist/actions'
 import { ShiftCell } from './ShiftCell'
+import { useCallback } from 'react'
+
+import { formatLocalDate, calculateExpectedHours } from '@/lib/utils'
 import { ShiftEditDialog } from './ShiftEditDialog'
 import { MonthlyStatusDialog } from './MonthlyStatusDialog'
-import { SystemEventDialog } from '@/components/admin/SystemEventDialog'
-import { SystemEvent, Location } from '@/app/admin/settings/actions'
-import { ShiftLegend } from '@/app/admin/settings/legends/actions'
-import { calculateExpectedHours, formatLocalDate } from '@/lib/utils'
-import { useToast } from '@/components/ui/use-toast'
+import { SystemEventDialog } from './SystemEventDialog'
+import { useToast } from "@/components/ui/use-toast"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
-type Person = {
+interface Person {
     id: string
     full_name: string
     code: string
-    role: 'employee' | 'student'
+    role: string
     job_type?: string
-    categories?: {
-        name: string
-    }[] | null
+    display_order?: number
+    categories?: { name: string }[] | any
 }
 
-type MasterListTableProps = {
+interface SystemEvent {
+    id: string
+    event_date: string
+    title: string
+    event_type: 'holiday' | 'rest_day' | 'work_day' | 'event' | 'other'
+    is_holiday: boolean
+    created_at: string
+}
+
+interface AttendanceRecord {
+    person_id: string
+    date: string
+    total_work_minutes: number
+    paid_leave_minutes?: number
+}
+
+interface Legend {
+    id: string
+    color: string
+    from_location: string
+    to_location: string
+}
+
+interface MasterListTableProps {
     year: number
     month: number
     people: Person[]
-    shifts: any[] // Using any for now to match raw DB result, will map to MasterListShiftData
+    shifts: any[]
     events: SystemEvent[]
-    attendance: any[]
-    legends?: ShiftLegend[]
+    attendance: AttendanceRecord[]
+    legends: Legend[]
 }
 
-export function MasterListTable({ year, month, people, shifts, events, attendance, legends = [] }: MasterListTableProps) {
+function SortableRow({ person, isReordering, children }: any) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+    } = useSortable({ id: person.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+    };
+
+    if (!isReordering) return <div id={person.id}>{children}</div>
+
+    return (
+        <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="touch-none">
+            {children}
+        </div>
+    );
+}
+
+export function MasterListTable({
+    year,
+    month,
+    people,
+    shifts,
+    events,
+    attendance,
+    legends
+}: MasterListTableProps) {
     const router = useRouter()
     const { toast } = useToast()
-    const [dialogOpen, setDialogOpen] = useState(false)
+
+    // Sensors for DnD
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    // State
+    const [selectionMode, setSelectionMode] = useState<'none' | 'employee' | 'student'>('none')
+    const [selectedCells, setSelectedCells] = useState<{ personId: string, day: number, dateString: string }[]>([])
+
     const [selectedPerson, setSelectedPerson] = useState<Person | null>(null)
     const [selectedDate, setSelectedDate] = useState<Date | null>(null)
     const [selectedShift, setSelectedShift] = useState<MasterListShiftData | null>(null)
-    const [showComputedHours, setShowComputedHours] = useState(false)
-    const [copiedLegendId, setCopiedLegendId] = useState<string | null>(null)
+    const [dialogOpen, setDialogOpen] = useState(false)
 
-    // Event Dialog State
     const [eventDialogOpen, setEventDialogOpen] = useState(false)
     const [selectedEventDate, setSelectedEventDate] = useState<Date | null>(null)
     const [selectedSystemEvent, setSelectedSystemEvent] = useState<SystemEvent | null>(null)
 
-    // Selection Mode State
-    const [selectionMode, setSelectionMode] = useState<'none' | 'employee' | 'student'>('none')
-    const [selectedCells, setSelectedCells] = useState<{ personId: string, date: string }[]>([])
-    const [copiedShift, setCopiedShift] = useState<MasterListShiftData | null>(null)
-
-    // Full Screen Mode State
-    const [fullScreenMode, setFullScreenMode] = useState<'none' | 'employee' | 'student'>('none')
-
-    // Satasaurus Section Visibility (hidden by default)
-    const [showSatasaurus, setShowSatasaurus] = useState(false)
-
-    // Monthly Status Dialog State
     const [monthlyStatusDialogOpen, setMonthlyStatusDialogOpen] = useState(false)
     const [monthlyStatusPerson, setMonthlyStatusPerson] = useState<Person | null>(null)
 
+    const [showComputedHours, setShowComputedHours] = useState(false)
+    const [isReordering, setIsReordering] = useState(false)
+    const [showSatasaurus, setShowSatasaurus] = useState(false)
+    const [fullScreenMode, setFullScreenMode] = useState<'none' | 'employee' | 'student'>('none')
 
-    const daysInMonth = new Date(year, month + 1, 0).getDate()
-    const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
-    // Saturday days only (for Satasaurus table)
-    const saturdayDays = days.filter(day => {
-        const date = new Date(year, month, day)
-        return date.getDay() === 6 // Saturday
-    })
+    const [copiedShift, setCopiedShift] = useState<MasterListShiftData | null>(null)
+    const [copiedLegendId, setCopiedLegendId] = useState<string | null>(null)
 
+    const [localEmployees, setLocalEmployees] = useState<Person[]>([])
+
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    const [isDeleting, setIsDeleting] = useState(false)
+
+    // Derived
+    const days = Array.from({ length: new Date(year, month + 1, 0).getDate() }, (_, i) => i + 1)
+    const saturdayDays = days.filter(d => new Date(year, month, d).getDay() === 6)
+
+    // Handlers
     const handlePreviousMonth = () => {
-        const newDate = new Date(year, month - 1, 1)
+        const newDate = new Date(year, month - 1)
         router.push(`/admin/masterlist?year=${newDate.getFullYear()}&month=${newDate.getMonth()}`)
     }
 
     const handleNextMonth = () => {
-        const newDate = new Date(year, month + 1, 1)
+        const newDate = new Date(year, month + 1)
         router.push(`/admin/masterlist?year=${newDate.getFullYear()}&month=${newDate.getMonth()}`)
     }
 
-    const handleYearChange = (value: string) => {
-        router.push(`/admin/masterlist?year=${value}&month=${month}`)
+    const handleYearChange = (val: string) => {
+        router.push(`/admin/masterlist?year=${val}&month=${month}`)
     }
 
-    const handleMonthChange = (value: string) => {
-        router.push(`/admin/masterlist?year=${year}&month=${value}`)
+    const handleMonthChange = (val: string) => {
+        router.push(`/admin/masterlist?year=${year}&month=${val}`)
     }
 
-    const handleCellClick = (person: Person, day: number) => {
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (active.id !== over?.id) {
+            setLocalEmployees((items) => {
+                const currentItems = items.length > 0 ? items : people.filter(p => p.role === 'employee');
+                const oldIndex = currentItems.findIndex((item) => item.id === active.id);
+                const newIndex = currentItems.findIndex((item) => item.id === over?.id);
+                return arrayMove(currentItems, oldIndex, newIndex);
+            });
+        }
+    }
+
+    const handleSaveOrder = async () => {
+        const items = localEmployees.length > 0 ? localEmployees : people.filter(p => p.role === 'employee');
+        const updates = items.map((p, index) => ({ id: p.id, display_order: index }));
+        const res = await updatePeopleOrder(updates);
+        if (res.success) {
+            toast({ description: 'Order saved successfully' })
+            setIsReordering(false)
+            setLocalEmployees([])
+            router.refresh()
+        } else {
+            toast({ variant: 'destructive', description: 'Failed to save order' })
+        }
+    }
+
+
+
+
+    const handleCellClick = useCallback((person: Person, day: number) => {
         const date = new Date(year, month, day)
         const dateStr = formatLocalDate(date)
 
+        // Since we are inside useCallback, we need to be careful with state values accessed directly.
+        // However, selectionMode and shifts are dependencies.
+        // But to make ShiftCell truly memoized, passing a function that depends on 'shifts' array will break strict equality if 'shifts' changes.
+        // Actually, if 'shifts' changes, we WANT to re-render.
+        // But if I toggle 'showComputedHours', 'shifts' doesn't change, so 'handleCellClick' should be stable?
+        // Wait, 'handleCellClick' depends on 'shifts'.
+        // If I want to optimize heavily, I should pass IDs to ShiftCell and let it decide or handle click.
+        // But 'ShiftCell' is just a presentational component.
+        // Let's rely on the fact that if 'shifts' or 'selectionMode' doesn't change, this function instance is stable.
+
+        // We need to access state. 
+        // Best pattern: pass the function to the child.
+        // If we use 'useCallback', we need to list dependencies.
+
+        // Let's implement the logic directly here for now, but wrapped in useCallback.
+        // Note: access state via refs if we want true stability, but that's overkill.
+        // Just standard useCallback is better than inline function.
+
+        // Actually, I cannot easily pass 'person' and 'day' if I wrap it here, unless I return a curried function? 
+        // No, I can just define 'onCellClick' and pass it.
+        // But 'ShiftCell' calls 'onClick'.
+        // The inline `() => handleCellClick(person, day)` in renderRow BREAKS memoization because it's a new function every time.
+        // To fix this, ShiftCell needs to take `person` and `day` as props and call back `onClick(person, day)`.
+        // BUT ShiftCell doesn't know about `Person` type potentially, or we'd have to duplicate it.
+        // Or we just pass `personId` and `day`.
+
+        // Refactoring ShiftCell to take personId and day is the right way for list virtualization/memoization.
+        // But I will stick to the plan: use bulk actions first.
+        // I will just optimize the bulk handlers here.
+        // If I can't easily fix the inline onClick without refactoring ShiftCell props, I will skip that part of optimization or do it if time permits.
+        // The plan said: "Change ShiftCell props to take personId and day...".
+        // I ALREADY updated ShiftCell to use memo, but I didn't change props.
+        // So passing `onClick={() => handleCellClick(person, day)}` will still cause re-renders.
+
+        // I will update this file to use the bulk actions first.
+
         if (selectionMode !== 'none') {
-            // Only allow selecting valid targets for the current mode
             if (person.role !== selectionMode) return
 
             setSelectedCells(prev => {
-                const exists = prev.some(c => c.personId === person.id && c.date === dateStr)
+                const exists = prev.some(c => c.personId === person.id && c.dateString === dateStr)
                 if (exists) {
-                    return prev.filter(c => !(c.personId === person.id && c.date === dateStr))
+                    return prev.filter(c => !(c.personId === person.id && c.dateString === dateStr))
                 } else {
-                    return [...prev, { personId: person.id, date: dateStr }]
+                    return [...prev, { personId: person.id, day: day, dateString: dateStr }]
                 }
             })
             return
@@ -126,7 +278,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
         setSelectedDate(date)
         setSelectedShift(shift ? {
             date: shift.date,
-            shift_type: shift.shift_type || 'work', // Default to work if null (migration default)
+            shift_type: shift.shift_type || 'work',
             shift_name: shift.shift_name,
             start_time: shift.start_time,
             end_time: shift.end_time,
@@ -137,28 +289,40 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
             force_break: shift.force_break
         } : null)
         setDialogOpen(true)
-    }
+    }, [selectionMode, shifts, year, month]) // Depend on these
 
     const handleSaveShift = async (data: MasterListShiftData) => {
         if (selectedCells.length > 0) {
             // Bulk Save
-            let successCount = 0
-            let failCount = 0
+            // Map selected cells to the payload format
+            const shiftsToSave = selectedCells.map(cell => ({
+                personId: cell.personId,
+                data: { ...data, date: cell.dateString }
+            }))
 
-            for (const cell of selectedCells) {
-                // We need to override the date in the data with the cell's date
-                const cellData = { ...data, date: cell.date }
-                const result = await upsertShift(cell.personId, cellData)
-                if (result.success) successCount++
-                else failCount++
-            }
+            const result = await upsertShifts(shiftsToSave)
 
-            if (failCount > 0) {
-                alert(`Saved ${successCount} shifts. Failed to save ${failCount} shifts.`)
+            if (result.success) {
+                toast({ description: `Successfully saved ${shiftsToSave.length} shifts` })
+            } else {
+                if (result.failures) {
+                    alert(`Failed to save ${result.failures.length} shifts. Please check console.`)
+                } else {
+                    alert('Failed to save shifts: ' + result.error)
+                }
             }
 
             setSelectedCells([])
             setSelectionMode('none')
+            // router.refresh() // handled by validPath in action presumably, but good to keep if client state needs update? 
+            // The action calls revalidatePath, so data should refresh.
+            // But we might want to manually refresh if we are using server components mostly.
+            // router.refresh() is redundant if action does it? No, action revalidates cache, router.refresh updates UI.
+            // Actually revalidatePath on server usually triggers a client router refresh automatically if invoked via form?
+            // But here we invoke via async await.
+            // We usually need router.refresh() if not using useFormState etc?
+            // Actually, in Server Actions 14+, revalidatePath should update the client cache and trigger refresh if simple.
+            // Let's keep it safe.
             router.refresh()
         } else {
             // Single Save
@@ -166,6 +330,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
 
             const result = await upsertShift(selectedPerson.id, data)
             if (result.success) {
+                toast({ description: "Shift saved" })
                 router.refresh()
             } else {
                 alert('Failed to save shift: ' + result.error)
@@ -173,36 +338,59 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
         }
     }
 
-    const handleBulkDelete = async () => {
-        if (!confirm(`Are you sure you want to delete shifts for ${selectedCells.length} selected cells?`)) return
-
-        let successCount = 0
-        let failCount = 0
-
-        for (const cell of selectedCells) {
-            const result = await deleteShift(cell.personId, cell.date)
-            if (result.success) successCount++
-            else failCount++
-        }
-
-        if (failCount > 0) {
-            alert(`Deleted ${successCount} shifts. Failed to delete ${failCount} shifts.`)
-        }
-
-        setSelectedCells([])
-        setSelectionMode('none')
-        router.refresh()
+    const handleBulkDelete = () => {
+        if (selectedCells.length === 0) return
+        setDeleteDialogOpen(true)
     }
 
+    const confirmBulkDelete = async () => {
+        setIsDeleting(true)
+        try {
+            // Get all shifts for the selected cells
+            const shiftsToDelete = selectedCells.map(cell => ({
+                personId: cell.personId,
+                date: cell.dateString
+            }))
+
+            if (shiftsToDelete.length === 0) {
+                toast({ description: "No shifts found to delete in selected cells." })
+                setIsDeleting(false)
+                setDeleteDialogOpen(false)
+                return
+            }
+
+            const result = await deleteShifts(shiftsToDelete)
+
+            if (result.success) {
+                toast({ description: `Successfully deleted ${shiftsToDelete.length} shifts` })
+            } else {
+                alert('Failed to delete shifts: ' + result.error) // Fallback for error for now
+            }
+
+            setSelectedCells([])
+            setSelectionMode('none')
+        } catch (error) {
+            console.error('Bulk delete error:', error)
+            toast({
+                variant: 'destructive',
+                description: "An unexpected error occurred during deletion."
+            })
+        } finally {
+            setIsDeleting(false)
+            setDeleteDialogOpen(false)
+        }
+    }
+
+    // copy unmodified
     const handleCopy = () => {
         if (selectedCells.length !== 1) return
 
         const cell = selectedCells[0]
-        const shift = shifts.find(s => s.person_id === cell.personId && s.date === cell.date)
+        const shift = shifts.find(s => s.person_id === cell.personId && s.date === cell.dateString)
 
         if (shift) {
             setCopiedShift({
-                date: shift.date, // This will be overwritten on paste
+                date: shift.date,
                 shift_type: shift.shift_type,
                 shift_name: shift.shift_name,
                 start_time: shift.start_time,
@@ -213,6 +401,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                 color: shift.color,
                 force_break: shift.force_break
             })
+            toast({ description: "Shift copied to clipboard" })
         } else {
             alert("No shift data to copy from the selected cell.")
         }
@@ -223,23 +412,22 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
 
         if (!confirm(`Paste copied shift to ${selectedCells.length} cells? This will overwrite existing shifts.`)) return
 
-        let successCount = 0
-        let failCount = 0
+        const shiftsToSave = selectedCells.map(cell => ({
+            personId: cell.personId,
+            data: { ...copiedShift, date: cell.dateString }
+        }))
 
-        for (const cell of selectedCells) {
-            const cellData = { ...copiedShift, date: cell.date }
-            const result = await upsertShift(cell.personId, cellData)
-            if (result.success) successCount++
-            else failCount++
-        }
+        const result = await upsertShifts(shiftsToSave)
 
-        if (failCount > 0) {
-            alert(`Pasted to ${successCount} cells. Failed to for ${failCount} cells.`)
+        if (result.success) {
+            toast({ description: `Pasted to ${shiftsToSave.length} cells` })
+        } else {
+            alert('Failed to paste shifts: ' + result.error)
         }
 
         setSelectedCells([])
         setSelectionMode('none')
-        setCopiedShift(null) // Optional: clear clipboard after paste, or keep it for multiple pastes
+        setCopiedShift(null)
         router.refresh()
     }
 
@@ -301,7 +489,8 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
     }
 
     // Group people by role
-    const employees = people.filter(p => p.role === 'employee')
+    // Use localEmployees if available, otherwise sourceEmployees
+    const employees = localEmployees.length > 0 ? localEmployees : people.filter(p => p.role === 'employee')
     const students = people.filter(p => {
         if (p.role !== 'student') return false
         // Hide students with ONLY the "Satasaurus" category
@@ -316,7 +505,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
     const satasaurusStudents = people.filter(p => {
         if (p.role !== 'student') return false
         const categories = p.categories || []
-        return categories.some(c => c?.name?.toLowerCase() === 'satasaurus')
+        return categories.some((c: any) => c?.name?.toLowerCase() === 'satasaurus')
     })
 
     const renderRow = (person: Person) => (
@@ -400,9 +589,11 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                         isWeekend={getDayStatus(day).isRestDay}
                         workHours={workHours}
                         showComputedHours={person.role !== 'student' && showComputedHours}
-                        isSelected={selectedCells.some(c => c.personId === person.id && c.date === dateStr)}
+                        isSelected={selectedCells.some(c => c.personId === person.id && c.dateString === dateStr)}
                         isSelectionMode={selectionMode === person.role}
-                        onClick={() => handleCellClick(person, day)}
+                        person={person}
+                        day={day}
+                        onCellClick={handleCellClick}
                     />
                 )
             })}
@@ -578,6 +769,31 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                 <h2 className="text-2xl font-bold">{monthName}</h2>
                 <div className="flex items-center gap-4">
                     <div className="flex items-center space-x-2">
+                        {/* Reordering Controls */}
+                        {isReordering ? (
+                            <Button
+                                variant="default"
+                                size="sm"
+                                onClick={handleSaveOrder}
+                                className="bg-green-600 hover:bg-green-700 text-white animate-pulse"
+                            >
+                                <Check className="h-4 w-4 mr-2" />
+                                Save Order
+                            </Button>
+                        ) : (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    setIsReordering(true)
+                                    setSelectionMode('none') // Disable selection mode when reordering
+                                    setSelectedCells([])
+                                }}
+                            >
+                                Change Order
+                            </Button>
+                        )}
+
                         <Switch
                             id="show-computed-hours"
                             checked={showComputedHours}
@@ -708,23 +924,48 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
 
                         <div className="flex items-center gap-2">
                             {fullScreenMode === 'employee' && (
-                                <Button
-                                    variant={selectionMode === 'employee' ? "secondary" : "outline"}
-                                    size="sm"
-                                    onClick={() => {
-                                        if (selectionMode === 'employee') {
-                                            setSelectionMode('none')
-                                            setSelectedCells([])
-                                        } else {
-                                            setSelectionMode('employee')
-                                            setSelectedCells([])
-                                        }
-                                    }}
-                                    className={selectionMode === 'employee' ? "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200" : ""}
-                                >
-                                    {selectionMode === 'employee' ? <CheckSquare className="h-4 w-4 mr-2" /> : <Square className="h-4 w-4 mr-2" />}
-                                    Employee Selection
-                                </Button>
+                                <>
+                                    {isReordering ? (
+                                        <Button
+                                            variant="default"
+                                            size="sm"
+                                            onClick={handleSaveOrder}
+                                            className="bg-green-600 hover:bg-green-700 text-white animate-pulse"
+                                        >
+                                            <Check className="h-4 w-4 mr-2" />
+                                            Save Order
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                setIsReordering(true)
+                                                setSelectionMode('none') // Disable selection mode when reordering
+                                                setSelectedCells([])
+                                            }}
+                                        >
+                                            Change Order
+                                        </Button>
+                                    )}
+                                    <Button
+                                        variant={selectionMode === 'employee' ? "secondary" : "outline"}
+                                        size="sm"
+                                        onClick={() => {
+                                            if (selectionMode === 'employee') {
+                                                setSelectionMode('none')
+                                                setSelectedCells([])
+                                            } else {
+                                                setSelectionMode('employee')
+                                                setSelectedCells([])
+                                            }
+                                        }}
+                                        className={selectionMode === 'employee' ? "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200" : ""}
+                                    >
+                                        {selectionMode === 'employee' ? <CheckSquare className="h-4 w-4 mr-2" /> : <Square className="h-4 w-4 mr-2" />}
+                                        Employee Selection
+                                    </Button>
+                                </>
                             )}
                             <Button
                                 variant="ghost"
@@ -745,9 +986,27 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                         </div>
                         <div className={`overflow-auto masterlist-print-table ${fullScreenMode === 'employee' ? "h-full" : "max-h-[60vh]"}`}>
                             <div className="min-w-max">
+
                                 {renderHeaderRow("Employees")}
                                 {renderEventsRow()}
-                                {employees.map(renderRow)}
+                                {/* Drag Context */}
+                                <DndContext
+                                    sensors={sensors}
+                                    collisionDetection={closestCenter}
+                                    onDragEnd={handleDragEnd}
+                                >
+                                    <SortableContext
+                                        items={employees.map(e => e.id)}
+                                        strategy={verticalListSortingStrategy}
+                                        disabled={!isReordering}
+                                    >
+                                        {employees.map(person => (
+                                            <SortableRow key={person.id} person={person} isReordering={isReordering}>
+                                                {renderRow(person)}
+                                            </SortableRow>
+                                        ))}
+                                    </SortableContext>
+                                </DndContext>
                             </div>
                         </div>
                     </div>
@@ -978,9 +1237,11 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                                                             isWeekend={false}
                                                             workHours={workHours}
                                                             showComputedHours={false}
-                                                            isSelected={selectedCells.some(c => c.personId === person.id && c.date === dateStr)}
+                                                            isSelected={selectedCells.some(c => c.personId === person.id && c.dateString === dateStr)}
                                                             isSelectionMode={selectionMode === 'student'}
-                                                            onClick={() => handleCellClick(person, day)}
+                                                            person={person}
+                                                            day={day}
+                                                            onCellClick={handleCellClick}
                                                         />
                                                     )
                                                 })}
@@ -1031,7 +1292,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
             {/* Bulk Actions Bar */}
             {
                 selectionMode !== 'none' && selectedCells.length > 0 && (
-                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white shadow-lg border rounded-full px-6 py-3 flex items-center gap-4 z-[60] animate-in slide-in-from-bottom-10 fade-in">
+                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white shadow-lg border rounded-full px-6 py-3 flex items-center gap-4 z-[60]">
                         <div className="font-medium text-sm">
                             {selectedCells.length} selected
                         </div>
@@ -1044,7 +1305,7 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                                     id: 'bulk',
                                     full_name: `${selectedCells.length} People`,
                                     code: '',
-                                    role: selectionMode === 'student' ? 'student' : 'employee'
+                                    role: (selectionMode === 'student' ? 'student' : 'employee') as 'student' | 'employee'
                                 })
                                 setSelectedDate(new Date()) // Dummy date
                                 setSelectedShift(null) // Default new shift
@@ -1093,6 +1354,33 @@ export function MasterListTable({ year, month, people, shifts, events, attendanc
                     </div>
                 )
             }
+
+            {/* Bulk Delete Confirm Dialog */}
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Shifts?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete SHIFTS for {selectedCells.length} selected cells?
+                            <br /><br />
+                            This action cannot be undone. This will <strong>NOT</strong> delete the employee records, only the scheduled shifts.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => {
+                                e.preventDefault() // Prevent auto-closing
+                                confirmBulkDelete()
+                            }}
+                            className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? 'Deleting...' : 'Delete Shifts'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div >
     )
 }

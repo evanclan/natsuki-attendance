@@ -38,8 +38,9 @@ export async function getMonthlyMasterList(year: number, month: number) {
                 range_start: startDateStr,
                 range_end: endDateStr
             })
-            .select('id, full_name, code, role, job_type, person_categories(categories(name))')
+            .select('id, full_name, code, role, job_type, display_order, person_categories(categories(name))')
             .order('role', { ascending: true })
+            .order('display_order', { ascending: true })
             .order('code', { ascending: true })
 
         if (peopleError) throw peopleError
@@ -89,6 +90,31 @@ export async function getMonthlyMasterList(year: number, month: number) {
         }
     } catch (error: any) {
         console.error('Error in getMonthlyMasterList:', error)
+        return { success: false, error: error.message }
+    }
+}
+
+export async function updatePeopleOrder(items: { id: string, display_order: number }[]) {
+    try {
+        const supabase = await createClient()
+
+        console.log('[updatePeopleOrder] Updating order for', items.length, 'people')
+
+        // Update each person's display_order
+        // We do this in parallel for speed
+        const promises = items.map(item =>
+            supabase
+                .from('people')
+                .update({ display_order: item.display_order })
+                .eq('id', item.id)
+        )
+
+        await Promise.all(promises)
+
+        revalidatePath('/admin/masterlist')
+        return { success: true }
+    } catch (error: any) {
+        console.error('Error in updatePeopleOrder:', error)
         return { success: false, error: error.message }
     }
 }
@@ -357,6 +383,7 @@ export async function deleteShift(personId: string, date: string) {
         // Maybe we should clear the attendance record if it was auto-generated?
         // That's complex. Let's stick to deleting the shift row.
 
+
         const { error } = await supabase
             .from('shifts')
             .delete()
@@ -369,6 +396,74 @@ export async function deleteShift(personId: string, date: string) {
         return { success: true }
     } catch (error: any) {
         console.error('Error in deleteShift:', error)
+        return { success: false, error: error.message }
+    }
+}
+
+export async function upsertShifts(shifts: { personId: string, data: MasterListShiftData }[]) {
+    try {
+        const supabase = await createClient()
+
+        console.log('[upsertShifts] Processing', shifts.length, 'shifts')
+
+        // Process in chunks or parallel if too many, but for now map to promises is likely fine for typical batch sizes (20-100)
+        // Note: Supabase upsert can take an array, but we have different personIds and dates, so it's a bit complex to construct a single upsert if they are different rows.
+        // Actually, 'shifts' table has (person_id, date) uniqueness (likely).
+        // If we construct an array of all payload objects, we can do a SINGLE upsert call if the table helps us.
+        // However, 'shifts' table PK is usually 'id'. If we don't have IDs, we need to relying on composite key or constraints.
+        // Let's assume we might need to do individual upserts or group them.
+        // To be safe and reuse logic (like syncShiftToAttendance), let's just iterate server-side.
+        // It's still N DB calls, but only 1 HTTP request from client -> server. Much faster network-wise.
+
+        // We can optimize the DB calls later if needed (e.g. by fetching all existing shifts in one query first).
+
+        const results = await Promise.all(shifts.map(s => upsertShift(s.personId, s.data)))
+
+        const failures = results.filter(r => !r.success)
+        if (failures.length > 0) {
+            console.error('[upsertShifts] Some shifts failed to save:', failures)
+            return {
+                success: false,
+                error: `Failed to save ${failures.length} out of ${shifts.length} shifts.`,
+                failures
+            }
+        }
+
+        revalidatePath('/admin/masterlist')
+        return { success: true }
+    } catch (error: any) {
+        console.error('Error in upsertShifts:', error)
+        return { success: false, error: error.message }
+    }
+}
+
+export async function deleteShifts(shifts: { personId: string, date: string }[]) {
+    try {
+        const supabase = await createClient()
+
+        console.log('[deleteShifts] Deleting', shifts.length, 'shifts')
+
+        // We can do this in one delete query if we are clever, or just parallel promises.
+        // DELETE FROM shifts WHERE (person_id, date) IN ((p1, d1), (p2, d2))...
+        // Supabase/PostgREST doesn't support concise localized DELETE for composite keys easily without RPC or complex filters.
+        // Parallel server-side calls are fine for reduced latency vs client-side serial.
+
+        const promises = shifts.map(s => deleteShift(s.personId, s.date))
+        const results = await Promise.all(promises)
+
+        const failures = results.filter(r => !r.success)
+        if (failures.length > 0) {
+            return {
+                success: false,
+                error: `Failed to delete ${failures.length} out of ${shifts.length} shifts.`,
+                failures
+            }
+        }
+
+        revalidatePath('/admin/masterlist')
+        return { success: true }
+    } catch (error: any) {
+        console.error('Error in deleteShifts:', error)
         return { success: false, error: error.message }
     }
 }
