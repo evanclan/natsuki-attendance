@@ -18,6 +18,7 @@ type ShiftEditDialogProps = {
     date: Date
     currentShift?: MasterListShiftData | null
     onSave: (data: MasterListShiftData) => Promise<void>
+    onDelete?: () => Promise<void>
     role?: 'employee' | 'student'
 }
 
@@ -28,9 +29,11 @@ export function ShiftEditDialog({
     date,
     currentShift,
     onSave,
+    onDelete,
     role = 'employee'
 }: ShiftEditDialogProps) {
     const [loading, setLoading] = useState(false)
+    const [isDeleting, setIsDeleting] = useState(false)
     const [shiftType, setShiftType] = useState<ShiftType>('work')
     const [startTime, setStartTime] = useState('')
     const [endTime, setEndTime] = useState('')
@@ -144,6 +147,21 @@ export function ShiftEditDialog({
             console.error('Failed to save shift', error)
         } finally {
             setLoading(false)
+        }
+    }
+
+    const handleDelete = async () => {
+        if (!onDelete) return
+        if (!confirm('Are you sure you want to delete this shift?')) return
+
+        setIsDeleting(true)
+        try {
+            await onDelete()
+            onOpenChange(false)
+        } catch (error) {
+            console.error('Failed to delete shift', error)
+        } finally {
+            setIsDeleting(false)
         }
     }
 
@@ -387,13 +405,27 @@ export function ShiftEditDialog({
                         </div>
                     )}
                 </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>
-                        Cancel
-                    </Button>
-                    <Button onClick={handleSave} disabled={loading}>
-                        {loading ? 'Saving...' : 'Save changes'}
-                    </Button>
+                <DialogFooter className="sm:justify-between">
+                    {currentShift && onDelete ? (
+                        <Button
+                            variant="destructive"
+                            onClick={handleDelete}
+                            disabled={loading || isDeleting}
+                            type="button"
+                        >
+                            {isDeleting ? 'Deleting...' : 'Delete'}
+                        </Button>
+                    ) : (
+                        <div /> /* Spacer */
+                    )}
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => onOpenChange(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleSave} disabled={loading || isDeleting}>
+                            {loading ? 'Saving...' : 'Save changes'}
+                        </Button>
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

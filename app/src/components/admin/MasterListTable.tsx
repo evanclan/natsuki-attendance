@@ -305,6 +305,20 @@ export function MasterListTable({
         setDialogOpen(true)
     }, [selectionMode, shifts, year, month]) // Depend on these
 
+    const handleDeleteShift = async () => {
+        if (!selectedPerson || !selectedDate) return
+
+        const dateStr = formatLocalDate(selectedDate)
+        const result = await deleteShift(selectedPerson.id, dateStr)
+
+        if (result.success) {
+            toast({ description: "Shift deleted" })
+            router.refresh()
+        } else {
+            alert('Failed to delete shift: ' + result.error)
+        }
+    }
+
     const handleSaveShift = async (data: MasterListShiftData) => {
         if (selectedCells.length > 0) {
             // Bulk Save
@@ -1277,6 +1291,7 @@ export function MasterListTable({
                             date={selectedDate}
                             currentShift={selectedShift}
                             onSave={handleSaveShift}
+                            onDelete={selectedShift ? handleDeleteShift : undefined}
                         />
                     )
                 }
