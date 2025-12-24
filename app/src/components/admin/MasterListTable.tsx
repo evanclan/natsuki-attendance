@@ -1328,6 +1328,67 @@ export function MasterListTable({
                                 size="sm"
                                 onClick={() => {
                                     // Open dialog for bulk edit
+
+                                    // Check if all selected cells have the same shift content
+                                    let commonShift: MasterListShiftData | null = null;
+                                    let hasMismatch = false;
+
+                                    if (selectedCells.length > 0) {
+                                        // Get the shift for the first cell
+                                        const firstCell = selectedCells[0];
+                                        const firstShift = shifts.find(s => s.person_id === firstCell.personId && s.date === firstCell.dateString);
+
+                                        // Helper to serialize relevant fields for comparison
+                                        const serializeShift = (s: any) => {
+                                            if (!s) return 'null';
+                                            // Helper to normalize empty strings/nulls
+                                            const norm = (v: any) => (v === null || v === undefined) ? '' : String(v);
+                                            // Helper for booleans (sometimes null/undefined in DB, assume false if missing)
+                                            const normBool = (v: any) => !!v;
+
+                                            return JSON.stringify({
+                                                type: norm(s.shift_type),
+                                                start: norm(s.start_time),
+                                                end: norm(s.end_time),
+                                                loc: norm(s.location),
+                                                hours: norm(s.paid_leave_hours), // "8" vs 8 issue potentially? norm() handles string conversion
+                                                memo: norm(s.memo),
+                                                color: norm(s.color),
+                                                break: normBool(s.force_break)
+                                            });
+                                        };
+
+                                        const firstShiftStr = serializeShift(firstShift);
+
+                                        // Check all other cells
+                                        for (let i = 1; i < selectedCells.length; i++) {
+                                            const cell = selectedCells[i];
+                                            const shift = shifts.find(s => s.person_id === cell.personId && s.date === cell.dateString);
+                                            if (serializeShift(shift) !== firstShiftStr) {
+                                                hasMismatch = true;
+                                                break;
+                                            }
+                                        }
+
+                                        if (!hasMismatch && firstShift) {
+                                            // All match and it's not empty, set as common shift
+                                            commonShift = {
+                                                date: firstShift.date, // This date will be ignored/overridden by bulk save logic effectively, but needed for type
+                                                shift_type: firstShift.shift_type,
+                                                shift_name: firstShift.shift_name,
+                                                start_time: firstShift.start_time,
+                                                end_time: firstShift.end_time,
+                                                location: firstShift.location,
+                                                paid_leave_hours: firstShift.paid_leave_hours,
+                                                memo: firstShift.memo,
+                                                color: firstShift.color,
+                                                force_break: firstShift.force_break
+                                            };
+                                        }
+                                        // If hasMismatch is true, or if firstShift is undefined (all empty), commonShift remains null
+                                        // If all empty, logic correctly passes null, which defaults to fresh "Work" shift in dialog.
+                                    }
+
                                     setSelectedPerson({
                                         id: 'bulk',
                                         full_name: `${selectedCells.length} People`,
@@ -1335,7 +1396,7 @@ export function MasterListTable({
                                         role: (selectionMode === 'student' ? 'student' : 'employee') as 'student' | 'employee'
                                     })
                                     setSelectedDate(new Date()) // Dummy date
-                                    setSelectedShift(null) // Default new shift
+                                    setSelectedShift(commonShift)
                                     setDialogOpen(true)
                                 }}
                             >
