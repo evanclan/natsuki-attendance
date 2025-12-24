@@ -893,8 +893,8 @@ export function MasterListTable({
                             <div className="flex items-center gap-6">
                                 <h3 className="text-lg font-semibold">Employees</h3>
 
-                                {/* Legends Display */}
-                                {legends && legends.length > 0 && (
+                                {/* Legends Display - Hidden for now */}
+                                {false && legends && legends.length > 0 && (
                                     <div className="flex items-center gap-3 overflow-x-auto max-w-[60vw] scrollbar-hide">
                                         {legends.map(legend => (
                                             <div key={legend.id} className="flex items-center gap-1.5 text-xs bg-muted/50 px-2 py-1 rounded-full border flex-shrink-0 transition-all hover:bg-muted">
@@ -950,6 +950,23 @@ export function MasterListTable({
                             <div className="flex items-center gap-2">
                                 {fullScreenMode === 'employee' && (
                                     <>
+                                        <Button
+                                            variant={selectionMode === 'employee' ? "secondary" : "outline"}
+                                            size="sm"
+                                            onClick={() => {
+                                                if (selectionMode === 'employee') {
+                                                    setSelectionMode('none')
+                                                    setSelectedCells([])
+                                                } else {
+                                                    setSelectionMode('employee')
+                                                    setSelectedCells([])
+                                                }
+                                            }}
+                                            className={selectionMode === 'employee' ? "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200" : ""}
+                                        >
+                                            {selectionMode === 'employee' ? <CheckSquare className="h-4 w-4 mr-2" /> : <Square className="h-4 w-4 mr-2" />}
+                                            Employee Selection
+                                        </Button>
                                         {isReordering ? (
                                             <Button
                                                 variant="default"
@@ -973,23 +990,6 @@ export function MasterListTable({
                                                 Change Order
                                             </Button>
                                         )}
-                                        <Button
-                                            variant={selectionMode === 'employee' ? "secondary" : "outline"}
-                                            size="sm"
-                                            onClick={() => {
-                                                if (selectionMode === 'employee') {
-                                                    setSelectionMode('none')
-                                                    setSelectedCells([])
-                                                } else {
-                                                    setSelectionMode('employee')
-                                                    setSelectedCells([])
-                                                }
-                                            }}
-                                            className={selectionMode === 'employee' ? "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200" : ""}
-                                        >
-                                            {selectionMode === 'employee' ? <CheckSquare className="h-4 w-4 mr-2" /> : <Square className="h-4 w-4 mr-2" />}
-                                            Employee Selection
-                                        </Button>
                                     </>
                                 )}
                                 <Button
