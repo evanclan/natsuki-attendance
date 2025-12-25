@@ -80,8 +80,8 @@ export const ShiftCell = memo(function ShiftCell({
             textColor = 'text-purple-700'
             mainContent = 'Business\nTrip'
         } else if (shift.shift_type === 'flex') {
-            bgColor = 'bg-blue-50'
-            textColor = 'text-blue-700'
+            bgColor = 'bg-white'
+            textColor = 'text-black'
             mainContent = 'Flex'
         } else if (shift.shift_type === 'present') {
             bgColor = 'bg-blue-50'
