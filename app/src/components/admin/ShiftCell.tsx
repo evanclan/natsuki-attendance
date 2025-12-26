@@ -170,7 +170,7 @@ export const ShiftCell = memo(function ShiftCell({
             {/* Expected Shift Hours (Top Middle) */}
             {!['present', 'sick_absent', 'planned_absent', 'family_reason', 'other_reason'].includes(shift?.shift_type || '') && shift && (() => {
                 const expected = calculateExpectedHours(shift)
-                if (expected > 0) {
+                if (expected > 0 || (shift.shift_type === 'flex' && expected === 0)) {
                     return <div className="absolute top-0.5 left-1/2 -translate-x-1/2 text-[9px] font-bold opacity-60 tabular-nums tracking-tighter">{expected}h</div>
                 }
                 return null

@@ -255,7 +255,7 @@ async function syncShiftToAttendance(personId: string, shiftData: MasterListShif
                     break
                 case 'paid_leave':
                     workMinutes = 0
-                    const hours = shiftData.paid_leave_hours || 8
+                    const hours = shiftData.paid_leave_hours ?? 8
                     paidLeaveMinutes = hours * 60
                     adminNoteAppend = `Paid Leave (${hours}h)`
                     break
@@ -324,7 +324,7 @@ async function syncShiftToAttendance(personId: string, shiftData: MasterListShif
                     break
                 case 'paid_leave':
                     workMinutes = 0
-                    const hours = shiftData.paid_leave_hours || 8
+                    const hours = shiftData.paid_leave_hours ?? 8
                     paidLeaveMinutes = hours * 60
                     adminNote = `Paid Leave (${hours}h)`
                     shouldCreate = true

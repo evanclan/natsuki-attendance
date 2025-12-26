@@ -92,7 +92,7 @@ export function ShiftEditDialog({
                 setEndTime(currentShift.end_time || '')
                 setLocation(currentShift.location || '')
                 setMemo(currentShift.memo || '')
-                setPaidLeaveHours(currentShift.paid_leave_hours || 8)
+                setPaidLeaveHours(currentShift.paid_leave_hours ?? 8)
                 setColor(currentShift.color || '')
                 if (currentShift.shift_type === 'half_paid_leave') {
                     setFixHalf(!currentShift.start_time && !currentShift.end_time)
@@ -150,9 +150,18 @@ export function ShiftEditDialog({
         }
     }
 
-    const handleDelete = async () => {
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+    const handleDeleteClick = (e: React.MouseEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setShowDeleteConfirm(true)
+    }
+
+    const handleConfirmDelete = async (e: React.MouseEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
         if (!onDelete) return
-        if (!confirm('Are you sure you want to delete this shift?')) return
 
         setIsDeleting(true)
         try {
@@ -162,6 +171,7 @@ export function ShiftEditDialog({
             console.error('Failed to delete shift', error)
         } finally {
             setIsDeleting(false)
+            setShowDeleteConfirm(false)
         }
     }
 
@@ -320,11 +330,14 @@ export function ShiftEditDialog({
                             <Input
                                 id="paid-leave-hours"
                                 type="number"
-                                min="1"
+                                min="0"
                                 max="24"
                                 step="0.5"
                                 value={paidLeaveHours}
-                                onChange={(e) => setPaidLeaveHours(parseFloat(e.target.value) || 8)}
+                                onChange={(e) => {
+                                    const val = parseFloat(e.target.value)
+                                    setPaidLeaveHours(isNaN(val) ? 0 : val)
+                                }}
                                 className="col-span-3"
                                 placeholder="8"
                             />
@@ -407,14 +420,42 @@ export function ShiftEditDialog({
                 </div>
                 <DialogFooter className="sm:justify-between">
                     {currentShift && onDelete ? (
-                        <Button
-                            variant="destructive"
-                            onClick={handleDelete}
-                            disabled={loading || isDeleting}
-                            type="button"
-                        >
-                            {isDeleting ? 'Deleting...' : 'Delete'}
-                        </Button>
+                        showDeleteConfirm ? (
+                            <div className="flex gap-2 items-center">
+                                <span className="text-xs text-muted-foreground hidden sm:inline">Are you sure?</span>
+                                <Button
+                                    variant="destructive"
+                                    onClick={handleConfirmDelete}
+                                    disabled={loading || isDeleting}
+                                    type="button"
+                                    size="sm"
+                                >
+                                    {isDeleting ? 'Deleting...' : 'Yes, Delete'}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setShowDeleteConfirm(false);
+                                    }}
+                                    disabled={loading || isDeleting}
+                                    type="button"
+                                    size="sm"
+                                >
+                                    Cancel
+                                </Button>
+                            </div>
+                        ) : (
+                            <Button
+                                variant="destructive"
+                                onClick={handleDeleteClick}
+                                disabled={loading || isDeleting}
+                                type="button"
+                            >
+                                Delete
+                            </Button>
+                        )
                     ) : (
                         <div /> /* Spacer */
                     )}

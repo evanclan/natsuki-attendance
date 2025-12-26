@@ -18,7 +18,7 @@ export function calculateExpectedHours(shift: MasterListShiftData): number {
     }
     return Math.max(0, duration)
   }
-  if (shift.shift_type === 'paid_leave') return 8
+  if (shift.shift_type === 'paid_leave') return shift.paid_leave_hours ?? 8
   if (shift.shift_type === 'half_paid_leave') {
     if (shift.start_time && shift.end_time) {
       const [startH, startM] = shift.start_time.split(':').map(Number)
@@ -32,7 +32,7 @@ export function calculateExpectedHours(shift: MasterListShiftData): number {
   }
   if (shift.shift_type === 'business_trip') return 8
   if (shift.shift_type === 'flex') {
-    return shift.paid_leave_hours || 8
+    return shift.paid_leave_hours ?? 8
   }
   return 0
 }

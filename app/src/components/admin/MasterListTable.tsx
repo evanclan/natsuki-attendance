@@ -675,7 +675,7 @@ export function MasterListTable({
                                     if (!shift) return sum
 
                                     if (shift.shift_type === 'paid_leave') {
-                                        return sum + (shift.paid_leave_hours || 8)
+                                        return sum + (shift.paid_leave_hours ?? 8)
                                     } else if (shift.shift_type === 'half_paid_leave') {
                                         return sum + 4
                                     }
