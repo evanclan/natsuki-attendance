@@ -89,6 +89,22 @@ export async function createPerson(data: CreatePersonData) {
         if (catError) console.error('Error inserting legacy category:', catError)
     }
 
+    // Insert initial status history
+    const { error: statusError } = await supabase
+        .from('person_status_history')
+        .insert({
+            person_id: person.id,
+            status: 'active',
+            valid_from: data.registration_date,
+            valid_until: null,
+            note: 'Initial creation'
+        })
+
+    if (statusError) {
+        console.error('Error inserting status history:', statusError)
+        // We don't fail, but this is critical for masterlist
+    }
+
     revalidatePath('/admin/manage_employee')
     revalidatePath('/admin/manage_student')
 
