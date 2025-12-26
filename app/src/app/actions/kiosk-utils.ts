@@ -55,6 +55,8 @@ export function calculateDailyStats(
     rounded_check_out_at: string
 } {
     const shiftType = shift?.shift_type || 'work'
+    const isNoBreak = shiftType === 'work_no_break'
+
     const checkIn = new Date(checkInAt)
     const checkOut = new Date(checkOutAt)
 
@@ -204,7 +206,8 @@ export function calculateDailyStats(
     let breakExceeded = false
 
     // Rule: If work >= 6 hours, deduct 1 hour break
-    if (grossMinutes >= 360) { // 6 hours
+    // BUT if it's 'work_no_break', we do NOT deduct break
+    if (!isNoBreak && grossMinutes >= 360) { // 6 hours
         applicableBreakMinutes = 60
         if (actualBreakMinutes > 60) {
             breakExceeded = true
@@ -214,6 +217,7 @@ export function calculateDailyStats(
     }
 
     const totalWorkMinutes = Math.max(0, grossMinutes - applicableBreakMinutes)
+
 
     // Calculate Overtime based on SCHEDULED DURATION if shift exists, otherwise fallback to clock overtime
     let finalOvertimeMinutes = clockOvertime

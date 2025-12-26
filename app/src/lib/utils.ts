@@ -8,16 +8,18 @@ export function cn(...inputs: ClassValue[]) {
 import { MasterListShiftData } from '@/app/admin/masterlist/actions'
 
 export function calculateExpectedHours(shift: MasterListShiftData): number {
-  if (shift.shift_type === 'work' && shift.start_time && shift.end_time) {
+  if ((shift.shift_type === 'work' || shift.shift_type === 'work_no_break') && shift.start_time && shift.end_time) {
     const [startH, startM] = shift.start_time.split(':').map(Number)
     const [endH, endM] = shift.end_time.split(':').map(Number)
     let duration = (endH + endM / 60) - (startH + startM / 60)
     if (duration < 0) duration += 24 // Handle overnight shifts
-    if (duration >= 6 || shift.force_break) {
+    // Only deduct break if it's 'work' type (not 'work_no_break')
+    if (shift.shift_type === 'work' && (duration >= 6 || shift.force_break)) {
       duration -= 1 // 1 hour break
     }
     return Math.max(0, duration)
   }
+
   if (shift.shift_type === 'paid_leave') return shift.paid_leave_hours ?? 8
   if (shift.shift_type === 'half_paid_leave') {
     if (shift.start_time && shift.end_time) {

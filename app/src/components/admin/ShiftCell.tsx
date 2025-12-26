@@ -121,7 +121,19 @@ export const ShiftCell = memo(function ShiftCell({
             if (shift.location && shift.location.toLowerCase() !== 'academy') {
                 mainContent += `\n${shift.location}`
             }
+        } else if (shift.shift_type === 'work_no_break') {
+            bgColor = 'bg-white'
+            if (shift.color) {
+                // Use inline style for custom colors
+            }
+            const start = formatTime(shift.start_time)
+            const end = formatTime(shift.end_time)
+            mainContent = `${start} - ${end}`
+            if (shift.location && shift.location.toLowerCase() !== 'academy') {
+                mainContent += `\n${shift.location}`
+            }
         }
+
     } else {
         // Default state (no shift assigned)
         if (isHoliday || isWeekend) {

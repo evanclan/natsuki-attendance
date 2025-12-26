@@ -4,7 +4,7 @@ import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { formatLocalDate } from '@/lib/utils'
 
-export type ShiftType = 'work' | 'rest' | 'absent' | 'paid_leave' | 'half_paid_leave' | 'business_trip' | 'flex' | 'special_leave' | 'preferred_rest' | 'present' | 'sick_absent' | 'planned_absent' | 'family_reason' | 'other_reason'
+export type ShiftType = 'work' | 'rest' | 'absent' | 'paid_leave' | 'half_paid_leave' | 'business_trip' | 'flex' | 'special_leave' | 'preferred_rest' | 'present' | 'sick_absent' | 'planned_absent' | 'family_reason' | 'other_reason' | 'work_no_break'
 
 export type MasterListShiftData = {
     date: string
@@ -172,6 +172,7 @@ export async function upsertShift(personId: string, shiftData: MasterListShiftDa
             shiftData.shift_type === 'half_paid_leave' ||
             shiftData.shift_type === 'special_leave' ||
             shiftData.shift_type === 'work' ||
+            shiftData.shift_type === 'work_no_break' ||
             shiftData.shift_type === 'flex') {
             await syncShiftToAttendance(personId, shiftData)
         }
@@ -205,7 +206,9 @@ async function syncShiftToAttendance(personId: string, shiftData: MasterListShif
 
             // If it's a regular work shift (or flex), we should recalculate the work stats
             // based on the new shift times and the existing check-in/out
-            if (shiftData.shift_type === 'work' || shiftData.shift_type === 'flex' || (shiftData.shift_type === 'half_paid_leave' && shiftData.start_time && shiftData.end_time)) {
+            // If it's a regular work shift (or flex), we should recalculate the work stats
+            // based on the new shift times and the existing check-in/out
+            if (shiftData.shift_type === 'work' || shiftData.shift_type === 'work_no_break' || shiftData.shift_type === 'flex' || (shiftData.shift_type === 'half_paid_leave' && shiftData.start_time && shiftData.end_time)) {
                 if (existingAttendance.check_in_at && existingAttendance.check_out_at) {
                     // Import helper dynamically to avoid circular deps if any
                     const { calculateDailyStats } = await import('@/app/actions/kiosk-utils')

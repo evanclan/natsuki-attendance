@@ -128,19 +128,20 @@ export function ShiftEditDialog({
             await onSave({
                 date: dateStr,
                 shift_type: shiftType,
-                start_time: (shiftType === 'work' || shiftType === 'flex' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf)) ? startTime : undefined,
-                end_time: (shiftType === 'work' || shiftType === 'flex' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf)) ? endTime : undefined,
-                location: (shiftType === 'work' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf)) ? location : undefined,
+                start_time: (shiftType === 'work' || shiftType === 'work_no_break' || shiftType === 'flex' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf)) ? startTime : undefined,
+                end_time: (shiftType === 'work' || shiftType === 'work_no_break' || shiftType === 'flex' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf)) ? endTime : undefined,
+                location: (shiftType === 'work' || shiftType === 'work_no_break' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf)) ? location : undefined,
                 paid_leave_hours: (shiftType === 'paid_leave' || shiftType === 'flex') ? paidLeaveHours : undefined,
                 memo: memo,
-                color: (shiftType === 'work' || role === 'student') ? color : undefined,
+                color: (shiftType === 'work' || shiftType === 'work_no_break' || role === 'student') ? color : undefined,
                 force_break: (shiftType === 'work') ? forceBreak : undefined
             })
 
             // Add to history if color is selected
-            if ((shiftType === 'work' || role === 'student') && color) {
+            if ((shiftType === 'work' || shiftType === 'work_no_break' || role === 'student') && color) {
                 addToHistory(color)
             }
+
 
             onOpenChange(false)
         } catch (error) {
@@ -216,7 +217,9 @@ export function ShiftEditDialog({
                                 ) : (
                                     <>
                                         <SelectItem value="work">Work</SelectItem>
+                                        <SelectItem value="work_no_break">Work no break</SelectItem>
                                         <SelectItem value="flex">Flex</SelectItem>
+
                                         <SelectItem value="paid_leave">Paid Leave</SelectItem>
                                         <SelectItem value="half_paid_leave">Half Paid Leave</SelectItem>
                                         <SelectItem value="special_leave">Special Leave</SelectItem>
@@ -248,7 +251,8 @@ export function ShiftEditDialog({
 
 
                     {/* Student inputs or standard employee inputs */}
-                    {role === 'employee' && (shiftType === 'work' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf)) && (
+                    {role === 'employee' && (shiftType === 'work' || shiftType === 'work_no_break' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf)) && (
+
                         <>
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="start-time" className="text-right">
@@ -357,7 +361,8 @@ export function ShiftEditDialog({
                         />
                     </div>
 
-                    {(shiftType === 'work' || role === 'student') && (
+                    {(shiftType === 'work' || shiftType === 'work_no_break' || role === 'student') && (
+
                         <div className="grid grid-cols-4 items-start gap-4">
                             <Label className="text-right pt-2">
                                 Color
