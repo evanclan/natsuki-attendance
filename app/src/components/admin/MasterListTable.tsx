@@ -12,7 +12,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { ChevronLeft, ChevronRight, Plus, CheckSquare, Square, Trash2, Edit, X, Copy, Clipboard, Maximize2, Minimize2, Check, Printer, CalendarDays } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, CheckSquare, Square, Trash2, Edit, X, Copy, Clipboard, Maximize2, Minimize2, Check, Printer, CalendarDays, Monitor, Minus, RotateCcw } from 'lucide-react'
 import React from 'react'
 import {
     DndContext,
@@ -131,6 +131,9 @@ export function MasterListTable({
     const router = useRouter()
     const { toast } = useToast()
 
+    const containerRef = React.useRef<HTMLDivElement>(null)
+    const contentRef = React.useRef<HTMLDivElement>(null)
+
     // Sensors for DnD
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -163,6 +166,10 @@ export function MasterListTable({
     const [copiedShift, setCopiedShift] = useState<MasterListShiftData | null>(null)
     const [copiedLegendId, setCopiedLegendId] = useState<string | null>(null)
 
+    // Zoom / Fullscreen Adjustment
+    const [zoomLevel, setZoomLevel] = useState(1)
+    const [isFitToScreen, setIsFitToScreen] = useState(false)
+
     const [localEmployees, setLocalEmployees] = useState<Person[]>([])
 
 
@@ -170,6 +177,43 @@ export function MasterListTable({
     const [isDeleting, setIsDeleting] = useState(false)
 
 
+
+    // Fit to Screen Logic
+    useEffect(() => {
+        if (!isFitToScreen || fullScreenMode !== 'employee') return
+
+        const calculateScale = () => {
+            if (!containerRef.current || !contentRef.current) return
+
+            // Reset scale first to get natural dimensions
+            const containerWidth = containerRef.current.clientWidth
+            const containerHeight = containerRef.current.clientHeight
+
+            // We need the natural width/height of the content
+            // Assuming scrollWidth/scrollHeight gives us the full unscaled size
+            const contentWidth = contentRef.current.scrollWidth
+            const contentHeight = contentRef.current.scrollHeight
+
+            // Add some padding/buffer
+            const padding = 40
+
+            const scaleX = (containerWidth - padding) / contentWidth
+            const scaleY = (containerHeight - padding) / contentHeight
+
+            // Use the smaller scale to fit both dimensions
+            const scale = Math.min(scaleX, scaleY, 1) // Don't scale up beyond 1 if it fits? Actually, user might want to scale UP to fit screen if table is small. 
+            // If table is small, we probably shouldn't scale UP excessively, but fitting to screen implies filling it.
+            // Let's allow scaling up but cap it reasonably, say 1.5x? Or just fit it.
+            // Usually "Fit to Screen" means shrinking to fit. Scaling up to fill is "Fill Screen".
+            // Let's just do Math.min(scaleX, scaleY)
+
+            setZoomLevel(Math.min(scaleX, scaleY))
+        }
+
+        calculateScale()
+        window.addEventListener('resize', calculateScale)
+        return () => window.removeEventListener('resize', calculateScale)
+    }, [isFitToScreen, fullScreenMode, people, shifts, events]) // Recalculate if data changes too
 
     // Print Logic
     const handlePrint = () => {
@@ -648,7 +692,7 @@ export function MasterListTable({
                             return `${totalExpectedHours}h`
                         })()}
                     </div>
-                    <div className="min-w-[80px] p-2 border-r border-border flex items-center justify-center font-mono text-sm">
+                    <div className="min-w-[80px] p-2 border-border flex items-center justify-center font-mono text-sm">
                         {(() => {
                             const isPartTime = person.categories?.[0]?.name === 'partime'
 
@@ -727,9 +771,9 @@ export function MasterListTable({
             {showSummary && (
                 <>
                     <div className="min-w-[80px] p-2 border-r border-border bg-muted font-semibold flex items-center justify-center text-xs">
-                        Working hours
+                        W.hours
                     </div>
-                    <div className="min-w-[80px] p-2 border-r border-border bg-muted font-semibold flex items-center justify-center text-xs">
+                    <div className="min-w-[80px] p-2 border-border bg-muted font-semibold flex items-center justify-center text-xs">
                         Paid Leave
                     </div>
                 </>
@@ -948,8 +992,66 @@ export function MasterListTable({
                             </div>
 
                             <div className="flex items-center gap-2">
+
                                 {fullScreenMode === 'employee' && (
                                     <>
+                                        {/* Zoom Controls */}
+                                        <div className="flex items-center bg-background border rounded-md shadow-sm mr-2 h-8">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className={`h-full px-2 rounded-r-none border-r ${isFitToScreen ? 'bg-muted text-primary' : 'text-muted-foreground'}`}
+                                                onClick={() => setIsFitToScreen(!isFitToScreen)}
+                                                title="Fit to Screen"
+                                            >
+                                                <Monitor className="h-4 w-4" />
+                                            </Button>
+
+                                            <div className="w-[1px] h-4 bg-border mx-1" />
+
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-full px-2 rounded-none"
+                                                onClick={() => {
+                                                    setIsFitToScreen(false)
+                                                    setZoomLevel(prev => Math.max(0.5, prev - 0.1))
+                                                }}
+                                                disabled={isFitToScreen}
+                                                title="Zoom Out"
+                                            >
+                                                <Minus className="h-3 w-3" />
+                                            </Button>
+
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-full px-2 rounded-none font-mono text-xs w-[4.5ch]"
+                                                onClick={() => {
+                                                    setIsFitToScreen(false)
+                                                    setZoomLevel(1)
+                                                }}
+                                                disabled={isFitToScreen}
+                                                title="Reset Zoom"
+                                            >
+                                                {Math.round(zoomLevel * 100)}%
+                                            </Button>
+
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-full px-2 rounded-l-none"
+                                                onClick={() => {
+                                                    setIsFitToScreen(false)
+                                                    setZoomLevel(prev => Math.min(2, prev + 0.1))
+                                                }}
+                                                disabled={isFitToScreen}
+                                                title="Zoom In"
+                                            >
+                                                <Plus className="h-3 w-3" />
+                                            </Button>
+                                        </div>
+
                                         <Button
                                             variant={selectionMode === 'employee' ? "secondary" : "outline"}
                                             size="sm"
@@ -983,7 +1085,7 @@ export function MasterListTable({
                                                 size="sm"
                                                 onClick={() => {
                                                     setIsReordering(true)
-                                                    setSelectionMode('none') // Disable selection mode when reordering
+                                                    setSelectionMode('none')
                                                     setSelectedCells([])
                                                 }}
                                             >
@@ -995,7 +1097,14 @@ export function MasterListTable({
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => setFullScreenMode(fullScreenMode === 'employee' ? 'none' : 'employee')}
+                                    onClick={() => {
+                                        const newMode = fullScreenMode === 'employee' ? 'none' : 'employee'
+                                        setFullScreenMode(newMode)
+                                        if (newMode === 'none') {
+                                            setZoomLevel(1)
+                                            setIsFitToScreen(false)
+                                        }
+                                    }}
                                 >
                                     {fullScreenMode === 'employee' ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                                 </Button>
@@ -1009,8 +1118,16 @@ export function MasterListTable({
                             <div className="hidden print:block print-month-title">
                                 {monthName}
                             </div>
-                            <div className={`overflow-auto masterlist-print-table ${fullScreenMode === 'employee' ? "h-full" : "max-h-[60vh]"}`}>
-                                <div className="min-w-max">
+                            <div className={`overflow-auto masterlist-print-table ${fullScreenMode === 'employee' ? "h-full" : "max-h-[60vh]"} ${isFitToScreen ? 'overflow-hidden' : ''}`} ref={containerRef}>
+                                <div
+                                    className="min-w-max transition-all duration-200 ease-out origin-top-left"
+                                    ref={contentRef}
+                                    style={{
+                                        // Use CSS zoom for non-standard but effective scaling in Chrome/Safari
+                                        // Fallback to transform if needed, but zoom handles layout flow better
+                                        zoom: zoomLevel
+                                    } as any}
+                                >
 
                                     {renderHeaderRow("Employees")}
                                     {renderEventsRow()}
@@ -1145,7 +1262,14 @@ export function MasterListTable({
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => setFullScreenMode(fullScreenMode === 'student' ? 'none' : 'student')}
+                                            onClick={() => {
+                                                const newMode = fullScreenMode === 'student' ? 'none' : 'student'
+                                                setFullScreenMode(newMode)
+                                                if (newMode === 'none') {
+                                                    setZoomLevel(1)
+                                                    setIsFitToScreen(false)
+                                                }
+                                            }}
                                         >
                                             {fullScreenMode === 'student' ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                                         </Button>
