@@ -97,6 +97,7 @@ export const MasterListPrintComponent = React.forwardRef<HTMLDivElement, MasterL
                                 top: 0;
                             }
                         }
+                    
                     `}
                 </style>
 
@@ -105,9 +106,9 @@ export const MasterListPrintComponent = React.forwardRef<HTMLDivElement, MasterL
 
                     {/* Legends Display */}
                     {legends && legends.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-1">
                             {legends.map(legend => (
-                                <div key={legend.id} className="flex items-center gap-1 text-[9px] bg-gray-100 px-2 py-0.5 rounded-full border border-gray-300">
+                                <div key={legend.id} className="flex items-center gap-0.5 text-[8px] bg-gray-100 px-1 py-0.5 rounded-full border border-gray-300">
                                     <div className="w-2 h-2 rounded-full border border-gray-400" style={{ backgroundColor: legend.color }} />
                                     <span className="font-medium">
                                         {legend.from_location === legend.to_location ? (
@@ -144,6 +145,7 @@ export const MasterListPrintComponent = React.forwardRef<HTMLDivElement, MasterL
                             })}
                             <th className="border border-gray-400 p-1.5 w-9 bg-gray-100 text-center font-bold text-[9px]">時間</th>
                             <th className="border border-gray-400 p-1.5 w-9 bg-gray-100 text-center font-bold text-[9px]">有休</th>
+                            <th className="border border-gray-400 p-1.5 w-20 bg-gray-100 text-left">Name</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -168,6 +170,8 @@ export const MasterListPrintComponent = React.forwardRef<HTMLDivElement, MasterL
                             })}
                             {/* Empty cells for Time and Paid Leave columns */}
                             <td className="border border-gray-400 p-[5px]"></td>
+                            <td className="border border-gray-400 p-[5px]"></td>
+                            {/* Empty cell for repeated Name column */}
                             <td className="border border-gray-400 p-[5px]"></td>
                         </tr>
                         {employees.map(person => (
@@ -309,6 +313,10 @@ export const MasterListPrintComponent = React.forwardRef<HTMLDivElement, MasterL
                                         }
                                     })()}
                                 </td>
+                                <td className="border border-gray-400 p-[6px] font-medium truncate">
+                                    {person.full_name}
+                                </td>
+
                             </tr>
                         ))}
                     </tbody>
