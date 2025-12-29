@@ -87,9 +87,9 @@ export const MasterListPrintComponent = React.forwardRef<HTMLDivElement, MasterL
                                 visibility: visible !important;
                             }
                             .print-container {
-                                /* transform: scale(0.65); */
-                                /* transform-origin: top left; */
-                                /* width: 150%; */
+                                transform: scale(0.95); /* Adjust this value to scale the table (e.g. 0.9, 0.8) */
+                                transform-origin: top left;
+                                width: 105%; /* 1 / scale * 100 approx */
                                 min-width: 1024px;
                                 visibility: visible !important;
                                 position: absolute;
@@ -158,7 +158,7 @@ export const MasterListPrintComponent = React.forwardRef<HTMLDivElement, MasterL
                                 return (
                                     <td
                                         key={day}
-                                        className={`border border-gray-400 p-[2px] text-center align-top text-[7px] leading-tight whitespace-normal break-words ${isRestDay ? 'bg-red-50/30' : ''}`}
+                                        className={`border border-gray-400 p-[2px] text-center align-top text-[7px] leading-tight whitespace-normal break-words ${isRestDay ? 'bg-red-100' : ''}`}
                                     >
                                         <div className="line-clamp-2 overflow-hidden max-h-[2.5em]">
                                             {dayEvents.map(e => e.title).join(', ')}
@@ -172,7 +172,7 @@ export const MasterListPrintComponent = React.forwardRef<HTMLDivElement, MasterL
                         </tr>
                         {employees.map(person => (
                             <tr key={person.id} className="border-b border-gray-400">
-                                <td className="border border-gray-400 p-[7px] font-medium truncate">
+                                <td className="border border-gray-400 p-[6px] font-medium truncate">
                                     {person.full_name}
                                 </td>
                                 {days.map(day => {
@@ -186,7 +186,7 @@ export const MasterListPrintComponent = React.forwardRef<HTMLDivElement, MasterL
 
                                     if (shift) {
                                         if (shift.date) { // Just a check
-                                            if (shift.shift_type === 'work') {
+                                            if (shift.shift_type === 'work' || shift.shift_type === 'work_no_break') {
                                                 const start = shift.start_time?.slice(0, 5)
                                                 const end = shift.end_time?.slice(0, 5)
 
@@ -202,7 +202,7 @@ export const MasterListPrintComponent = React.forwardRef<HTMLDivElement, MasterL
                                                 }
                                             } else if (shift.shift_type === 'paid_leave') {
                                                 cellContent = '有休'
-                                                cellClass = 'bg-yellow-50'
+                                                cellClass = 'bg-red-50'
                                             } else if (shift.shift_type === 'half_paid_leave') {
                                                 cellContent = '半休'
                                                 cellClass = 'bg-yellow-50'
@@ -241,7 +241,7 @@ export const MasterListPrintComponent = React.forwardRef<HTMLDivElement, MasterL
                                     return (
                                         <td
                                             key={day}
-                                            className={`border border-gray-400 p-[5px] text-center whitespace-nowrap overflow-hidden text-[8px] ${cellClass} ${isRestDay ? 'bg-red-50/30' : ''}`}
+                                            className={`border border-gray-400 p-[5px] text-center whitespace-nowrap overflow-hidden text-[8px] ${cellClass} ${isRestDay ? 'bg-red-100' : ''}`}
                                             style={shift?.color ? { backgroundColor: shift.color } : {}}
                                         >
                                             {cellContent}
