@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, X, ChevronDown } from 'lucide-react'
 import { getAllEmployees, setPreferredRest, deletePreferredRest, Person } from '@/app/actions/kiosk'
 import { getSystemEvents, SystemEvent } from '@/app/admin/settings/actions'
 import { getMonthlyMasterList, MasterListShiftData } from '@/app/admin/masterlist/actions'
@@ -24,6 +24,7 @@ export default function SetDayOffPage() {
     const [events, setEvents] = useState<SystemEvent[]>([])
     const [shifts, setShifts] = useState<any[]>([])
     const [loading, setLoading] = useState(false)
+    const [isInstructionsExpanded, setIsInstructionsExpanded] = useState(false)
 
     const currentYear = currentDate.getFullYear()
     const currentMonth = currentDate.getMonth()
@@ -84,8 +85,8 @@ export default function SetDayOffPage() {
             const currentYear = now.getFullYear()
             const currentMonth = now.getMonth()
 
-            // Deadline is the 19th of the current month at 23:59:59
-            const deadline = new Date(currentYear, currentMonth, 19, 23, 59, 59)
+            // Deadline is the 21st of the current month at 23:59:59
+            const deadline = new Date(currentYear, currentMonth, 21, 23, 59, 59)
 
             const difference = deadline.getTime() - now.getTime()
 
@@ -195,7 +196,7 @@ export default function SetDayOffPage() {
 
         for (let i = 0; i < firstDay; i++) {
             days.push(
-                <div key={`empty-${i}`} className="p-2 border border-border/50 bg-slate-50/50 min-h-[100px]"></div>
+                <div key={`empty-${i}`} className="p-2 border border-border/50 bg-slate-50/50 min-h-[80px] md:min-h-[130px]"></div>
             )
         }
 
@@ -228,7 +229,7 @@ export default function SetDayOffPage() {
                 <div
                     key={day}
                     className={`
-                        p-2 border border-border/50 min-h-[120px] cursor-pointer
+                        p-1 md:p-2 border border-border/50 min-h-[80px] md:min-h-[130px] cursor-pointer
                         hover:bg-accent transition-colors relative group flex flex-col
                         ${isToday ? 'bg-accent/50' : ''}
                         ${isRestDayOrHoliday ? 'bg-red-50 hover:bg-red-100' : ''}
@@ -238,7 +239,7 @@ export default function SetDayOffPage() {
                 >
                     <div className="flex justify-between items-start">
                         <div className={`
-                            text-sm font-medium mb-1 h-7 w-7 flex items-center justify-center rounded-full
+                            text-xs md:text-sm font-medium mb-1 h-5 w-5 md:h-7 md:w-7 flex items-center justify-center rounded-full
                             ${isToday ? 'bg-primary text-primary-foreground' : ''}
                             ${isRestDayOrHoliday && !isToday ? 'text-red-600' : ''}
                         `}>
@@ -252,7 +253,7 @@ export default function SetDayOffPage() {
                             <div
                                 key={event.id}
                                 className={`
-                                    text-[10px] leading-tight truncate font-medium
+                                    text-[8px] md:text-[10px] leading-tight truncate font-medium
                                     ${(event.event_type === 'holiday' || event.is_holiday) ? 'text-red-600' : 'text-blue-600'}
                                 `}
                             >
@@ -262,22 +263,22 @@ export default function SetDayOffPage() {
                     </div>
 
                     {/* Preferred Rest Names - Stacked */}
-                    <div className="mt-auto space-y-1">
+                    <div className="mt-auto space-y-0.5 md:space-y-1">
                         {preferredShifts.map(shift => {
                             const employee = employees.find(e => e.id === shift.person_id)
                             if (!employee) return null
 
                             return (
-                                <div key={shift.id} className="flex items-center justify-between text-xs font-semibold text-blue-700 bg-blue-100/50 rounded py-1 px-2">
+                                <div key={shift.id} className="flex items-center justify-between text-[9px] md:text-xs font-semibold text-blue-700 bg-blue-100/50 rounded py-0.5 md:py-1 px-1 md:px-2">
                                     <span className="truncate mr-1">{employee.full_name}</span>
                                     {!isSubmissionClosed && (
                                         <button
                                             type="button"
                                             onClick={(e) => handleDelete(e, shift.person_id, shift.date)}
-                                            className="text-blue-400 hover:text-red-500 transition-colors p-1 hover:bg-blue-200 rounded-full z-10"
+                                            className="text-blue-400 hover:text-red-500 transition-colors p-0.5 md:p-1 hover:bg-blue-200 rounded-full z-10 shrink-0"
                                             title="Remove"
                                         >
-                                            <X className="h-3 w-3" />
+                                            <X className="h-2.5 w-2.5 md:h-3 md:w-3" />
                                         </button>
                                     )}
                                 </div>
@@ -299,7 +300,7 @@ export default function SetDayOffPage() {
                 <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-[1px] z-50 pointer-events-none flex items-center justify-center">
                     <div className="bg-white/90 p-8 rounded-xl shadow-2xl text-center border-2 border-red-200 pointer-events-auto">
                         <h2 className="text-3xl font-bold text-red-600 mb-2">Submission Closed</h2>
-                        <p className="text-slate-600 text-lg">The deadline (19th of the month) has passed.</p>
+                        <p className="text-slate-600 text-lg">The deadline (21st of the month) has passed.</p>
                         <p className="text-slate-500 mt-2">Please contact the administrator for changes.</p>
                         <Link href="/kiosk/employee">
                             <Button className="mt-6" size="lg">
@@ -310,76 +311,90 @@ export default function SetDayOffPage() {
                 </div>
             )}
 
-            <div className={`max-w-6xl mx-auto space-y-6 ${isSubmissionClosed ? 'opacity-50 pointer-events-none select-none grayscale' : ''}`}>
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
+            <div className={`max-w-6xl mx-auto space-y-4 ${isSubmissionClosed ? 'opacity-50 pointer-events-none select-none grayscale' : ''}`}>
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-4">
+                    <div className="hidden md:flex items-center gap-2 md:gap-4">
                         <Link href="/kiosk/employee">
                             <Button variant="outline" size="sm">
-                                <ArrowLeft className="h-4 w-4 mr-2" />
-                                Back to Kiosk
+                                <ArrowLeft className="h-4 w-4 md:mr-2" />
+                                <span className="hidden md:inline">Back to Kiosk</span>
                             </Button>
                         </Link>
-                        <h1 className="text-2xl font-bold text-slate-800">Set Preferred Day Off</h1>
+                        <h1 className="text-lg md:text-2xl font-bold text-slate-800">Set Preferred Day Off</h1>
                     </div>
                     {!isSubmissionClosed && (
-                        <div className="bg-orange-100 text-orange-800 px-4 py-2 rounded-lg font-mono font-bold border border-orange-200 shadow-sm">
+                        <div className="bg-orange-100 text-orange-800 px-3 md:px-4 py-1.5 md:py-2 rounded-lg font-mono text-xs md:text-base font-bold border border-orange-200 shadow-sm">
                             Deadline in: {timeLeft}
                         </div>
                     )}
                 </div>
 
                 <Card className="bg-blue-50/50 border-blue-100">
-                    <CardContent className="pt-6">
-                        <div className="grid md:grid-cols-2 gap-6">
-                            <div>
-                                <h3 className="font-semibold text-lg text-blue-900 mb-2">Instructions</h3>
-                                <p className="text-blue-800 mb-4">
-                                    This is where you put your preferred rest. <br />
-                                    <span className="font-bold text-red-600">Deadline: 19th of the month.</span>
-                                </p>
-                                <ul className="space-y-2 text-blue-700">
-                                    <li className="flex items-center gap-2">
-                                        <span className="bg-blue-200 text-blue-800 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">1</span>
-                                        Pick your name
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <span className="bg-blue-200 text-blue-800 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">2</span>
-                                        Pick your preferred day
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <span className="bg-blue-200 text-blue-800 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">3</span>
-                                        Add optional memo (e.g. AM off, PM off)
-                                    </li>
-                                </ul>
+                    <CardContent className="py-2">
+                        {/* Mobile: Collapsible header */}
+                        <button
+                            onClick={() => setIsInstructionsExpanded(!isInstructionsExpanded)}
+                            className="w-full md:hidden flex items-center justify-between mb-4 p-3 bg-blue-100 rounded-lg hover:bg-blue-200 transition-colors"
+                        >
+                            <div className="flex items-center gap-2">
+                                <h3 className="font-semibold text-lg text-blue-900">Instructions / 説明</h3>
                             </div>
-                            <div className="border-t md:border-t-0 md:border-l border-blue-200 pt-4 md:pt-0 md:pl-6">
-                                <h3 className="font-semibold text-lg text-blue-900 mb-2">説明 (Instructions)</h3>
-                                <p className="text-blue-800 mb-4">
-                                    ここで希望休を設定してください。<br />
-                                    <span className="font-bold text-red-600">締め切り: 毎月19日</span>
-                                </p>
-                                <ul className="space-y-2 text-blue-700">
-                                    <li className="flex items-center gap-2">
-                                        <span className="bg-blue-200 text-blue-800 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">1</span>
-                                        自分の名前を選択してください
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <span className="bg-blue-200 text-blue-800 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">2</span>
-                                        希望する日を選択してください
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <span className="bg-blue-200 text-blue-800 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">3</span>
-                                        メモを追加 (例: AM休み、PM休み など)
-                                    </li>
-                                </ul>
+                            <ChevronDown className={`h-5 w-5 text-blue-900 transition-transform ${isInstructionsExpanded ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {/* Desktop: Always visible | Mobile: Collapsible */}
+                        <div className={`${isInstructionsExpanded ? 'block' : 'hidden'} md:block`}>
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <div>
+                                    <h3 className="font-semibold text-lg text-blue-900 mb-2 hidden md:block">Instructions</h3>
+                                    <p className="text-blue-800 mb-4 text-sm md:text-base">
+                                        This is where you put your preferred rest. <br />
+                                        <span className="font-bold text-red-600">Deadline: 21st of the month.</span>
+                                    </p>
+                                    <ul className="space-y-2 text-blue-700 text-sm md:text-base">
+                                        <li className="flex items-center gap-2">
+                                            <span className="bg-blue-200 text-blue-800 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0">1</span>
+                                            Pick your name
+                                        </li>
+                                        <li className="flex items-center gap-2">
+                                            <span className="bg-blue-200 text-blue-800 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0">2</span>
+                                            Pick your preferred day
+                                        </li>
+                                        <li className="flex items-center gap-2">
+                                            <span className="bg-blue-200 text-blue-800 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0">3</span>
+                                            Add optional memo (e.g. AM off, PM off)
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div className="border-t md:border-t-0 md:border-l border-blue-200 pt-4 md:pt-0 md:pl-6">
+                                    <h3 className="font-semibold text-lg text-blue-900 mb-2 hidden md:block">説明 (Instructions)</h3>
+                                    <p className="text-blue-800 mb-4 text-sm md:text-base">
+                                        ここで希望休を設定してください。<br />
+                                        <span className="font-bold text-red-600">締め切り: 毎月21日</span>
+                                    </p>
+                                    <ul className="space-y-2 text-blue-700 text-sm md:text-base">
+                                        <li className="flex items-center gap-2">
+                                            <span className="bg-blue-200 text-blue-800 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0">1</span>
+                                            自分の名前を選択してください
+                                        </li>
+                                        <li className="flex items-center gap-2">
+                                            <span className="bg-blue-200 text-blue-800 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0">2</span>
+                                            希望する日を選択してください
+                                        </li>
+                                        <li className="flex items-center gap-2">
+                                            <span className="bg-blue-200 text-blue-800 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0">3</span>
+                                            メモを追加 (例: AM休み、PM休み など)
+                                        </li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
                 <Card className="border-none shadow-lg">
-                    <CardHeader className="pb-4">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <CardHeader className="pb-2">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                             <div className="w-full md:w-72">
                                 <label className="text-sm font-medium mb-2 block text-muted-foreground">Select Your Name</label>
                                 <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId} disabled={isSubmissionClosed}>
@@ -396,35 +411,37 @@ export default function SetDayOffPage() {
                                 </Select>
                             </div>
 
-                            <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-lg border">
+                            <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border">
                                 <Button
                                     variant="ghost"
-                                    size="icon"
+                                    size="sm"
                                     onClick={handlePreviousMonth}
                                     disabled={loading || isSubmissionClosed}
+                                    className="h-8 w-8 p-0"
                                 >
-                                    <ChevronLeft className="h-5 w-5" />
+                                    <ChevronLeft className="h-4 w-4" />
                                 </Button>
-                                <div className="text-lg font-semibold min-w-[140px] text-center">
+                                <div className="text-sm font-semibold min-w-[120px] text-center">
                                     {monthName}
                                 </div>
                                 <Button
                                     variant="ghost"
-                                    size="icon"
+                                    size="sm"
                                     onClick={handleNextMonth}
                                     disabled={loading || isSubmissionClosed}
+                                    className="h-8 w-8 p-0"
                                 >
-                                    <ChevronRight className="h-5 w-5" />
+                                    <ChevronRight className="h-4 w-4" />
                                 </Button>
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="px-2 pb-2">
                         <div className="grid grid-cols-7 gap-0 border border-border rounded-lg overflow-hidden bg-white">
                             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
                                 <div
                                     key={day}
-                                    className="p-3 text-center text-sm font-medium text-muted-foreground border-b border-r border-border/50 bg-slate-50 last:border-r-0"
+                                    className="p-1.5 md:p-3 text-center text-xs md:text-sm font-medium text-muted-foreground border-b border-r border-border/50 bg-slate-50 last:border-r-0"
                                 >
                                     {day}
                                 </div>
