@@ -86,7 +86,7 @@ async function main() {
         console.log('Satasaurus category not found, creating...');
         const { data: newCat, error: createError } = await supabase
             .from('categories')
-            .insert({ name: 'Satasaurus Class', for_role: 'student', is_active: true, sort_order: 100 })
+            .insert({ name: 'Satursaurus Class', for_role: 'student', is_active: true, sort_order: 100 })
             .select('id')
             .single();
         if (createError) {

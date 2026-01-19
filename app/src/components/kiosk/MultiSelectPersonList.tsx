@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { CheckSquare, Loader2, Square, Users } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
-const CATEGORY_ORDER = ['Academy', 'Ex', 'C-Lab', 'Satasaurus']
+const CATEGORY_ORDER = ['Academy', 'Ex', 'C-Lab', 'Satursaurus']
 
 interface MultiSelectPersonListProps {
     people: Person[]

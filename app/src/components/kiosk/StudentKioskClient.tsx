@@ -21,7 +21,7 @@ export function StudentKioskClient({ initialPeople, actionLog }: StudentKioskCli
 
     // Determine visible categories based on toggle
     const visibleCategories = showSatasaurus
-        ? ['Satasaurus']
+        ? ['Satursaurus']
         : REGULAR_CATEGORIES
 
     // Filter people based on toggle
@@ -61,7 +61,7 @@ export function StudentKioskClient({ initialPeople, actionLog }: StudentKioskCli
             // But if they are "Satasaurus" ONLY, we shouldn't show them.
             // So: if they have 'Satasaurus' but NO regular categories, hide them.
 
-            const isOnlySatasaurus = person.categories.length === 1 && person.categories[0] === 'Satasaurus'
+            const isOnlySatasaurus = person.categories.length === 1 && person.categories[0] === 'Satursaurus'
             if (isOnlySatasaurus) return false
 
             // What if they are ['Satasaurus', 'SomeOther']?
@@ -91,7 +91,7 @@ export function StudentKioskClient({ initialPeople, actionLog }: StudentKioskCli
             // OR
             // 2. Has NO 'Satasaurus' category (pure 'Other')
 
-            const hasSatasaurus = person.categories.includes('Satasaurus')
+            const hasSatasaurus = person.categories.includes('Satursaurus')
             if (hasVisibleCategory) return true
 
             // If no visible category matches (e.g. empty, or 'Satasaurus' only, or 'Random')

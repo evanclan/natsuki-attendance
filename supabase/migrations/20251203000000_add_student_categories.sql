@@ -12,5 +12,5 @@ SELECT 'C-Lab', 'student', 3
 WHERE NOT EXISTS (SELECT 1 FROM categories WHERE name = 'C-Lab' AND for_role = 'student');
 
 INSERT INTO categories (name, for_role, sort_order)
-SELECT 'Satasaurus', 'student', 4
-WHERE NOT EXISTS (SELECT 1 FROM categories WHERE name = 'Satasaurus' AND for_role = 'student');
+SELECT 'Satursaurus', 'student', 4
+WHERE NOT EXISTS (SELECT 1 FROM categories WHERE name = 'Satursaurus' AND for_role = 'student');

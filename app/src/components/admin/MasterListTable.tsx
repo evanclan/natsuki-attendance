@@ -564,7 +564,7 @@ export function MasterListTable({
         // Hide students with ONLY the "Satasaurus" category
         // Students with multiple categories (e.g., Academy + Satasaurus) should still be shown
         const categories = p.categories || []
-        if (categories.length === 1 && categories[0]?.name?.toLowerCase() === 'satasaurus') {
+        if (categories.length === 1 && categories[0]?.name?.toLowerCase() === 'satursaurus') {
             return false
         }
         return true
@@ -573,7 +573,7 @@ export function MasterListTable({
     const satasaurusStudents = people.filter(p => {
         if (p.role !== 'student') return false
         const categories = p.categories || []
-        return categories.some((c: any) => c?.name?.toLowerCase() === 'satasaurus')
+        return categories.some((c: any) => c?.name?.toLowerCase() === 'satursaurus')
     })
 
     const renderRow = (person: Person) => (
