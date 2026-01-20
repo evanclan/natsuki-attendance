@@ -1225,12 +1225,12 @@ export function MasterListTable({
                             {showSatasaurus ? (
                                 <>
                                     <ChevronLeft className="h-4 w-4 rotate-90" />
-                                    Hide Satasaurus
+                                    Hide Satursaurus
                                 </>
                             ) : (
                                 <>
                                     <ChevronRight className="h-4 w-4 rotate-90" />
-                                    Open Satasaurus
+                                    Open Satursaurus
                                 </>
                             )}
                             <span className="text-muted-foreground">({satasaurusStudents.length} students)</span>
@@ -1240,7 +1240,7 @@ export function MasterListTable({
                         {showSatasaurus && (
                             <div className={fullScreenMode === 'student' ? "fixed inset-0 z-50 bg-background p-6 flex flex-col" : "space-y-2"}>
                                 <div className="flex items-center justify-between">
-                                    <h3 className="text-lg font-semibold">Satasaurus Students <span className="text-sm font-normal text-muted-foreground">(Saturdays only)</span></h3>
+                                    <h3 className="text-lg font-semibold">Satursaurus Students <span className="text-sm font-normal text-muted-foreground">(Saturdays only)</span></h3>
                                     <div className="flex items-center gap-2">
                                         <Button
                                             variant={selectionMode === 'student' ? "secondary" : "outline"}
@@ -1257,7 +1257,7 @@ export function MasterListTable({
                                             className={selectionMode === 'student' ? "bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200" : ""}
                                         >
                                             {selectionMode === 'student' ? <CheckSquare className="h-4 w-4 mr-2" /> : <Square className="h-4 w-4 mr-2" />}
-                                            Satasaurus Selection
+                                            Satursaurus Selection
                                         </Button>
                                         <Button
                                             variant="ghost"
@@ -1281,7 +1281,7 @@ export function MasterListTable({
                                             {/* Satasaurus Header Row - Saturdays Only */}
                                             <div className="flex border-b border-border bg-muted sticky top-0 z-40">
                                                 <div className="sticky left-0 z-50 w-40 min-w-[160px] p-2 border-r border-border bg-muted font-semibold flex items-center">
-                                                    Satasaurus Students
+                                                    Satursaurus Students
                                                 </div>
                                                 {saturdayDays.map(day => {
                                                     const date = new Date(year, month, day)
