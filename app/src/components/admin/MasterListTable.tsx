@@ -1214,7 +1214,6 @@ export function MasterListTable({
                                 </div>
                             </div>
                         </div>
-                        {/* Print & Export Buttons - Bottom Right */}
                         <div className="flex justify-end mt-2 print-no-show gap-2">
                             <Button
                                 variant="outline"
@@ -1280,6 +1279,21 @@ export function MasterListTable({
                                     {students.map(renderRow)}
                                 </div>
                             </div>
+                        </div>
+                        <div className="flex justify-end mt-2 print-no-show gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                role="link"
+                                onClick={() => {
+                                    const url = `/print/student-masterlist?year=${year}&month=${month}`
+                                    window.open(url, '_blank')
+                                }}
+                                className="gap-2"
+                            >
+                                <Printer className="h-4 w-4" />
+                                Print Table
+                            </Button>
                         </div>
                     </div>
                 )}
