@@ -133,7 +133,7 @@ export function ShiftEditDialog({
                 location: (shiftType === 'work' || shiftType === 'work_no_break' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf)) ? location : undefined,
                 paid_leave_hours: (shiftType === 'paid_leave' || shiftType === 'flex') ? paidLeaveHours : undefined,
                 memo: memo,
-                color: (shiftType === 'work' || shiftType === 'work_no_break' || role === 'student') ? color : undefined,
+                color: (shiftType === 'work' || shiftType === 'work_no_break' || (role === 'student' && shiftType !== 'rest')) ? color : undefined,
                 force_break: (shiftType === 'work') ? forceBreak : undefined
             })
 
@@ -209,6 +209,8 @@ export function ShiftEditDialog({
                                 {role === 'student' ? (
                                     <>
 
+                                        <SelectItem value="user_note">Memo</SelectItem>
+                                        <SelectItem value="rest">Rest</SelectItem>
                                         <SelectItem value="sick_absent">Sick Absent</SelectItem>
                                         <SelectItem value="planned_absent">Planned Absent</SelectItem>
                                         <SelectItem value="family_reason">Family Matters</SelectItem>

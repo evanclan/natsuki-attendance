@@ -12,7 +12,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { ChevronLeft, ChevronRight, Plus, CheckSquare, Square, Trash2, Edit, X, Copy, Clipboard, Maximize2, Minimize2, Check, Printer, CalendarDays, Monitor, Minus, RotateCcw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, CheckSquare, Square, Trash2, Edit, X, Copy, Clipboard, Maximize2, Minimize2, Check, Printer, CalendarDays, Monitor, Minus, RotateCcw, FileSpreadsheet } from 'lucide-react'
 import React from 'react'
 import {
     DndContext,
@@ -37,6 +37,7 @@ import { ShiftCell } from './ShiftCell'
 import { useCallback } from 'react'
 
 import { formatLocalDate, calculateExpectedHours } from '@/lib/utils'
+import { exportMasterListToExcel } from '@/lib/excelExport'
 import { ShiftEditDialog } from './ShiftEditDialog'
 import { MonthlyStatusDialog } from './MonthlyStatusDialog'
 import { SystemEventDialog } from './SystemEventDialog'
@@ -219,6 +220,19 @@ export function MasterListTable({
     const handlePrint = () => {
         const url = `/print/masterlist?year=${year}&month=${month}`
         window.open(url, '_blank')
+    }
+
+    const handleExportExcel = () => {
+        exportMasterListToExcel({
+            year,
+            month,
+            employees,
+            days,
+            shifts,
+            events,
+            legends,
+            calculateExpectedHours
+        })
     }
 
 
@@ -831,6 +845,54 @@ export function MasterListTable({
         </div>
     )
 
+    const renderStudentCountRow = () => (
+        <div className="flex border-b border-border bg-slate-100 font-medium text-sm sticky top-[40px] z-[39]">
+            <div className="sticky left-0 z-30 w-40 min-w-[160px] p-2 border-r border-border bg-slate-100 flex items-center text-muted-foreground">
+                Student Count
+            </div>
+            {days.map(day => {
+                const date = new Date(year, month, day)
+                const dateStr = formatLocalDate(date)
+                const dayStatus = getDayStatus(day)
+
+                // If it's a system rest day/holiday, show "-" (No Class)
+                if (dayStatus.isRestDay) {
+                    return (
+                        <div
+                            key={day}
+                            className="min-w-[100px] p-2 border-r border-border text-center flex items-center justify-center bg-red-50/50"
+                        >
+                            -
+                        </div>
+                    )
+                }
+
+                // Absent statuses: Rest, Sick Absent, Planned Absent, Family Matters, Other Reason
+                const absentStatuses = ['rest', 'sick_absent', 'planned_absent', 'family_reason', 'other_reason']
+
+                const absentCount = students.reduce((count, student) => {
+                    const shift = shifts.find(s => s.person_id === student.id && s.date === dateStr)
+
+                    if (shift && absentStatuses.includes(shift.shift_type)) {
+                        return count + 1
+                    }
+                    return count
+                }, 0)
+
+                const presentCount = students.length - absentCount
+
+                return (
+                    <div
+                        key={day}
+                        className="min-w-[100px] p-2 border-r border-border text-center flex items-center justify-center"
+                    >
+                        {presentCount}
+                    </div>
+                )
+            })}
+        </div>
+    )
+
     return (
         <React.Fragment>
             <div className="space-y-8 pb-32 print:hidden">
@@ -1152,8 +1214,18 @@ export function MasterListTable({
                                 </div>
                             </div>
                         </div>
-                        {/* Print Button - Bottom Right */}
-                        <div className="flex justify-end mt-2 print-no-show">
+                        {/* Print & Export Buttons - Bottom Right */}
+                        <div className="flex justify-end mt-2 print-no-show gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                type="button"
+                                onClick={handleExportExcel}
+                                className="gap-2"
+                            >
+                                <FileSpreadsheet className="h-4 w-4" />
+                                Export in Excel
+                            </Button>
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -1162,7 +1234,6 @@ export function MasterListTable({
                             >
                                 <Printer className="h-4 w-4" />
                                 Print Table
-
                             </Button>
                         </div>
                     </div>
@@ -1204,6 +1275,7 @@ export function MasterListTable({
                             <div className={`overflow-auto ${fullScreenMode === 'student' ? "h-full" : "max-h-[60vh]"}`}>
                                 <div className="min-w-max">
                                     {renderHeaderRow("Students", false)}
+                                    {renderStudentCountRow()}
                                     {renderEventsRow()}
                                     {students.map(renderRow)}
                                 </div>

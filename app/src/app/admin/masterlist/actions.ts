@@ -4,7 +4,7 @@ import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { formatLocalDate } from '@/lib/utils'
 
-export type ShiftType = 'work' | 'rest' | 'absent' | 'paid_leave' | 'half_paid_leave' | 'business_trip' | 'flex' | 'special_leave' | 'preferred_rest' | 'present' | 'sick_absent' | 'planned_absent' | 'family_reason' | 'other_reason' | 'work_no_break'
+export type ShiftType = 'work' | 'rest' | 'absent' | 'paid_leave' | 'half_paid_leave' | 'business_trip' | 'flex' | 'special_leave' | 'preferred_rest' | 'present' | 'sick_absent' | 'planned_absent' | 'family_reason' | 'other_reason' | 'work_no_break' | 'user_note'
 
 export type MasterListShiftData = {
     date: string
@@ -82,7 +82,46 @@ export async function getMonthlyMasterList(year: number, month: number) {
                 people: ((people as any[])?.map((p: any) => ({
                     ...p,
                     categories: p.person_categories?.map((pc: any) => pc.categories) || []
-                })) as any) || [],
+                })) as any[])?.sort((a: any, b: any) => {
+                    // 1. Sort by Role (Employees first)
+                    // Assuming 'employee' role string, or just preserve relative order if they are different groups.
+                    // But to be safe, explicit check:
+                    const isEmpA = a.role === 'employee' || a.role === 'admin' || a.role === 'manager'; // broadly non-student
+                    const isEmpB = b.role === 'employee' || b.role === 'admin' || b.role === 'manager';
+
+                    // Actually, let's just use strict 'student' check.
+                    const isStudentA = a.role === 'student';
+                    const isStudentB = b.role === 'student';
+
+                    if (!isStudentA && isStudentB) return -1;
+                    if (isStudentA && !isStudentB) return 1;
+
+                    // 2. If both are Employees (non-students), sort by display_order
+                    if (!isStudentA && !isStudentB) {
+                        return (a.display_order ?? 9999) - (b.display_order ?? 9999);
+                    }
+
+                    // 3. If both are Students, apply Category Priority
+                    const getCategoryRank = (p: any) => {
+                        const cats = p.categories || [];
+                        // Academy: Rank 0
+                        if (cats.some((c: any) => c.name?.toLowerCase().includes('academy'))) return 0;
+                        // C-Lab: Rank 1
+                        if (cats.some((c: any) => c.name?.toLowerCase().includes('c-lab'))) return 1;
+                        // Ex: Rank 2
+                        if (cats.some((c: any) => c.name?.toLowerCase() === 'ex')) return 2;
+                        // Others: Rank 3
+                        return 3;
+                    };
+
+                    const rankA = getCategoryRank(a);
+                    const rankB = getCategoryRank(b);
+
+                    if (rankA !== rankB) return rankA - rankB;
+
+                    // 4. If same Category Rank, sort Alphabetically by full_name
+                    return (a.full_name || '').localeCompare(b.full_name || '');
+                }) || [],
                 shifts: shifts || [],
                 events: events || [],
                 attendance: attendance || []

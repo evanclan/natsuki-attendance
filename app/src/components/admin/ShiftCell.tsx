@@ -132,6 +132,11 @@ export const ShiftCell = memo(function ShiftCell({
             if (shift.location && shift.location.toLowerCase() !== 'academy') {
                 mainContent += `\n${shift.location}`
             }
+        } else if (shift.shift_type === 'user_note') {
+            bgColor = 'bg-white'
+            textColor = 'text-foreground'
+            // If color is set, it will override via style prop
+            mainContent = shift.memo || 'Memo'
         }
 
     } else {
