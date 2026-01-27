@@ -29,10 +29,22 @@ type AttendanceRecord = {
     admin_note: string | null
 }
 
+type ShiftRecord = {
+    id: number
+    person_id: string
+    date: string
+    shift_type: string
+    start_time: string | null
+    end_time: string | null
+    color: string | null
+    shift_name: string | null
+}
+
 type SystemEvent = {
     id: string
     event_date: string
     title: string
+    event_type: 'holiday' | 'rest_day' | 'work_day' | 'event' | 'other'
     is_holiday: boolean
 }
 
@@ -42,10 +54,11 @@ type AllListTableProps = {
     employees: Employee[]
     students: Employee[]
     attendance: AttendanceRecord[]
+    shifts: ShiftRecord[]
     events: SystemEvent[]
 }
 
-export function AllListTable({ year, month, employees, students, attendance, events }: AllListTableProps) {
+export function AllListTable({ year, month, employees, students, attendance, shifts, events }: AllListTableProps) {
     const router = useRouter()
     const [dialogOpen, setDialogOpen] = useState(false)
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
@@ -87,10 +100,36 @@ export function AllListTable({ year, month, employees, students, attendance, eve
         return events.filter(e => e.event_date === dateStr)
     }
 
-    const isWeekend = (day: number) => {
+    const getDayStatus = (day: number) => {
         const date = new Date(year, month, day)
         const dayOfWeek = date.getDay()
-        return dayOfWeek === 0 || dayOfWeek === 6
+        const dayEvents = getDayEvents(day)
+
+        const isHolidayEvent = dayEvents.some(e => e.event_type === 'holiday' || e.is_holiday)
+        const isRestDayEvent = dayEvents.some(e => e.event_type === 'rest_day')
+        const isWorkDayEvent = dayEvents.some(e => e.event_type === 'work_day')
+
+        let isRestDay = false
+        // Default: Sunday is rest
+        if (dayOfWeek === 0) {
+            isRestDay = true
+        }
+
+        // Overrides
+        if (isWorkDayEvent) {
+            isRestDay = false
+        } else if (isRestDayEvent || isHolidayEvent) {
+            isRestDay = true
+        }
+
+        return {
+            isRestDay,
+            isWeekend: dayOfWeek === 0 || dayOfWeek === 6
+        }
+    }
+
+    const isWeekend = (day: number) => {
+        return getDayStatus(day).isWeekend
     }
 
     const formatTime = (isoString: string | null) => {
@@ -110,6 +149,21 @@ export function AllListTable({ year, month, employees, students, attendance, eve
         }
     }
 
+    const getShiftLabel = (type: string) => {
+        switch (type) {
+            case 'work': return 'Work'
+            case 'paid_leave': return 'Paid Leave'
+            case 'half_paid_leave': return 'Half Paid'
+            case 'business_trip': return 'B. Trip'
+            case 'special_leave': return 'Special'
+            case 'rest': return 'Rest'
+            case 'absent': return 'Absent'
+            case 'flex': return 'Flex'
+            case 'work_no_break': return 'Work (NB)'
+            default: return type
+        }
+    }
+
     const renderRow = (employee: Employee) => {
         const stats = calculateMonthlyStats(employee.id)
 
@@ -117,7 +171,7 @@ export function AllListTable({ year, month, employees, students, attendance, eve
             <div key={employee.id} className="flex border-b border-border hover:bg-slate-50">
                 <div className="sticky left-0 z-10 w-48 min-w-[192px] p-2 border-r border-border bg-background flex flex-col justify-center">
                     <div className="font-medium truncate" title={employee.full_name}>{employee.full_name}</div>
-                    <div className="text-xs text-muted-foreground">{employee.code}</div>
+
                     <div className="text-xs text-blue-600 mt-1">
                         {stats.daysAttended} days • {stats.totalHours}h
                     </div>
@@ -126,36 +180,59 @@ export function AllListTable({ year, month, employees, students, attendance, eve
                     const date = new Date(year, month, day)
                     const dateStr = formatLocalDate(date)
                     const attendanceRecord = attendance.find(a => a.person_id === employee.id && a.date === dateStr)
-                    const dayEvents = getDayEvents(day)
-                    const isHoliday = dayEvents.some(e => e.is_holiday)
-                    const isRest = isWeekend(day)
+                    const shift = shifts.find(s => s.person_id === employee.id && s.date === dateStr)
+                    const dayStatus = getDayStatus(day)
+                    const isRest = dayStatus.isRestDay
+
+                    // Determine background color
+                    let bgStyle = {}
+                    if (shift?.color) {
+                        bgStyle = { backgroundColor: shift.color }
+                    } else if (isRest || shift?.shift_type === 'rest' || shift?.shift_type === 'preferred_rest') {
+                        bgStyle = { backgroundColor: '#fef2f2' } // red-50 equivalent
+                    }
+
+                    // Hover effect class
+                    const hoverClass = shift?.color ? 'hover:opacity-90' : 'hover:bg-blue-50'
 
                     return (
                         <div
                             key={day}
                             onClick={() => handleCellClick(employee, day)}
+                            style={bgStyle}
                             className={`
                                 min-w-[120px] p-2 border-r border-border cursor-pointer
-                                hover:bg-blue-50 transition-colors
-                                ${isRest || isHoliday ? 'bg-red-50/50' : ''}
+                                transition-colors flex flex-col justify-between
+                                h-auto min-h-[60px]
+                                ${hoverClass}
                             `}
                         >
+                            {/* Top: Shift Status/Info */}
+                            <div className="text-[10px] font-semibold text-slate-700 mb-1 truncate px-1 rounded bg-white/40 w-fit max-w-full">
+                                {shift ? (
+                                    shift.shift_name || getShiftLabel(shift.shift_type)
+                                ) : (
+                                    <span className="opacity-0">-</span> // Placeholder to keep layout
+                                )}
+                            </div>
+
+                            {/* Bottom: Attendance Info */}
                             {attendanceRecord ? (
-                                <div className="space-y-1 text-xs">
-                                    <div className="flex items-center gap-1">
-                                        <span className="text-muted-foreground">In:</span>
-                                        <span className="font-medium">{formatTime(attendanceRecord.check_in_at)}</span>
+                                <div className="space-y-0.5 text-xs bg-white/60 p-1 rounded backdrop-blur-[1px]">
+                                    <div className="flex items-center justify-between gap-1">
+                                        <span className="text-muted-foreground text-[10px]">In</span>
+                                        <span className="font-medium font-mono">{formatTime(attendanceRecord.check_in_at)}</span>
                                     </div>
-                                    <div className="flex items-center gap-1">
-                                        <span className="text-muted-foreground">Out:</span>
-                                        <span className="font-medium">{formatTime(attendanceRecord.check_out_at)}</span>
+                                    <div className="flex items-center justify-between gap-1">
+                                        <span className="text-muted-foreground text-[10px]">Out</span>
+                                        <span className="font-medium font-mono">{formatTime(attendanceRecord.check_out_at)}</span>
                                     </div>
                                     {attendanceRecord.is_edited && (
-                                        <div className="text-[10px] text-blue-600">✎ Edited</div>
+                                        <div className="text-[9px] text-blue-600 text-right mt-0.5">✎ Edited</div>
                                     )}
                                 </div>
                             ) : (
-                                <div className="text-xs text-muted-foreground text-center">-</div>
+                                <div className="text-xs text-muted-foreground text-center mt-auto opacity-50">-</div>
                             )}
                         </div>
                     )
@@ -181,13 +258,13 @@ export function AllListTable({ year, month, employees, students, attendance, eve
                         {days.map(day => {
                             const date = new Date(year, month, day)
                             const dayName = date.toLocaleDateString('en-US', { weekday: 'short' })
-                            const isWknd = isWeekend(day)
+                            const isRest = getDayStatus(day).isRestDay
                             return (
                                 <div
                                     key={day}
                                     className={`
                                         min-w-[120px] p-1 border-r border-border text-center flex flex-col justify-center
-                                        ${isWknd ? 'text-red-500 bg-red-50/50' : ''}
+                                        ${isRest ? 'text-red-500 bg-red-50/50' : ''}
                                     `}
                                 >
                                     <div className="text-sm font-bold">{day}</div>

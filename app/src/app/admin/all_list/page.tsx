@@ -30,6 +30,7 @@ export default async function AllListPage({
                 employees={result.data.employees}
                 students={result.data.students}
                 attendance={result.data.attendance}
+                shifts={result.data.shifts}
                 events={result.data.events}
             />
         </div>

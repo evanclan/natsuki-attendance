@@ -13,25 +13,64 @@ export async function getAllEmployeesAttendance(year: number, month: number) {
         const startDateStr = formatLocalDate(startDate)
         const endDateStr = formatLocalDate(endDate)
 
-        // 1. Fetch all active employees (not students)
-        const { data: employees, error: employeesError } = await supabase
-            .from('people')
-            .select('id, full_name, code, role')
-            .eq('status', 'active')
-            .eq('role', 'employee')
+        // 1. Fetch all people (employees and students) with categories
+        // We use the same RPC or query as masterlist to ensure consistent opportunities for sorting
+        // Actually, let's use the RPC 'get_active_people_in_range' if available, as MasterList uses it.
+        // It provides 'person_categories' which is needed for proper sorting.
+
+        const { data: people, error: peopleError } = await supabase
+            .rpc('get_active_people_in_range', {
+                range_start: startDateStr,
+                range_end: endDateStr
+            })
+            .select('id, full_name, code, role, job_type, display_order, person_categories(categories(name))')
+            .order('role', { ascending: true })
+            .order('display_order', { ascending: true })
             .order('code', { ascending: true })
 
-        if (employeesError) throw employeesError
+        if (peopleError) throw peopleError
 
-        // 1.5. Fetch all active students
-        const { data: students, error: studentsError } = await supabase
-            .from('people')
-            .select('id, full_name, code, role')
-            .eq('status', 'active')
-            .eq('role', 'student')
-            .order('code', { ascending: true })
+        // Process people into employees and students, applying the MasterList sorting logic
+        const sortedPeople = ((people as any[])?.map((p: any) => ({
+            ...p,
+            categories: p.person_categories?.map((pc: any) => pc.categories) || []
+        })) as any[])?.sort((a: any, b: any) => {
+            // 1. Sort by Role (Employees first)
+            const isStudentA = a.role === 'student';
+            const isStudentB = b.role === 'student';
 
-        if (studentsError) throw studentsError
+            if (!isStudentA && isStudentB) return -1;
+            if (isStudentA && !isStudentB) return 1;
+
+            // 2. If both are Employees (non-students), sort by display_order
+            if (!isStudentA && !isStudentB) {
+                return (a.display_order ?? 9999) - (b.display_order ?? 9999);
+            }
+
+            // 3. If both are Students, apply Category Priority
+            const getCategoryRank = (p: any) => {
+                const cats = p.categories || [];
+                // Academy: Rank 0
+                if (cats.some((c: any) => c.name?.toLowerCase().includes('academy'))) return 0;
+                // C-Lab: Rank 1
+                if (cats.some((c: any) => c.name?.toLowerCase().includes('c-lab'))) return 1;
+                // Ex: Rank 2
+                if (cats.some((c: any) => c.name?.toLowerCase() === 'ex')) return 2;
+                // Others: Rank 3
+                return 3;
+            };
+
+            const rankA = getCategoryRank(a);
+            const rankB = getCategoryRank(b);
+
+            if (rankA !== rankB) return rankA - rankB;
+
+            // 4. If same Category Rank, sort Alphabetically by full_name
+            return (a.full_name || '').localeCompare(b.full_name || '');
+        }) || []
+
+        const employees = sortedPeople.filter(p => p.role === 'employee')
+        const students = sortedPeople.filter(p => p.role === 'student')
 
         // 2. Fetch attendance records for the month
         const { data: attendance, error: attendanceError } = await supabase
@@ -42,7 +81,16 @@ export async function getAllEmployeesAttendance(year: number, month: number) {
 
         if (attendanceError) throw attendanceError
 
-        // 3. Fetch system events for the month
+        // 3. Fetch shifts for the month (New addition for styling/status)
+        const { data: shifts, error: shiftsError } = await supabase
+            .from('shifts')
+            .select('*')
+            .gte('date', startDateStr)
+            .lte('date', endDateStr)
+
+        if (shiftsError) throw shiftsError
+
+        // 4. Fetch system events for the month
         const { data: events, error: eventsError } = await supabase
             .from('system_events')
             .select('*')
@@ -54,9 +102,10 @@ export async function getAllEmployeesAttendance(year: number, month: number) {
         return {
             success: true,
             data: {
-                employees: employees || [],
-                students: students || [],
+                employees,
+                students,
                 attendance: attendance || [],
+                shifts: shifts || [],
                 events: events || []
             }
         }
