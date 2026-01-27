@@ -34,9 +34,10 @@ interface MonthlyReportProps {
     personId: string
     initialDate?: Date
     mode?: 'single' | 'batch'
+    onLoadComplete?: () => void
 }
 
-export function MonthlyReport({ personId, initialDate, mode = 'single' }: MonthlyReportProps) {
+export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadComplete }: MonthlyReportProps) {
     const [loading, setLoading] = useState(true)
     const [report, setReport] = useState<MonthlyAttendanceReport | null>(null)
     const [currentDate, setCurrentDate] = useState(initialDate || new Date())
@@ -74,6 +75,9 @@ export function MonthlyReport({ personId, initialDate, mode = 'single' }: Monthl
             setReport(result.data)
         }
         setLoading(false)
+        if (onLoadComplete) {
+            onLoadComplete()
+        }
     }
 
     const handlePreviousMonth = () => {
