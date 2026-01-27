@@ -32,12 +32,14 @@ import { upsertAttendanceRecord } from '@/app/admin/attendance-actions/actions'
 
 interface MonthlyReportProps {
     personId: string
+    initialDate?: Date
+    mode?: 'single' | 'batch'
 }
 
-export function MonthlyReport({ personId }: MonthlyReportProps) {
+export function MonthlyReport({ personId, initialDate, mode = 'single' }: MonthlyReportProps) {
     const [loading, setLoading] = useState(true)
     const [report, setReport] = useState<MonthlyAttendanceReport | null>(null)
-    const [currentDate, setCurrentDate] = useState(new Date())
+    const [currentDate, setCurrentDate] = useState(initialDate || new Date())
 
     // Editing state
     const [editingDate, setEditingDate] = useState<string | null>(null)
@@ -54,6 +56,12 @@ export function MonthlyReport({ personId }: MonthlyReportProps) {
 
     const currentYear = currentDate.getFullYear()
     const currentMonth = currentDate.getMonth() + 1 // 1-12
+
+    useEffect(() => {
+        if (initialDate) {
+            setCurrentDate(initialDate)
+        }
+    }, [initialDate])
 
     useEffect(() => {
         loadReport()
@@ -205,7 +213,10 @@ export function MonthlyReport({ personId }: MonthlyReportProps) {
     }
 
     return (
-        <Card id="printable-report" className="print:shadow-none print:border-none">
+        <Card
+            id={mode === 'single' ? "printable-report" : undefined}
+            className="print:shadow-none print:border-none break-inside-avoid"
+        >
             <CardHeader className="print:pb-2 print:pt-0">
                 <div className="flex items-center justify-between print:justify-center">
                     <div className="print:text-center print:w-full">

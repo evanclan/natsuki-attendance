@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AddPersonDialog } from "@/components/admin/AddPersonDialog"
-import { Trash2 } from 'lucide-react'
+import { Trash2, Printer } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import {
     AlertDialog,
     AlertDialogAction,
@@ -31,6 +32,7 @@ import {
 import { deletePerson } from "@/app/actions/people"
 
 export default function ManageEmployeePage() {
+    const router = useRouter()
     const [employees, setEmployees] = useState<any[]>([])
     const [filteredEmployees, setFilteredEmployees] = useState<any[]>([])
     const [searchQuery, setSearchQuery] = useState('')
@@ -94,7 +96,32 @@ export default function ManageEmployeePage() {
                 <Link href="/admin">
                     <Button variant="ghost">← Back to Admin</Button>
                 </Link>
-                <AddPersonDialog role="employee" onSuccess={fetchEmployees} />
+                <div className="flex gap-2">
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="outline" className="gap-2">
+                                <Printer className="h-4 w-4" />
+                                Download Reports
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Download Monthly Reports?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This will open a print-ready view for all employees' monthly attendance reports.
+                                    You can print or save as PDF from that page.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => router.push('/admin/manage_employee/print_all')}>
+                                    Continue
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                    <AddPersonDialog role="employee" onSuccess={fetchEmployees} />
+                </div>
             </div>
 
             <div className="flex items-center space-x-2 mb-4">

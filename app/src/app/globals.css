@@ -143,6 +143,12 @@
     visibility: visible;
   }
 
+  /* Also show the print-all container */
+  #print-all-container,
+  #print-all-container * {
+    visibility: visible;
+  }
+
   /* Position the report at the top-left of the page */
   #printable-report {
     position: absolute;
@@ -159,6 +165,17 @@
     break-inside: avoid;
     page-break-inside: avoid;
   }
+
+  /* Position the batch container at the top */
+  #print-all-container {
+    position: static;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    zoom: 0.8;
+  }
+
+
 
   /* Ensure table doesn't break across pages */
   table {
