@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Printer } from 'lucide-react'
 import { AttendanceEditDialog } from '@/components/admin/AttendanceEditDialog'
 import { formatLocalDate } from '@/lib/utils'
 
@@ -12,6 +12,7 @@ type Employee = {
     full_name: string
     code: string
     role: 'employee' | 'student'
+    categories?: { name: string }[]
 }
 
 type AttendanceRecord = {
@@ -67,6 +68,33 @@ export function AllListTable({ year, month, employees, students, attendance, shi
 
     const daysInMonth = new Date(year, month + 1, 0).getDate()
     const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
+
+    const handlePrint = () => {
+        const url = `/print/all_list?year=${year}&month=${month}`
+        window.open(url, '_blank')
+    }
+
+    // Filter students logic matching MasterList
+    const filteredStudents = students.filter(p => {
+        // Hide students with ONLY the "Satasaurus" category
+        // Students with multiple categories (e.g., Academy + Satasaurus) should still be shown
+        const categories = p.categories || []
+        if (categories.length === 1 && categories[0]?.name?.toLowerCase() === 'satursaurus') {
+            return false
+        }
+        return true
+    })
+
+    const satasaurusStudents = students.filter(p => {
+        const categories = p.categories || []
+        return categories.some((c: any) => c?.name?.toLowerCase() === 'satursaurus')
+    })
+
+    // Filter days for Satursaurus
+    const saturdayDays = days.filter(day => {
+        const date = new Date(year, month, day)
+        return date.getDay() === 6
+    })
 
     const handlePreviousMonth = () => {
         const newDate = new Date(year, month - 1, 1)
@@ -164,7 +192,7 @@ export function AllListTable({ year, month, employees, students, attendance, shi
         }
     }
 
-    const renderRow = (employee: Employee) => {
+    const renderRow = (employee: Employee, daysToRender: number[]) => {
         const stats = calculateMonthlyStats(employee.id)
 
         return (
@@ -176,7 +204,7 @@ export function AllListTable({ year, month, employees, students, attendance, shi
                         {stats.daysAttended} days • {stats.totalHours}h
                     </div>
                 </div>
-                {days.map(day => {
+                {daysToRender.map(day => {
                     const date = new Date(year, month, day)
                     const dateStr = formatLocalDate(date)
                     const attendanceRecord = attendance.find(a => a.person_id === employee.id && a.date === dateStr)
@@ -243,7 +271,7 @@ export function AllListTable({ year, month, employees, students, attendance, shi
 
     const monthName = new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
-    const renderTable = (people: Employee[], title: string) => (
+    const renderTable = (people: Employee[], title: string, daysToRender: number[], footer?: React.ReactNode) => (
         <div className="border rounded-md overflow-hidden mb-8">
             <div className="bg-muted px-4 py-2 border-b border-border font-semibold">
                 {title}
@@ -255,7 +283,7 @@ export function AllListTable({ year, month, employees, students, attendance, shi
                         <div className="sticky left-0 z-20 w-48 min-w-[192px] p-2 border-r border-border bg-muted/50 font-semibold flex items-center">
                             Name
                         </div>
-                        {days.map(day => {
+                        {daysToRender.map(day => {
                             const date = new Date(year, month, day)
                             const dayName = date.toLocaleDateString('en-US', { weekday: 'short' })
                             const isRest = getDayStatus(day).isRestDay
@@ -275,9 +303,14 @@ export function AllListTable({ year, month, employees, students, attendance, shi
                     </div>
 
                     {/* Person Rows */}
-                    {people.map(renderRow)}
+                    {people.map(p => renderRow(p, daysToRender))}
                 </div>
             </div>
+            {footer && (
+                <div className="p-2 border-t border-border bg-slate-50 flex justify-end">
+                    {footer}
+                </div>
+            )}
         </div>
     )
 
@@ -295,8 +328,14 @@ export function AllListTable({ year, month, employees, students, attendance, shi
                 </div>
             </div>
 
-            {renderTable(employees, "Employees")}
-            {renderTable(students, "Students")}
+            {renderTable(employees, "Employees", days, (
+                <Button onClick={handlePrint} size="sm" variant="outline" className="gap-2">
+                    <Printer className="h-4 w-4" />
+                    Print Table
+                </Button>
+            ))}
+            {renderTable(filteredStudents, "Students", days)}
+            {satasaurusStudents.length > 0 && renderTable(satasaurusStudents, "Satursaurus Students", saturdayDays)}
 
             {selectedEmployee && selectedDate && (
                 <AttendanceEditDialog
