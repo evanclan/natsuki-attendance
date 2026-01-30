@@ -10,7 +10,6 @@ export async function middleware(request: NextRequest) {
     const isKioskRoute = url.pathname.startsWith('/kiosk')
 
     // Kiosk Route Logic
-    // Kiosk Route Logic
     if (isKioskRoute) {
         // Define public kiosk routes that don't need device activation
         const isPublicKioskRoute = url.pathname.startsWith('/kiosk/employee/setdayoff')
@@ -20,7 +19,7 @@ export async function middleware(request: NextRequest) {
             const isActivated = request.cookies.get('kiosk_device_activated')?.value === 'true'
 
             if (!isActivated) {
-                url.pathname = '/kiosk-login'
+                url.pathname = '/device-activation'
                 return NextResponse.redirect(url)
             }
         }
