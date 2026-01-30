@@ -63,13 +63,20 @@ export default function AdminPage() {
             }
 
             // Get unique dates
-            const uniqueDates = [...new Set(datesData?.map(d => d.date) || [])] as string[]
+            let uniqueDates = [...new Set(datesData?.map(d => d.date) || [])] as string[]
+
+            // Get today's date
+            const today = getTodayDate()
+
+            // Ensure today is in the list
+            if (!uniqueDates.includes(today)) {
+                uniqueDates = [today, ...uniqueDates]
+            }
+
             setAvailableDates(uniqueDates)
 
-            // Set today as default if it exists in the data, otherwise use the most recent date
-            const today = getTodayDate()
-            const defaultDate = uniqueDates.includes(today) ? today : (uniqueDates[0] || today)
-            setSelectedDate(defaultDate)
+            // Always set today as default
+            setSelectedDate(today)
 
             setLoading(false)
         }
