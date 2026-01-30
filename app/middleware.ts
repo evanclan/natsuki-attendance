@@ -9,8 +9,22 @@ export async function middleware(request: NextRequest) {
     const isLoginRoute = url.pathname.startsWith('/login')
     const isKioskRoute = url.pathname.startsWith('/kiosk')
 
-    // Allow public access to kiosk routes
+    // Kiosk Route Logic
+    // Kiosk Route Logic
     if (isKioskRoute) {
+        // Define public kiosk routes that don't need device activation
+        const isPublicKioskRoute = url.pathname.startsWith('/kiosk/employee/setdayoff')
+
+        if (!isPublicKioskRoute) {
+            // Check for activation cookie
+            const isActivated = request.cookies.get('kiosk_device_activated')?.value === 'true'
+
+            if (!isActivated) {
+                url.pathname = '/kiosk-login'
+                return NextResponse.redirect(url)
+            }
+        }
+
         return supabaseResponse
     }
 
