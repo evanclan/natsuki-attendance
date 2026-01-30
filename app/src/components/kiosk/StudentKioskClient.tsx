@@ -126,27 +126,7 @@ export function StudentKioskClient({ initialPeople, actionLog }: StudentKioskCli
                 <div className="flex items-center gap-2 md:gap-4 shrink-0">
                     <LiveClock />
 
-                    {/* Toggle Button */}
-                    <Button
-                        variant={showSatasaurus ? "default" : "outline"}
-                        onClick={() => setShowSatasaurus(!showSatasaurus)}
-                        className={`rounded-full px-3 md:px-6 font-bold shadow-sm transition-all hover:scale-105 active:scale-95 text-xs md:text-sm h-8 md:h-10 border ${showSatasaurus
-                            ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-500'
-                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                            }`}
-                    >
-                        {showSatasaurus ? (
-                            <>
-                                <ToggleRight className="mr-2 h-4 w-4" />
-                                サタザウルス
-                            </>
-                        ) : (
-                            <>
-                                <ToggleLeft className="mr-2 h-4 w-4" />
-                                Regular Class
-                            </>
-                        )}
-                    </Button>
+
 
                     <Link href="/kiosk/employee">
                         <Button
@@ -161,7 +141,30 @@ export function StudentKioskClient({ initialPeople, actionLog }: StudentKioskCli
 
             <NewsCorner />
 
-            <main className="flex-1 overflow-y-auto p-6 pt-0">
+            <main className="flex-1 overflow-y-auto p-2 md:p-6 pt-0">
+                <div className="flex justify-end mb-2 px-1">
+                    {/* Toggle Button moved here */}
+                    <Button
+                        variant={showSatasaurus ? "default" : "outline"}
+                        onClick={() => setShowSatasaurus(!showSatasaurus)}
+                        className={`rounded-full px-3 font-bold shadow-sm transition-all hover:scale-105 active:scale-95 text-xs h-7 border ${showSatasaurus
+                            ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-500'
+                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                            }`}
+                    >
+                        {showSatasaurus ? (
+                            <>
+                                <ToggleRight className="mr-1 h-3 w-3" />
+                                Satursaurus
+                            </>
+                        ) : (
+                            <>
+                                <ToggleLeft className="mr-1 h-3 w-3" />
+                                Regular Class
+                            </>
+                        )}
+                    </Button>
+                </div>
                 {visiblePeople.length === 0 ? (
                     <div className="p-8 text-center text-muted-foreground">
                         No students found.

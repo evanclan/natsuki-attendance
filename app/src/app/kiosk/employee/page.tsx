@@ -29,18 +29,18 @@ export default function EmployeeKioskPage() {
 
             <div className="fixed bottom-4 right-4 flex items-end gap-4 z-50">
                 <Link href="/kiosk/employee/setdayoff">
-                    <Button variant="outline" className="h-14 px-6 text-lg shadow-lg bg-white/90 backdrop-blur hover:bg-white">
+                    <Button variant="outline" className="h-10 px-4 text-sm shadow-lg bg-white/90 backdrop-blur hover:bg-white">
                         Set Day Off
                     </Button>
                 </Link>
                 <Link href="/kiosk/employee/schedule">
-                    <Button variant="outline" className="h-14 px-6 text-lg shadow-lg bg-white/90 backdrop-blur hover:bg-white">
+                    <Button variant="outline" className="h-10 px-4 text-sm shadow-lg bg-white/90 backdrop-blur hover:bg-white">
                         Today's Schedule
                     </Button>
                 </Link>
                 <ViewShiftButton />
             </div>
             <AutoRedirectController />
-        </div>
+        </div >
     )
 }

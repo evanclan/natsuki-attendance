@@ -37,10 +37,9 @@ export function ViewShiftButton() {
             {!isOpen ? (
                 <Button
                     onClick={() => setIsOpen(true)}
-                    className="h-14 px-6 text-base shadow-lg hover:shadow-xl transition-shadow"
-                    size="lg"
+                    className="h-10 px-4 text-sm shadow-lg hover:shadow-xl transition-shadow"
                 >
-                    <Calendar className="h-5 w-5 mr-2" />
+                    <Calendar className="h-4 w-4 mr-2" />
                     View Shift
                 </Button>
             ) : (

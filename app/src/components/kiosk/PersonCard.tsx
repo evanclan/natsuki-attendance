@@ -282,7 +282,7 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
                             onClick={selectionMode ? onSelect : undefined}
                         >
                             <div className="absolute inset-0 bg-[radial-gradient(#fee2e2_1px,transparent_1px)] [background-size:16px_16px] opacity-50" />
-                            <CardHeader className="py-2 px-2 relative z-10">
+                            <CardHeader className="py-1.5 px-2 relative z-10">
                                 <div className="text-center">
                                     <CardTitle className="text-base font-bold text-slate-700 truncate leading-tight" title={person.full_name}>
                                         {person.full_name}
@@ -294,7 +294,7 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
                                     )}
                                 </div>
                             </CardHeader>
-                            <CardContent className="flex justify-center items-center pb-2 px-2 relative z-10 min-h-[40px]">
+                            <CardContent className="flex justify-center items-center pb-1.5 px-2 relative z-10 min-h-[36px]">
                                 <div className="transform rotate-[-8deg] bg-red-100 border border-red-400 text-red-600 px-2 py-0.5 rounded shadow-sm font-black tracking-widest text-xs opacity-90 group-hover:scale-110 transition-transform">
                                     ABSENT
                                 </div>
@@ -325,7 +325,7 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
                             onClick={selectionMode ? onSelect : undefined}
                         >
                             <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:16px_16px] opacity-50" />
-                            <CardHeader className="py-2 px-2 relative z-10 opacity-75">
+                            <CardHeader className="py-1.5 px-2 relative z-10 opacity-75">
                                 <div className="text-center">
                                     <CardTitle className="text-base font-bold text-slate-600 truncate leading-tight" title={person.full_name}>
                                         {person.full_name}
@@ -337,7 +337,7 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
                                     )}
                                 </div>
                             </CardHeader>
-                            <CardContent className="flex flex-col justify-center items-center pb-2 px-2 relative z-10 min-h-[40px]">
+                            <CardContent className="flex flex-col justify-center items-center pb-1.5 px-2 relative z-10 min-h-[36px]">
                                 <div className="flex items-center gap-1.5 text-slate-500 mb-1">
                                     <CheckCircle2 className="h-4 w-4" />
                                     <span className="text-[0.65rem] font-medium">気をつけて帰ってください</span>
@@ -368,7 +368,7 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
                         className={`hover:-translate-y-1 hover:shadow-[0_8px_16px_-6px_rgba(0,0,0,0.1)] transition-all duration-300 rounded-xl border-2 border-slate-100 bg-white shadow-[0_2px_0_0_rgba(241,245,249,1)] ${selectionMode ? 'cursor-pointer' : ''} ${isSelected ? 'ring-4 ring-orange-400 ring-offset-2' : ''}`}
                         onClick={selectionMode ? onSelect : undefined}
                     >
-                        <CardHeader className="py-2 px-2">
+                        <CardHeader className="py-1.5 px-2">
                             <div className="text-center">
                                 <CardTitle className="text-base font-bold text-slate-700 truncate leading-tight" title={person.full_name}>
                                     {person.full_name}
@@ -386,9 +386,9 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
                                 </div>
                             )}
                         </CardHeader>
-                        <CardContent className="grid grid-cols-2 gap-1.5 pb-2 px-2">
+                        <CardContent className="grid grid-cols-2 gap-1 pb-1.5 px-2">
                             {selectionMode ? (
-                                <div className="col-span-2 h-8 flex items-center justify-center">
+                                <div className="col-span-2 h-7 flex items-center justify-center">
                                     {isSelected ? (
                                         <div className="bg-orange-100 text-orange-600 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
                                             <div className="w-2 h-2 bg-orange-500 rounded-full" />
@@ -404,7 +404,7 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
                                         <>
                                             <Button
                                                 variant="outline"
-                                                className="h-8 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 border-emerald-200 hover:border-emerald-300 rounded-lg shadow-[0_2px_0_0_rgba(167,243,208,1)] active:shadow-none active:translate-y-[2px] transition-all px-0"
+                                                className="h-7 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 border-emerald-200 hover:border-emerald-300 rounded-lg shadow-[0_2px_0_0_rgba(167,243,208,1)] active:shadow-none active:translate-y-[2px] transition-all px-0"
                                                 onClick={() => handleAction('check_in')}
                                                 disabled={!!loading}
                                             >
@@ -413,7 +413,7 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
                                             </Button>
                                             <Button
                                                 variant="outline"
-                                                className="h-8 bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200 hover:border-slate-300 rounded-lg shadow-[0_2px_0_0_rgba(226,232,240,1)] active:shadow-none active:translate-y-[2px] transition-all px-0"
+                                                className="h-7 bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200 hover:border-slate-300 rounded-lg shadow-[0_2px_0_0_rgba(226,232,240,1)] active:shadow-none active:translate-y-[2px] transition-all px-0"
                                                 onClick={() => handleAction('mark_absent')}
                                                 disabled={!!loading}
                                             >
@@ -427,7 +427,7 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
                                                 <div className="col-span-2 flex gap-2">
                                                     <Button
                                                         variant="outline"
-                                                        className="flex-1 h-8 bg-rose-100 hover:bg-rose-200 text-rose-700 border-rose-200 hover:border-rose-300 rounded-lg shadow-[0_2px_0_0_rgba(253,164,175,1)] active:shadow-none active:translate-y-[2px] transition-all"
+                                                        className="flex-1 h-7 bg-rose-100 hover:bg-rose-200 text-rose-700 border-rose-200 hover:border-rose-300 rounded-lg shadow-[0_2px_0_0_rgba(253,164,175,1)] active:shadow-none active:translate-y-[2px] transition-all"
                                                         onClick={() => handleAction('check_out')}
                                                         disabled={!!loading}
                                                     >
@@ -437,7 +437,7 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="h-8 w-8 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full"
+                                                        className="h-7 w-7 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full"
                                                         onClick={handleUndoCheckIn}
                                                         disabled={!!loading}
                                                         title="Undo Check-in"
@@ -451,7 +451,7 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
                                                 <>
                                                     <Button
                                                         variant="outline"
-                                                        className="h-8 bg-amber-100 hover:bg-amber-200 text-amber-700 border-amber-200 hover:border-amber-300 rounded-lg shadow-[0_2px_0_0_rgba(252,211,77,1)] active:shadow-none active:translate-y-[2px] transition-all px-0"
+                                                        className="h-7 bg-amber-100 hover:bg-amber-200 text-amber-700 border-amber-200 hover:border-amber-300 rounded-lg shadow-[0_2px_0_0_rgba(252,211,77,1)] active:shadow-none active:translate-y-[2px] transition-all px-0"
                                                         onClick={() => handleAction('break_start')}
                                                         disabled={!!loading || isOnBreak}
                                                         style={{ opacity: isOnBreak ? 0.5 : 1 }}
@@ -461,7 +461,7 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
                                                     </Button>
                                                     <Button
                                                         variant="outline"
-                                                        className="h-8 bg-sky-100 hover:bg-sky-200 text-sky-700 border-sky-200 hover:border-sky-300 rounded-lg shadow-[0_2px_0_0_rgba(186,230,253,1)] active:shadow-none active:translate-y-[2px] transition-all px-0"
+                                                        className="h-7 bg-sky-100 hover:bg-sky-200 text-sky-700 border-sky-200 hover:border-sky-300 rounded-lg shadow-[0_2px_0_0_rgba(186,230,253,1)] active:shadow-none active:translate-y-[2px] transition-all px-0"
                                                         onClick={() => handleAction('break_end')}
                                                         disabled={!!loading || !isOnBreak}
                                                         style={{ opacity: !isOnBreak ? 0.5 : 1 }}
@@ -471,7 +471,7 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
                                                     </Button>
                                                     <Button
                                                         variant="outline"
-                                                        className="col-span-2 h-8 bg-rose-100 hover:bg-rose-200 text-rose-700 border-rose-200 hover:border-rose-300 rounded-lg shadow-[0_2px_0_0_rgba(253,164,175,1)] active:shadow-none active:translate-y-[2px] transition-all"
+                                                        className="col-span-2 h-7 bg-rose-100 hover:bg-rose-200 text-rose-700 border-rose-200 hover:border-rose-300 rounded-lg shadow-[0_2px_0_0_rgba(253,164,175,1)] active:shadow-none active:translate-y-[2px] transition-all"
                                                         onClick={() => handleAction('check_out')}
                                                         disabled={!!loading}
                                                     >

@@ -114,9 +114,9 @@ export function MultiSelectPersonList({ people, role, visibleCategories }: Multi
     }
 
     return (
-        <div className="space-y-8 p-4 animate-in fade-in slide-in-from-bottom-4 duration-700 relative">
+        <div className="space-y-6 p-2 animate-in fade-in slide-in-from-bottom-4 duration-700 relative">
             {/* Floating Action Button for Selection Mode */}
-            <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 items-end">
+            <div className={`fixed right-6 z-50 flex flex-col gap-3 items-end ${role === 'employee' ? 'bottom-24' : 'bottom-6'}`}>
                 {isSelectionMode && selectedIds.size > 0 && (
                     <Button
                         size="lg"
@@ -161,7 +161,7 @@ export function MultiSelectPersonList({ people, role, visibleCategories }: Multi
                         <h2 className="text-2xl font-bold text-orange-600 pl-2 border-l-4 border-orange-400">
                             {category}
                         </h2>
-                        <div className="grid grid-cols-2 min-[600px]:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 min-[600px]:gap-4">
+                        <div className="grid grid-cols-2 min-[600px]:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 min-[600px]:gap-3">
                             {categoryPeople.map((person) => (
                                 <PersonCard
                                     key={person.id}
@@ -179,7 +179,7 @@ export function MultiSelectPersonList({ people, role, visibleCategories }: Multi
 
             {otherPeople.length > 0 && (
                 <div className="space-y-4">
-                    <div className="grid grid-cols-2 min-[600px]:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 min-[600px]:gap-4">
+                    <div className="grid grid-cols-2 min-[600px]:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 min-[600px]:gap-3">
                         {otherPeople.map((person) => (
                             <PersonCard
                                 key={person.id}
