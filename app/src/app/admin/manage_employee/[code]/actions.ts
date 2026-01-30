@@ -98,6 +98,7 @@ export interface DailyAttendance {
     workMinutes: number | null
     overtimeMinutes: number | null
     paidLeaveMinutes: number | null
+    status: string
     notifications: Array<{
         type: 'break_exceeded' | 'missing_checkin' | 'missing_checkout' | 'no_break' | 'edited' | 'late' | 'early_out' | 'business_trip' | 'paid_leave' | 'half_paid_leave' | 'special_leave'
         message: string
@@ -372,6 +373,7 @@ export async function getMonthlyAttendanceReport(
             workMinutes: attendance?.total_work_minutes || null,
             overtimeMinutes: attendance?.overtime_minutes || null,
             paidLeaveMinutes: attendance?.paid_leave_minutes || null,
+            status: attendance?.status || '',
             notifications
         })
     }

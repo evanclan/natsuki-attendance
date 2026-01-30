@@ -246,19 +246,25 @@ export function AllListTable({ year, month, employees, students, attendance, shi
 
                             {/* Bottom: Attendance Info */}
                             {attendanceRecord ? (
-                                <div className="space-y-0.5 text-xs bg-white/60 p-1 rounded backdrop-blur-[1px]">
-                                    <div className="flex items-center justify-between gap-1">
-                                        <span className="text-muted-foreground text-[10px]">In</span>
-                                        <span className="font-medium font-mono">{formatTime(attendanceRecord.check_in_at)}</span>
+                                attendanceRecord.status === 'absent' ? (
+                                    <div className="flex items-center justify-center h-full">
+                                        <span className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded border border-red-100">ABSENT</span>
                                     </div>
-                                    <div className="flex items-center justify-between gap-1">
-                                        <span className="text-muted-foreground text-[10px]">Out</span>
-                                        <span className="font-medium font-mono">{formatTime(attendanceRecord.check_out_at)}</span>
+                                ) : (
+                                    <div className="space-y-0.5 text-xs bg-white/60 p-1 rounded backdrop-blur-[1px]">
+                                        <div className="flex items-center justify-between gap-1">
+                                            <span className="text-muted-foreground text-[10px]">In</span>
+                                            <span className="font-medium font-mono">{formatTime(attendanceRecord.check_in_at)}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-1">
+                                            <span className="text-muted-foreground text-[10px]">Out</span>
+                                            <span className="font-medium font-mono">{formatTime(attendanceRecord.check_out_at)}</span>
+                                        </div>
+                                        {attendanceRecord.is_edited && (
+                                            <div className="text-[9px] text-blue-600 text-right mt-0.5">✎ Edited</div>
+                                        )}
                                     </div>
-                                    {attendanceRecord.is_edited && (
-                                        <div className="text-[9px] text-blue-600 text-right mt-0.5">✎ Edited</div>
-                                    )}
-                                </div>
+                                )
                             ) : (
                                 <div className="text-xs text-muted-foreground text-center mt-auto opacity-50">-</div>
                             )}

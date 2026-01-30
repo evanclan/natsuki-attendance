@@ -342,7 +342,11 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
                                                     onChange={(e) => setEditForm({ ...editForm, checkIn: e.target.value })}
                                                 />
                                             ) : (
-                                                formatTime(record.checkIn)
+                                                record.status === 'absent' ? (
+                                                    <span className="text-red-500 font-bold text-xs">ABSENT</span>
+                                                ) : (
+                                                    formatTime(record.checkIn)
+                                                )
                                             )}
                                         </TableCell>
                                         <TableCell className="text-center text-sm print:text-[11px] print:py-0.5 print:h-[26px]">
@@ -354,7 +358,11 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
                                                     onChange={(e) => setEditForm({ ...editForm, checkOut: e.target.value })}
                                                 />
                                             ) : (
-                                                formatTime(record.checkOut)
+                                                record.status === 'absent' ? (
+                                                    <span className="text-red-500 font-bold text-xs">-</span>
+                                                ) : (
+                                                    formatTime(record.checkOut)
+                                                )
                                             )}
                                         </TableCell>
                                         <TableCell className="text-center text-sm print:text-[11px] print:py-0.5 print:h-[26px]">
