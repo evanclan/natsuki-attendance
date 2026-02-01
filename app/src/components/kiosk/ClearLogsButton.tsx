@@ -19,6 +19,10 @@ import {
 import { toast } from "sonner"
 
 export function ClearLogsButton() {
+    // TEMPORARY: Hide button during production to prevent accidental clicks
+    // Remove this line to restore the button
+    return null;
+
     const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [open, setOpen] = useState(false)
