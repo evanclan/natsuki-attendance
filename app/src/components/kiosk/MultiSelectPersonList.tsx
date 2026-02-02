@@ -13,9 +13,10 @@ interface MultiSelectPersonListProps {
     people: Person[]
     role: 'student' | 'employee'
     visibleCategories?: string[]
+    onPersonUpdate?: (personId: string, updates: Partial<NonNullable<Person['attendance_today']>>) => void
 }
 
-export function MultiSelectPersonList({ people, role, visibleCategories }: MultiSelectPersonListProps) {
+export function MultiSelectPersonList({ people, role, visibleCategories, onPersonUpdate }: MultiSelectPersonListProps) {
     const router = useRouter()
     const [isSelectionMode, setIsSelectionMode] = useState(false)
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -99,6 +100,17 @@ export function MultiSelectPersonList({ people, role, visibleCategories }: Multi
         try {
             const result = await bulkCheckIn(Array.from(selectedIds))
             if (result.success) {
+                // Optimistically update all selected people
+                if (onPersonUpdate) {
+                    const now = new Date().toISOString()
+                    selectedIds.forEach(id => {
+                        onPersonUpdate(id, {
+                            check_in_at: now,
+                            status: 'present'
+                        })
+                    })
+                }
+
                 setIsSelectionMode(false)
                 setSelectedIds(new Set())
                 router.refresh()
@@ -170,6 +182,7 @@ export function MultiSelectPersonList({ people, role, visibleCategories }: Multi
                                     selectionMode={isSelectionMode}
                                     isSelected={selectedIds.has(person.id)}
                                     onSelect={() => toggleSelection(person.id)}
+                                    onPersonUpdate={onPersonUpdate}
                                 />
                             ))}
                         </div>
@@ -188,6 +201,7 @@ export function MultiSelectPersonList({ people, role, visibleCategories }: Multi
                                 selectionMode={isSelectionMode}
                                 isSelected={selectedIds.has(person.id)}
                                 onSelect={() => toggleSelection(person.id)}
+                                onPersonUpdate={onPersonUpdate}
                             />
                         ))}
                     </div>

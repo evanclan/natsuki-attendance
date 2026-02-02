@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Person } from '@/app/actions/kiosk'
 import { MultiSelectPersonList } from './MultiSelectPersonList'
 import { Button } from '@/components/ui/button'
@@ -18,6 +18,36 @@ const REGULAR_CATEGORIES = ['Academy', 'Ex', 'C-Lab']
 
 export function StudentKioskClient({ initialPeople, actionLog }: StudentKioskClientProps) {
     const [showSatasaurus, setShowSatasaurus] = useState(false)
+    const [people, setPeople] = useState<Person[]>(initialPeople)
+
+    // Sync state when props update (e.g. from router.refresh)
+    useEffect(() => {
+        setPeople(initialPeople)
+    }, [initialPeople])
+
+    const updatePerson = (personId: string, updates: Partial<Person['attendance_today']>) => {
+        setPeople(current => current.map(p => {
+            if (p.id !== personId) return p
+
+            // If p.attendance_today is null and we have updates, create object
+            // Use current state to preserve non-updated fields if exists
+            const currentAttendance = p.attendance_today || {
+                check_in_at: null,
+                check_out_at: null,
+                break_start_at: null,
+                break_end_at: null,
+                status: 'present'
+            }
+
+            return {
+                ...p,
+                attendance_today: {
+                    ...currentAttendance,
+                    ...updates
+                }
+            }
+        }))
+    }
 
     // Determine visible categories based on toggle
     const visibleCategories = showSatasaurus
@@ -25,7 +55,7 @@ export function StudentKioskClient({ initialPeople, actionLog }: StudentKioskCli
         : REGULAR_CATEGORIES
 
     // Filter people based on toggle
-    const visiblePeople = initialPeople.filter(person => {
+    const visiblePeople = people.filter(person => {
         // Person is visible if they have AT LEAST ONE of the visible categories
         // OR if they have NO categories (render in "Other") - but only for regular mode?
         // Let's stick to the visibleCategories intersection logic.
@@ -144,7 +174,7 @@ export function StudentKioskClient({ initialPeople, actionLog }: StudentKioskCli
             <main className="flex-1 overflow-y-auto p-2 md:p-6 pt-0">
                 <div className="flex justify-end mb-2 px-1 items-center gap-3">
                     <span className="text-sm font-bold text-gray-600 bg-white/80 px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
-                        現在人数: {initialPeople.filter(p =>
+                        現在人数: {people.filter(p =>
                             p.attendance_today?.check_in_at && !p.attendance_today?.check_out_at
                         ).length}
                     </span>
@@ -179,6 +209,7 @@ export function StudentKioskClient({ initialPeople, actionLog }: StudentKioskCli
                         people={visiblePeople}
                         role="student"
                         visibleCategories={visibleCategories}
+                        onPersonUpdate={updatePerson}
                     />
                 )}
             </main>

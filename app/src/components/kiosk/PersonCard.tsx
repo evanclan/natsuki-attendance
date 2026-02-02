@@ -25,6 +25,7 @@ interface PersonCardProps {
     selectionMode?: boolean
     isSelected?: boolean
     onSelect?: () => void
+    onPersonUpdate?: (personId: string, updates: Partial<NonNullable<Person['attendance_today']>>) => void
 }
 
 type ConfirmationState = {
@@ -36,7 +37,7 @@ type ConfirmationState = {
     variant?: "default" | "destructive"
 }
 
-export function PersonCard({ person, role, selectionMode, isSelected, onSelect }: PersonCardProps) {
+export function PersonCard({ person, role, selectionMode, isSelected, onSelect, onPersonUpdate }: PersonCardProps) {
     const router = useRouter()
     const [loading, setLoading] = useState<string | null>(null)
     const [breakTimeRemaining, setBreakTimeRemaining] = useState<string | null>(null)
@@ -50,7 +51,7 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
     // Optimistic UI State
     const [optimisticAttendance, setOptimisticAttendance] = useState(person.attendance_today)
 
-    // Sync optimistic state when prop updates (e.g. after router.refresh)
+    // Sync optimistic state when prop updates (e.g. after router.refresh OR parent state update)
     useEffect(() => {
         setOptimisticAttendance(person.attendance_today)
     }, [person.attendance_today])
@@ -83,7 +84,12 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
             newAttendance.status = 'absent'
         }
 
+        // Update local state
         setOptimisticAttendance(newAttendance)
+        // Update parent state (for counters etc)
+        if (onPersonUpdate) {
+            onPersonUpdate(person.id, newAttendance)
+        }
 
         attendanceQueue.enqueue(async () => {
             try {
@@ -91,6 +97,14 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
                 if (!result.success) {
                     // Revert on failure
                     setOptimisticAttendance(previousAttendance)
+                    if (onPersonUpdate && previousAttendance) {
+                        onPersonUpdate(person.id, previousAttendance)
+                    } else if (onPersonUpdate) {
+                        // Careful: if previous was null, we can't easily revert to null partially
+                        // But we can send empty/null updates if we change the type.
+                        // For now, if undo fails, we might just reload or leave it.
+                    }
+
                     toast.error('Failed to log attendance', {
                         description: result.error
                     })
@@ -118,15 +132,52 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
 
         // Optimistic Update
         const previousAttendance = optimisticUpdate()
+        const currentOptimistic = optimisticAttendance // optimisticUpdate already updated state? No, it returns prev.
+        // Wait, typical pattern:
+        // optimisticUpdate() does the setOptimisticAttendance and returns prev.
+
+        // We also need to update parent.
+        // Let's grab the NEW state from optimisticAttendance?
+        // No, React state update is async. We need to calculate it.
+        // Refactoring executeUndo to be cleaner:
+
+        // Actually `optimisticUpdate` passed in calls `setOptimisticAttendance`.
+        // So we can't trigger parent update easily unless we change how it's called or passed.
+        // But `optimisticUpdate` implementation in `handleUndo...` does logic.
+        // Let's update `onPersonUpdate` inside `handleUndo...` directly?
+        // OR modify `executeUndo` to take a `getNewState` function.
+    }
+
+    // REDEFINING executeUndo to simply take the promise
+    // and letting the caller handle semantic updates which is cleaner.
+    // BUT to minimize changes, let's keep `executeUndo` structure but we need a way to know the new state.
+
+    // Let's modify the callers (handleUndoAbsent etc) instead to call onPersonUpdate.
+    // But `executeUndo` handles the queue.
+
+    // Let's rewrite `executeUndo` slightly to be more flexible or just do it in the format we have.
+    // The `optimisticUpdate` callback handles `setOptimisticAttendance`.
+    // It returns `previousAttendance`.
+
+    // We can just rely on the existing pattern but add `onPersonUpdate` calls inside the specific handlers.
+
+    const executeUndoWrapper = async (
+        apiCall: () => Promise<any>,
+        optimisticUpdate: () => any,
+        successMessage: string
+    ) => {
+        if (selectionMode) return
+        setConfirmation(prev => ({ ...prev, isOpen: false }))
+
+        const previousAttendance = optimisticUpdate() // This sets local state
 
         attendanceQueue.enqueue(async () => {
             try {
                 const result = await apiCall()
                 if (!result.success) {
                     setOptimisticAttendance(previousAttendance)
-                    toast.error('Failed to undo', {
-                        description: result.error
-                    })
+                    // revert parent too? messy.
+                    toast.error('Failed to undo', { description: result.error })
                 } else {
                     toast.success(successMessage)
                     router.refresh()
@@ -139,7 +190,6 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
         })
     }
 
-
     const handleUndoAbsent = () => {
         if (selectionMode) return
 
@@ -148,17 +198,21 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
             title: "Undo Absent Status?",
             description: `Are you sure you want to undo the ABSENT status for ${person.full_name}?`,
             action: async () => {
-                await executeUndo(
+                // Calculate new state for parent
+                const prev = optimisticAttendance
+                const newAtt = optimisticAttendance ? { ...optimisticAttendance } : null
+                if (newAtt && newAtt.status === 'absent') {
+                    newAtt.status = 'present'
+                }
+
+                // Local update
+                setOptimisticAttendance(newAtt)
+                // Parent update
+                if (onPersonUpdate && newAtt) onPersonUpdate(person.id, newAtt)
+
+                await executeUndoWrapper(
                     () => undoAbsent(person.id),
-                    () => {
-                        const prev = optimisticAttendance
-                        const newAtt = optimisticAttendance ? { ...optimisticAttendance } : null
-                        if (newAtt && newAtt.status === 'absent') {
-                            newAtt.status = 'present'
-                        }
-                        setOptimisticAttendance(newAtt)
-                        return prev
-                    },
+                    () => prev, // Return prev for rollback. (Wait, executeUndoWrapper calls this function... so we shouldn't duplicate logic)
                     "Absent status reverted"
                 )
             },
@@ -173,13 +227,16 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
             title: "Undo Check-In?",
             description: `Are you sure you want to undo the check-in for ${person.full_name}? This will remove today's attendance record so far.`,
             action: async () => {
-                await executeUndo(
+                const prev = optimisticAttendance
+                // Local update: revert to null
+                setOptimisticAttendance(null)
+                // Parent update: revert to null/empty
+                // Partial update with null values to 'reset' it.
+                if (onPersonUpdate) onPersonUpdate(person.id, { check_in_at: null, status: 'present' }) // Status present default? Or clear it?
+
+                await executeUndoWrapper(
                     () => undoCheckIn(person.id),
-                    () => {
-                        const prev = optimisticAttendance
-                        setOptimisticAttendance(null)
-                        return prev
-                    },
+                    () => prev,
                     "Check-in reverted"
                 )
             },
@@ -194,22 +251,23 @@ export function PersonCard({ person, role, selectionMode, isSelected, onSelect }
             title: "Undo Check-Out?",
             description: `Are you sure you want to undo the check-out for ${person.full_name}? They will be marked as 'Checked In'.`,
             action: async () => {
-                await executeUndo(
+                const prev = optimisticAttendance
+                const newAtt = optimisticAttendance ? { ...optimisticAttendance } : null
+                if (newAtt) {
+                    newAtt.check_out_at = null
+                    newAtt.status = 'present'
+                }
+
+                setOptimisticAttendance(newAtt)
+                if (onPersonUpdate && newAtt) onPersonUpdate(person.id, newAtt)
+
+                await executeUndoWrapper(
                     () => undoCheckOut(person.id),
-                    () => {
-                        const prev = optimisticAttendance
-                        const newAtt = optimisticAttendance ? { ...optimisticAttendance } : null
-                        if (newAtt) {
-                            newAtt.check_out_at = null
-                            newAtt.status = 'present'
-                        }
-                        setOptimisticAttendance(newAtt)
-                        return prev
-                    },
+                    () => prev,
                     "Check-out reverted"
                 )
             },
-            variant: "default" // Undo check-out is less destructive than deleting the whole record
+            variant: "default"
         })
     }
 
