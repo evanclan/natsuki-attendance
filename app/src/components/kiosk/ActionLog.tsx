@@ -34,8 +34,9 @@ export async function ActionLog({ role }: { role?: 'student' | 'employee' }) {
                                 </span>
                             </div>
                             <span className="text-xs font-mono text-amber-600 bg-amber-50 px-2 py-1 rounded-md">
-                                {new Date(log.occurred_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+                                {new Date(log.occurred_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Tokyo' })}
                             </span>
+
                         </div>
                     ))
                 )}
