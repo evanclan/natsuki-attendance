@@ -1,3 +1,5 @@
+'use client'
+
 import React from 'react'
 import { formatLocalDate } from '@/lib/utils'
 
@@ -240,6 +242,19 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
                                         if (shift.color) {
                                             // Inline style will handle this
                                         }
+                                    }
+
+                                    // Fallback: If cellContent is still empty (no shift, or shift didn't set content),
+                                    // check if we have raw attendance time
+                                    if (cellContent === '' && attendanceRecord && attendanceRecord.check_in_at && attendanceRecord.check_out_at) {
+                                        const start = formatTime(attendanceRecord.check_in_at)
+                                        const end = formatTime(attendanceRecord.check_out_at)
+                                        cellContent = (
+                                            <div className="flex flex-col items-center justify-center leading-[0.85] gap-[1px]">
+                                                <div>{start}</div>
+                                                <div>{end}</div>
+                                            </div>
+                                        )
                                     }
 
                                     return (
