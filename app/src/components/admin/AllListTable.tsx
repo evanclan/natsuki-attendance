@@ -39,6 +39,7 @@ type ShiftRecord = {
     end_time: string | null
     color: string | null
     shift_name: string | null
+    memo: string | null
 }
 
 type SystemEvent = {
@@ -69,8 +70,8 @@ export function AllListTable({ year, month, employees, students, attendance, shi
     const daysInMonth = new Date(year, month + 1, 0).getDate()
     const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
 
-    const handlePrint = () => {
-        const url = `/print/all_list?year=${year}&month=${month}`
+    const handlePrint = (type: string) => {
+        const url = `/print/all_list?year=${year}&month=${month}&type=${type}`
         window.open(url, '_blank')
     }
 
@@ -236,9 +237,14 @@ export function AllListTable({ year, month, employees, students, attendance, shi
                             `}
                         >
                             {/* Top: Shift Status/Info */}
-                            <div className="text-[10px] font-semibold text-slate-700 mb-1 truncate px-1 rounded bg-white/40 w-fit max-w-full">
+                            <div className={`text-[10px] font-semibold text-slate-700 mb-1 px-1 rounded bg-white/40 w-full max-w-full ${shift && (shift.shift_type === 'user_note' || shift.shift_type === 'other_reason')
+                                    ? 'line-clamp-2 whitespace-normal break-words leading-tight'
+                                    : 'truncate'
+                                }`}>
                                 {shift ? (
-                                    shift.shift_name || getShiftLabel(shift.shift_type)
+                                    (shift.shift_type === 'user_note' || shift.shift_type === 'other_reason')
+                                        ? (shift.memo || shift.shift_name || getShiftLabel(shift.shift_type))
+                                        : (shift.shift_name || getShiftLabel(shift.shift_type))
                                 ) : (
                                     <span className="opacity-0">-</span> // Placeholder to keep layout
                                 )}
@@ -335,13 +341,23 @@ export function AllListTable({ year, month, employees, students, attendance, shi
             </div>
 
             {renderTable(employees, "Employees", days, (
-                <Button onClick={handlePrint} size="sm" variant="outline" className="gap-2">
+                <Button onClick={() => handlePrint('employees')} size="sm" variant="outline" className="gap-2">
                     <Printer className="h-4 w-4" />
                     Print Table
                 </Button>
             ))}
-            {renderTable(filteredStudents, "Students", days)}
-            {satasaurusStudents.length > 0 && renderTable(satasaurusStudents, "Satursaurus Students", saturdayDays)}
+            {renderTable(filteredStudents, "Students", days, (
+                <Button onClick={() => handlePrint('students')} size="sm" variant="outline" className="gap-2">
+                    <Printer className="h-4 w-4" />
+                    Print Table
+                </Button>
+            ))}
+            {satasaurusStudents.length > 0 && renderTable(satasaurusStudents, "Satursaurus Students", saturdayDays, (
+                <Button onClick={() => handlePrint('satursaurus')} size="sm" variant="outline" className="gap-2">
+                    <Printer className="h-4 w-4" />
+                    Print Table
+                </Button>
+            ))}
 
             {selectedEmployee && selectedDate && (
                 <AttendanceEditDialog

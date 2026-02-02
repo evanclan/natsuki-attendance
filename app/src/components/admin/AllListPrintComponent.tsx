@@ -32,6 +32,7 @@ interface ShiftRecord {
     shift_type: string
     color: string | null
     shift_name: string | null
+    memo: string | null
 }
 
 interface AllListPrintComponentProps {
@@ -42,10 +43,11 @@ interface AllListPrintComponentProps {
     shifts: ShiftRecord[]
     events: SystemEvent[]
     attendance: AttendanceRecord[]
+    type?: string
 }
 
 export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPrintComponentProps>(
-    ({ year, month, employees, days, shifts, events, attendance }, ref) => {
+    ({ year, month, employees, days, shifts, events, attendance, type }, ref) => {
         const monthName = new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
         const getDayStatus = (day: number) => {
@@ -127,7 +129,9 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
                                     </th>
                                 )
                             })}
-                            <th className="border border-gray-400 p-1.5 w-9 bg-gray-100 text-center font-bold text-[9px]">合計</th>
+                            {type !== 'students' && type !== 'satursaurus' && (
+                                <th className="border border-gray-400 p-1.5 w-9 bg-gray-100 text-center font-bold text-[9px]">合計</th>
+                            )}
                             <th className="border border-gray-400 p-1.5 w-9 bg-gray-100 text-center font-bold text-[9px]">日数</th>
                             <th className="border border-gray-400 p-1.5 w-20 bg-gray-100 text-left">Name</th>
                         </tr>
@@ -152,7 +156,9 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
                                     </td>
                                 )
                             })}
-                            <td className="border border-gray-400 p-[5px]"></td>
+                            {type !== 'students' && type !== 'satursaurus' && (
+                                <td className="border border-gray-400 p-[5px]"></td>
+                            )}
                             <td className="border border-gray-400 p-[5px]"></td>
                             <td className="border border-gray-400 p-[5px]"></td>
                         </tr>
@@ -199,6 +205,9 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
                                         } else if (shift.shift_type === 'preferred_rest') {
                                             cellContent = '希望休'
                                             cellClass = 'bg-red-50' // User requested red for preferred_rest
+                                        } else if (shift.shift_type === 'planned_absent') {
+                                            cellContent = '予欠'
+                                            cellClass = 'bg-red-50'
                                         } else if (shift.shift_type === 'work' || shift.shift_type === 'work_no_break' || shift.shift_type === 'flex') {
                                             // Show Raw Time Logic
                                             if (attendanceRecord && attendanceRecord.check_in_at && attendanceRecord.check_out_at) {
@@ -215,6 +224,13 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
                                                 // No attendance data -> Empty
                                                 cellContent = ''
                                             }
+                                        } else if (shift.shift_type === 'user_note' || shift.shift_type === 'other_reason') {
+                                            // Memo content
+                                            cellContent = (
+                                                <div className="line-clamp-2 overflow-hidden whitespace-normal break-words leading-tight">
+                                                    {shift.memo || shift.shift_name || shift.shift_type}
+                                                </div>
+                                            )
                                         } else {
                                             // Other types
                                             cellContent = shift.shift_name || shift.shift_type || ''
@@ -236,16 +252,18 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
                                         </td>
                                     )
                                 })}
-                                <td className="border border-gray-400 p-[5px] text-center font-medium">
-                                    {(() => {
-                                        const totalMinutes = attendance
-                                            .filter(a => a.person_id === person.id)
-                                            .reduce((sum, a) => sum + (a.total_work_minutes || 0), 0)
-                                        const hours = Math.floor(totalMinutes / 60)
-                                        // Only show if > 0
-                                        return hours > 0 ? `${hours}h` : '-'
-                                    })()}
-                                </td>
+                                {type !== 'students' && type !== 'satursaurus' && (
+                                    <td className="border border-gray-400 p-[5px] text-center font-medium">
+                                        {(() => {
+                                            const totalMinutes = attendance
+                                                .filter(a => a.person_id === person.id)
+                                                .reduce((sum, a) => sum + (a.total_work_minutes || 0), 0)
+                                            const hours = Math.floor(totalMinutes / 60)
+                                            // Only show if > 0
+                                            return hours > 0 ? `${hours}h` : '-'
+                                        })()}
+                                    </td>
+                                )}
                                 <td className="border border-gray-400 p-[5px] text-center font-medium">
                                     {(() => {
                                         const daysAttended = attendance.filter(a => a.person_id === person.id && (a.check_in_at || a.check_out_at)).length
