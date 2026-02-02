@@ -142,7 +142,12 @@ export function StudentKioskClient({ initialPeople, actionLog }: StudentKioskCli
             <NewsCorner />
 
             <main className="flex-1 overflow-y-auto p-2 md:p-6 pt-0">
-                <div className="flex justify-end mb-2 px-1">
+                <div className="flex justify-end mb-2 px-1 items-center gap-3">
+                    <span className="text-sm font-bold text-gray-600 bg-white/80 px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
+                        現在人数: {initialPeople.filter(p =>
+                            p.attendance_today?.check_in_at && !p.attendance_today?.check_out_at
+                        ).length}
+                    </span>
                     {/* Toggle Button moved here */}
                     <Button
                         variant={showSatasaurus ? "default" : "outline"}
