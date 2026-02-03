@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
     Dialog,
     DialogContent,
@@ -67,6 +67,16 @@ export function AttendanceEditDialog({
     const [checkOut, setCheckOut] = useState(getInputValue(currentAttendance?.check_out_at || null))
     const [status, setStatus] = useState(currentAttendance?.status || 'present')
     const [adminNote, setAdminNote] = useState(currentAttendance?.admin_note || '')
+
+    // Update state when currentAttendance changes (e.g. when opening for a different person/day)
+    useEffect(() => {
+        if (open) {
+            setCheckIn(getInputValue(currentAttendance?.check_in_at || null))
+            setCheckOut(getInputValue(currentAttendance?.check_out_at || null))
+            setStatus(currentAttendance?.status || 'present')
+            setAdminNote(currentAttendance?.admin_note || '')
+        }
+    }, [open, currentAttendance])
 
     const handleSave = async () => {
         setSaving(true)
