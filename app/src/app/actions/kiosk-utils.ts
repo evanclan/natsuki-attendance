@@ -56,6 +56,7 @@ export function calculateDailyStats(
 } {
     const shiftType = shift?.shift_type || 'work'
     const isNoBreak = shiftType === 'work_no_break'
+    const isFlex = shiftType.toLowerCase() === 'flex'
 
     const checkIn = new Date(checkInAt)
     const checkOut = new Date(checkOutAt)
@@ -172,16 +173,18 @@ export function calculateDailyStats(
     }
 
     // Apply rounding rules for check-in
+    // If Flex, we intentionally ignore the scheduled start time to force simple 15m rounding
     const roundedCheckIn = getRoundedCheckIn(
         checkIn,
-        shift?.start_time,
+        isFlex ? undefined : shift?.start_time,
         checkIn
     )
 
     // Apply rounding rules for check-out and calculate raw overtime (clock-based)
+    // If Flex, we intentionally ignore the scheduled end time to force simple 15m rounding
     const { roundedCheckOut, overtimeMinutes: clockOvertime } = getRoundedCheckOut(
         checkOut,
-        shift?.end_time,
+        isFlex ? undefined : shift?.end_time,
         checkOut
     )
 

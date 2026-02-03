@@ -265,7 +265,10 @@ export async function getMonthlyAttendanceReport(
             }
 
             // Check for late arrival
-            if (!isRestDay && shift?.start_time && attendance.check_in_at) {
+            // Skip for Flex shifts
+            const isFlex = shift?.shift_type?.toLowerCase() === 'flex'
+
+            if (!isFlex && !isRestDay && shift?.start_time && attendance.check_in_at) {
                 const checkInMinutes = getMinutesFromMidnightJST(attendance.check_in_at)
                 const shiftStartMinutes = getMinutesFromTimeStr(shift.start_time)
                 // Add a small buffer (e.g. 1 minute) if needed, but strictly:
@@ -278,7 +281,8 @@ export async function getMonthlyAttendanceReport(
             }
 
             // Check for early out
-            if (!isRestDay && shift?.end_time && attendance.check_out_at) {
+            // Skip for Flex shifts
+            if (!isFlex && !isRestDay && shift?.end_time && attendance.check_out_at) {
                 const checkOutMinutes = getMinutesFromMidnightJST(attendance.check_out_at)
                 const shiftEndMinutes = getMinutesFromTimeStr(shift.end_time)
 
