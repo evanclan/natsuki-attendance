@@ -49,10 +49,12 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
         checkIn: string
         checkOut: string
         status: string
+        breakChunk: string
     }>({
         checkIn: '',
         checkOut: '',
-        status: ''
+        status: '',
+        breakChunk: ''
     })
 
     const currentYear = currentDate.getFullYear()
@@ -101,7 +103,7 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
     }
 
     const formatMinutesToHours = (minutes: number | null) => {
-        if (!minutes) return '-'
+        if (!minutes && minutes !== 0) return '-'
         const hours = Math.floor(minutes / 60)
         const mins = minutes % 60
         return `${hours}:${mins.toString().padStart(2, '0')}`
@@ -138,20 +140,19 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
         setEditForm({
             checkIn: getInputValue(day.checkIn),
             checkOut: getInputValue(day.checkOut),
-            status: day.isRestDay ? (day.isHoliday ? 'holiday' : 'rest_day') : (day.checkIn ? 'present' : 'absent')
+            status: day.isRestDay ? (day.isHoliday ? 'holiday' : 'rest_day') : (day.checkIn ? 'present' : 'absent'),
+            breakChunk: day.breakMinutes !== null ? formatMinutesToHours(day.breakMinutes) : ''
         })
     }
 
     const handleCancelEdit = () => {
         setEditingDate(null)
-        setEditForm({ checkIn: '', checkOut: '', status: '' })
+        setEditForm({ checkIn: '', checkOut: '', status: '', breakChunk: '' })
     }
 
     const handleSaveEdit = async (dateStr: string) => {
         setSaving(true)
 
-        // Construct ISO strings for the backend
-        // We use the date from the row and time from the input
         // Construct ISO strings for the backend
         // We use the date from the row (which is already YYYY-MM-DD from server) and time from input
         const constructDateTime = (timeStr: string) => {
@@ -161,10 +162,20 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
             return `${dateStr}T${timeStr}:00+09:00`
         }
 
+        // Convert break HH:MM back to minutes
+        let totalBreakMinutes: number | undefined = undefined
+        if (editForm.breakChunk) {
+            const [h, m] = editForm.breakChunk.split(':').map(Number)
+            if (!isNaN(h) && !isNaN(m)) {
+                totalBreakMinutes = h * 60 + m
+            }
+        }
+
         const result = await upsertAttendanceRecord(personId, dateStr, {
             check_in_at: constructDateTime(editForm.checkIn),
             check_out_at: constructDateTime(editForm.checkOut),
             status: editForm.status,
+            total_break_minutes: totalBreakMinutes
             // We don't set break times manually here for now, relying on auto-calc or separate edit if needed
             // But for simplicity in this report view, we'll just update main times
         })
@@ -366,7 +377,16 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
                                             )}
                                         </TableCell>
                                         <TableCell className="text-center text-sm print:text-[11px] print:py-0.5 print:h-[26px]">
-                                            {formatMinutesToHours(record.breakMinutes)}
+                                            {isEditing ? (
+                                                <Input
+                                                    type="time" // Or text if we want more free form like "1:30" without strict time semantics, but time is safer
+                                                    className="h-8 text-xs"
+                                                    value={editForm.breakChunk}
+                                                    onChange={(e) => setEditForm({ ...editForm, breakChunk: e.target.value })}
+                                                />
+                                            ) : (
+                                                formatMinutesToHours(record.breakMinutes)
+                                            )}
                                         </TableCell>
                                         <TableCell className="text-center text-sm font-medium print:text-[11px] print:py-0.5 print:h-[26px]">
                                             {formatMinutesToHours(record.workMinutes)}

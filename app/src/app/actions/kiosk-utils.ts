@@ -44,7 +44,8 @@ export function calculateDailyStats(
         shift_type: string
         start_time?: string
         end_time?: string
-    } | null
+    } | null,
+    overrideBreakMinutes?: number | null
 ): {
     total_work_minutes: number
     total_break_minutes: number
@@ -128,7 +129,17 @@ export function calculateDailyStats(
             let breakExceeded = false
 
             // Rule: If work >= 6 hours, deduct 1 hour break
-            if (grossMinutes >= 360) { // 6 hours
+            // If override is provided, use it directly (skip auto-calc logic)
+            if (typeof overrideBreakMinutes === 'number') {
+                applicableBreakMinutes = overrideBreakMinutes
+                if (actualBreakMinutes > 60 && overrideBreakMinutes < actualBreakMinutes) {
+                    // This logic is tricky with overrides. 
+                    // If manually set to 60, but scanned break was 70, is it exceeded?
+                    // Let's assume manual edit resolves the "exceeded" status conceptually, or we keep it.
+                    // For now, let's keep strict check against actual scanned break if available.
+                    breakExceeded = actualBreakMinutes > 60
+                }
+            } else if (grossMinutes >= 360) { // 6 hours
                 applicableBreakMinutes = 60
                 if (actualBreakMinutes > 60) {
                     breakExceeded = true
@@ -210,12 +221,19 @@ export function calculateDailyStats(
 
     // Rule: If work >= 6 hours, deduct 1 hour break
     // BUT if it's 'work_no_break', we do NOT deduct break
-    if (!isNoBreak && grossMinutes >= 360) { // 6 hours
+    // If override is provided, use it directly
+    if (typeof overrideBreakMinutes === 'number') {
+        applicableBreakMinutes = overrideBreakMinutes
+        if (actualBreakMinutes > 60) { // Keep warning if physically took long break? Or ignore?
+            breakExceeded = actualBreakMinutes > 60
+        }
+    } else if (!isNoBreak && grossMinutes >= 360) { // 6 hours
         applicableBreakMinutes = 60
         if (actualBreakMinutes > 60) {
             breakExceeded = true
         }
     } else {
+        // work_no_break or < 6 hours
         applicableBreakMinutes = 0
     }
 
@@ -241,7 +259,8 @@ export function calculateDailyStats(
 
         // Break deduction for scheduled shift
         let scheduledBreak = 0
-        if (scheduledGross >= 360) scheduledBreak = 60
+        // Important: Scheduled break also needs to respect 'work_no_break' for correct overtime calculation!
+        if (!isNoBreak && scheduledGross >= 360) scheduledBreak = 60
 
         const scheduledWorkMinutes = scheduledGross - scheduledBreak
 

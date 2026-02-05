@@ -10,6 +10,7 @@ export type AttendanceUpdateData = {
     break_end_at: string | null
     status: string
     admin_note?: string
+    total_break_minutes?: number
 }
 
 export async function updateAttendanceRecord(
@@ -57,7 +58,10 @@ export async function updateAttendanceRecord(
             data.check_out_at,
             data.break_start_at || null,
             data.break_end_at || null,
-            shift
+            shift,
+            // Pass the override if it exists in data (we need to add it to the type first, but for now we expect it in 'data' casted or upgraded)
+            // But wait, 'data' is typed as AttendanceUpdateData which I need to update first.
+            (data as any).total_break_minutes
         )
 
         total_work_minutes = calculation.total_work_minutes
@@ -86,6 +90,7 @@ export async function updateAttendanceRecord(
         is_edited: true,
         updated_at: new Date().toISOString()
     }
+
 
     // Handle admin notes - append break exceeded note if applicable
     if (break_exceeded) {
@@ -149,6 +154,7 @@ export async function upsertAttendanceRecord(
         check_out_at: string | null
         status: string
         admin_note?: string
+        total_break_minutes?: number
     }
 ) {
     const supabase = await createClient()
@@ -196,7 +202,8 @@ export async function upsertAttendanceRecord(
                 data.check_out_at,
                 null, // No break times for simple manual creation yet
                 null,
-                shift
+                shift,
+                data.total_break_minutes
             )
 
             total_work_minutes = calculation.total_work_minutes
