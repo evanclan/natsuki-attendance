@@ -27,6 +27,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+
 import {
     AlertDialog,
     AlertDialogAction,
@@ -39,6 +40,15 @@ import {
 } from "@/components/ui/alert-dialog"
 import { getMonthlyAttendanceReport, type DailyAttendance, type MonthlyAttendanceReport } from '@/app/admin/manage_employee/[code]/actions'
 import { upsertAttendanceRecord, deleteAttendanceRecord } from '@/app/admin/attendance-actions/actions'
+
+// Create a list of break options in 15-minute intervals
+const BREAK_OPTIONS = [
+    "0:00", "0:15", "0:30", "0:45",
+    "1:00", "1:15", "1:30", "1:45",
+    "2:00", "2:15", "2:30", "2:45",
+    "3:00", "3:15", "3:30", "3:45",
+    "4:00", "5:00", "6:00"
+]
 
 interface MonthlyReportProps {
     personId: string
@@ -404,14 +414,25 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
                                                 )
                                             )}
                                         </TableCell>
+
+
                                         <TableCell className="text-center text-sm print:text-[11px] print:py-0.5 print:h-[26px]">
                                             {isEditing ? (
-                                                <Input
-                                                    type="time" // Or text if we want more free form like "1:30" without strict time semantics, but time is safer
-                                                    className="h-8 text-xs"
+                                                <Select
                                                     value={editForm.breakChunk}
-                                                    onChange={(e) => setEditForm({ ...editForm, breakChunk: e.target.value })}
-                                                />
+                                                    onValueChange={(value) => setEditForm({ ...editForm, breakChunk: value })}
+                                                >
+                                                    <SelectTrigger className="h-8 text-xs w-[70px]">
+                                                        <SelectValue placeholder="Break" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {BREAK_OPTIONS.map((option) => (
+                                                            <SelectItem key={option} value={option}>
+                                                                {option}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
                                             ) : (
                                                 formatMinutesToHours(record.breakMinutes)
                                             )}
