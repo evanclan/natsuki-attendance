@@ -20,15 +20,25 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { ChevronLeft, ChevronRight, AlertCircle, Clock, AlertTriangle, Pencil, Coffee, Save, X, Loader2, LogOut, Briefcase, CalendarOff, Printer } from 'lucide-react'
+import { ChevronLeft, ChevronRight, AlertCircle, Clock, AlertTriangle, Pencil, Coffee, Save, X, Loader2, LogOut, Briefcase, CalendarOff, Printer, Trash2 } from 'lucide-react'
 import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { getMonthlyAttendanceReport, type DailyAttendance, type MonthlyAttendanceReport } from '@/app/admin/manage_employee/[code]/actions'
-import { upsertAttendanceRecord } from '@/app/admin/attendance-actions/actions'
+import { upsertAttendanceRecord, deleteAttendanceRecord } from '@/app/admin/attendance-actions/actions'
 
 interface MonthlyReportProps {
     personId: string
@@ -45,6 +55,8 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
     // Editing state
     const [editingDate, setEditingDate] = useState<string | null>(null)
     const [saving, setSaving] = useState(false)
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    const [recordToDelete, setRecordToDelete] = useState<{ date: string } | null>(null)
     const [editForm, setEditForm] = useState<{
         checkIn: string
         checkOut: string
@@ -195,6 +207,22 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
 
     const handlePrintPDF = () => {
         window.print()
+    }
+
+    const handleConfirmDelete = async () => {
+        if (!recordToDelete) return
+
+        setSaving(true)
+        const result = await deleteAttendanceRecord(personId, recordToDelete.date)
+
+        if (result.success) {
+            setRecordToDelete(null)
+            setDeleteDialogOpen(false)
+            loadReport()
+        } else {
+            alert(result.error || "Failed to delete attendance record")
+        }
+        setSaving(false)
     }
 
     if (loading) {
@@ -449,14 +477,29 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
                                                     </Button>
                                                 </div>
                                             ) : (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-7 w-7 text-muted-foreground hover:text-primary"
-                                                    onClick={() => handleEditClick(record)}
-                                                >
-                                                    <Pencil className="h-3 w-3" />
-                                                </Button>
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-7 w-7 text-muted-foreground hover:text-primary"
+                                                        onClick={() => handleEditClick(record)}
+                                                    >
+                                                        <Pencil className="h-3 w-3" />
+                                                    </Button>
+                                                    {!isRestDay && (record.checkIn || record.checkOut) && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-7 w-7 text-muted-foreground hover:text-red-600"
+                                                            onClick={() => {
+                                                                setRecordToDelete({ date: record.date })
+                                                                setDeleteDialogOpen(true)
+                                                            }}
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
+                                                        </Button>
+                                                    )}
+                                                </div>
                                             )}
                                         </TableCell>
                                     </TableRow>
@@ -522,6 +565,30 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
                     </div>
                 </div>
             </CardContent >
+
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Attendance Record</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete this attendance record? This action cannot be undone and will reset the day to empty.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => {
+                                e.preventDefault()
+                                handleConfirmDelete()
+                            }}
+                            className="bg-red-600 hover:bg-red-700"
+                            disabled={saving}
+                        >
+                            {saving ? 'Deleting...' : 'Delete'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Card >
     )
 }

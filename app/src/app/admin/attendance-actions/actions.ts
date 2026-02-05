@@ -243,3 +243,67 @@ export async function upsertAttendanceRecord(
         return { success: true }
     }
 }
+
+export async function deleteAttendanceRecord(personId: string, date: string) {
+    const supabase = await createClient()
+
+    // 1. Get the record ID first for audit
+    const { data: record, error: fetchError } = await supabase
+        .from('attendance_days')
+        .select('*')
+        .eq('person_id', personId)
+        .eq('date', date)
+        .single()
+
+    if (fetchError || !record) {
+        return { success: false, error: 'Record not found' }
+    }
+
+    // 2. Unlink associated events first (foreign key constraint)
+    // We update them to null so we keep the audit trail but break the link
+    const { error: unlinkError } = await supabase
+        .from('attendance_events')
+        .update({ attendance_day_id: null })
+        .eq('attendance_day_id', record.id)
+
+    if (unlinkError) {
+        console.error('Failed to unlink events:', unlinkError)
+        // We might want to abort or try to delete anyway, but likely it will fail if this failed
+        return { success: false, error: 'Failed to unlink related events: ' + unlinkError.message }
+    }
+
+    // 3. Delete the record
+    const { error: deleteError } = await supabase
+        .from('attendance_days')
+        .delete()
+        .eq('id', record.id)
+
+    if (deleteError) {
+        return { success: false, error: deleteError.message }
+    }
+
+    // 4. Create audit log
+    const { error: eventError } = await supabase
+        .from('attendance_events')
+        .insert({
+            person_id: personId,
+            attendance_day_id: null, // Record is deleted, so no link
+            event_type: 'admin_delete',
+            source: 'admin',
+            payload: {
+                deleted_record: record
+            },
+            note: 'Manual delete by admin from monthly report'
+        })
+
+    if (eventError) {
+        console.error('Failed to create audit event:', eventError)
+    }
+
+    revalidatePath('/admin/manage_employee')
+    revalidatePath('/admin/all_list')
+    revalidatePath(`/admin/manage_employee/${record.code}`) // Try to revalidate specific employee page if we had code, but we don't. 
+    // Just revalidate generic paths.
+
+    return { success: true }
+}
