@@ -111,6 +111,25 @@ export default function SettingsPage() {
                         </CardContent>
                     </Card>
                 </Link>
+
+                <Link href="/admin/settings/deadline">
+                    <Card className="hover:bg-accent/50 transition-colors cursor-pointer h-full">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <span className="text-xl">📅</span>
+                                Preferred Rest Deadline
+                            </CardTitle>
+                            <CardDescription>
+                                Set monthly submission deadline
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-muted-foreground">
+                                Configure the deadline day for employees to submit their preferred rest days.
+                            </p>
+                        </CardContent>
+                    </Card>
+                </Link>
             </div>
         </div>
     )

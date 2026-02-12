@@ -9,6 +9,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, X, ChevronDown } from 'lucide-rea
 import { getAllEmployees, setPreferredRest, deletePreferredRest, Person } from '@/app/actions/kiosk'
 import { getSystemEvents, SystemEvent } from '@/app/admin/settings/actions'
 import { getMonthlyMasterList, MasterListShiftData } from '@/app/admin/masterlist/actions'
+import { getDeadlineSetting } from '@/app/admin/settings/deadline/actions'
 import { toast } from "sonner"
 import { formatLocalDate } from '@/lib/utils'
 
@@ -20,6 +21,7 @@ export default function SetDayOffPage() {
     const today = new Date()
     const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1)
     const [currentDate, setCurrentDate] = useState(nextMonth)
+    const [deadlineDay, setDeadlineDay] = useState(21) // Default to 21
 
     const [events, setEvents] = useState<SystemEvent[]>([])
     const [shifts, setShifts] = useState<any[]>([])
@@ -31,7 +33,15 @@ export default function SetDayOffPage() {
 
     useEffect(() => {
         loadEmployees()
+        loadDeadline()
     }, [])
+
+    const loadDeadline = async () => {
+        const result = await getDeadlineSetting()
+        if (result.success && result.data) {
+            setDeadlineDay(result.data)
+        }
+    }
 
     useEffect(() => {
         loadMonthData()
@@ -85,8 +95,8 @@ export default function SetDayOffPage() {
             const currentYear = now.getFullYear()
             const currentMonth = now.getMonth()
 
-            // Deadline is the 21st of the current month at 23:59:59
-            const deadline = new Date(currentYear, currentMonth, 21, 23, 59, 59)
+            // Deadline is the Xth of the current month at 23:59:59
+            const deadline = new Date(currentYear, currentMonth, deadlineDay, 23, 59, 59)
 
             const difference = deadline.getTime() - now.getTime()
 
@@ -109,7 +119,7 @@ export default function SetDayOffPage() {
         const timer = setInterval(calculateTimeLeft, 1000)
 
         return () => clearInterval(timer)
-    }, [])
+    }, [deadlineDay])
 
     const [isMemoDialogOpen, setIsMemoDialogOpen] = useState(false)
     const [selectedDateForMemo, setSelectedDateForMemo] = useState<Date | null>(null)
@@ -187,6 +197,16 @@ export default function SetDayOffPage() {
 
     const getFirstDayOfMonth = () => {
         return new Date(currentYear, currentMonth, 1).getDay()
+    }
+
+    const getDaySuffix = (day: number) => {
+        if (day >= 11 && day <= 13) return 'th'
+        switch (day % 10) {
+            case 1: return 'st'
+            case 2: return 'nd'
+            case 3: return 'rd'
+            default: return 'th'
+        }
     }
 
     const renderCalendarDays = () => {
@@ -300,7 +320,7 @@ export default function SetDayOffPage() {
                 <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-[1px] z-50 pointer-events-none flex items-center justify-center">
                     <div className="bg-white/90 p-8 rounded-xl shadow-2xl text-center border-2 border-red-200 pointer-events-auto">
                         <h2 className="text-3xl font-bold text-red-600 mb-2">Submission Closed</h2>
-                        <p className="text-slate-600 text-lg">The deadline (21st of the month) has passed.</p>
+                        <p className="text-slate-600 text-lg">The deadline ({deadlineDay}{getDaySuffix(deadlineDay)} of the month) has passed.</p>
                         <p className="text-slate-500 mt-2">Please contact the administrator for changes.</p>
                         <Link href="/kiosk/employee">
                             <Button className="mt-6" size="lg">
@@ -349,7 +369,7 @@ export default function SetDayOffPage() {
                                     <h3 className="font-semibold text-lg text-blue-900 mb-2 hidden md:block">Instructions</h3>
                                     <p className="text-blue-800 mb-4 text-sm md:text-base">
                                         This is where you put your preferred rest. <br />
-                                        <span className="font-bold text-red-600">Deadline: 21st of the month.</span>
+                                        <span className="font-bold text-red-600">Deadline: {deadlineDay}{getDaySuffix(deadlineDay)} of the month.</span>
                                     </p>
                                     <ul className="space-y-2 text-blue-700 text-sm md:text-base">
                                         <li className="flex items-center gap-2">
@@ -370,7 +390,7 @@ export default function SetDayOffPage() {
                                     <h3 className="font-semibold text-lg text-blue-900 mb-2 hidden md:block">説明 (Instructions)</h3>
                                     <p className="text-blue-800 mb-4 text-sm md:text-base">
                                         ここで希望休を設定してください。<br />
-                                        <span className="font-bold text-red-600">締め切り: 毎月21日</span>
+                                        <span className="font-bold text-red-600">締め切り: 毎月{deadlineDay}日</span>
                                     </p>
                                     <ul className="space-y-2 text-blue-700 text-sm md:text-base">
                                         <li className="flex items-center gap-2">

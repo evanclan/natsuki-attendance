@@ -12,10 +12,10 @@ create table if not exists locations (
 
 -- Insert default locations
 insert into locations (name, is_default, is_active, sort_order) values
-  ('taniyama', true, true, 1),
-  ('shimoarata', true, true, 2),
-  ('hanauta', true, true, 3),
-  ('academy', true, true, 4)
+  ('Taniyama', true, true, 1),
+  ('Shimoarata', true, true, 2),
+  ('Hanauta', true, true, 3),
+  ('Academy', true, true, 4)
 on conflict (name) do nothing;
 
 -- Create index for faster lookups

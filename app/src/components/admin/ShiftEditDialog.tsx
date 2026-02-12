@@ -68,7 +68,7 @@ export function ShiftEditDialog({
     const addToHistory = (newColor: string) => {
         if (!newColor) return
 
-        const updatedHistory = [newColor, ...colorHistory.filter(c => c !== newColor)].slice(0, 6)
+        const updatedHistory = [newColor, ...colorHistory.filter(c => c !== newColor)].slice(0, 12)
         setColorHistory(updatedHistory)
         localStorage.setItem('shift_color_history', JSON.stringify(updatedHistory))
     }
