@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { LiveClock } from '@/components/kiosk/LiveClock'
 import { ViewShiftButton } from '@/components/kiosk/ViewShiftButton'
 import { AutoRedirectController } from '@/components/kiosk/AutoRedirectController'
+import { AutoRefresh } from '@/components/kiosk/AutoRefresh'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
@@ -12,7 +13,10 @@ export default function EmployeeKioskPage() {
     return (
         <div className="min-h-screen flex flex-col bg-slate-100">
             <header className="bg-white shadow p-4 flex justify-between items-center sticky top-0 z-10 gap-4">
-                <h1 className="text-2xl font-bold text-slate-800">Staff</h1>
+                <div className="flex items-center gap-4">
+                    <h1 className="text-2xl font-bold text-slate-800">Staff</h1>
+                    <AutoRefresh intervalMinutes={5} />
+                </div>
                 <LiveClock />
                 <Link href="/kiosk">
                     <Button variant="secondary">Go to Student Kiosk</Button>

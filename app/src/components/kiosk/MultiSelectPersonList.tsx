@@ -22,6 +22,8 @@ export function MultiSelectPersonList({ people, role, visibleCategories, onPerso
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
     const [isSubmitting, setIsSubmitting] = useState(false)
 
+
+
     // Group people by category
     const groupedPeople: Record<string, Person[]> = {}
     const otherPeople: Person[] = []

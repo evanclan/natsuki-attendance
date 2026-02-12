@@ -5,6 +5,7 @@ import { Person } from '@/app/actions/kiosk'
 import { MultiSelectPersonList } from './MultiSelectPersonList'
 import { Button } from '@/components/ui/button'
 import { LiveClock } from '@/components/kiosk/LiveClock'
+import { AutoRefresh } from '@/components/kiosk/AutoRefresh'
 import { NewsCorner } from '@/components/kiosk/NewsCorner'
 import Link from 'next/link'
 import { ToggleLeft, ToggleRight } from 'lucide-react'
@@ -173,6 +174,7 @@ export function StudentKioskClient({ initialPeople, actionLog }: StudentKioskCli
 
             <main className="flex-1 overflow-y-auto p-2 md:p-6 pt-0">
                 <div className="flex justify-end mb-2 px-1 items-center gap-3">
+                    <AutoRefresh intervalMinutes={5} />
                     <span className="text-sm font-bold text-gray-600 bg-white/80 px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
                         現在人数: {people.filter(p =>
                             p.attendance_today?.check_in_at && !p.attendance_today?.check_out_at

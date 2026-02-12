@@ -1,0 +1,20 @@
+name: Wakeup Supabase
+
+on:
+  schedule:
+    # Runs at 21:00 UTC, which is 6:00 AM JST
+    - cron: '0 21 * * *'
+  workflow_dispatch:
+
+jobs:
+  wakeup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Wakeup API
+        env:
+          # You should set this secret in your repository settings or replace with the literal URL if public
+          # For now, we assume the user will replace this or set the secret
+          DEPLOYED_URL: ${{ secrets.DEPLOYED_URL || 'https://natsuki-attendance.vercel.app' }}
+        run: |
+          echo "Waking up Supabase at $DEPLOYED_URL/api/cron/wakeup"
+          curl -f -X GET "$DEPLOYED_URL/api/cron/wakeup"
