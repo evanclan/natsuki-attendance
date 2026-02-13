@@ -91,35 +91,35 @@ export const ShiftCell = memo(function ShiftCell({
             bgColor = 'bg-blue-50'
             textColor = 'text-blue-700'
             mainContent = 'Present'
-            memoContent = shift.memo
+            memoContent = shift.memo ?? undefined
         } else if (shift.shift_type === 'sick_absent') {
             bgColor = 'bg-red-50'
             textColor = 'text-red-700'
             mainContent = 'Sick\nAbsent'
-            memoContent = shift.memo
+            memoContent = shift.memo ?? undefined
         } else if (shift.shift_type === 'planned_absent') {
             bgColor = 'bg-orange-50'
             textColor = 'text-orange-700'
             mainContent = 'Planned\nAbsent'
-            memoContent = shift.memo
+            memoContent = shift.memo ?? undefined
         } else if (shift.shift_type === 'family_reason') {
             bgColor = 'bg-purple-50'
             textColor = 'text-purple-700'
             mainContent = 'Family\nMatters'
-            memoContent = shift.memo
+            memoContent = shift.memo ?? undefined
         } else if (shift.shift_type === 'other_reason') {
             bgColor = 'bg-gray-50'
             textColor = 'text-gray-700'
             mainContent = 'Other\nReason'
-            memoContent = shift.memo
+            memoContent = shift.memo ?? undefined
         } else if (shift.shift_type === 'work') {
             bgColor = 'bg-white'
             if (shift.color) {
                 // Use inline style for custom colors, but we need to override the class
                 // We'll handle this in the style prop of the div
             }
-            const start = formatTime(shift.start_time)
-            const end = formatTime(shift.end_time)
+            const start = formatTime(shift.start_time ?? undefined)
+            const end = formatTime(shift.end_time ?? undefined)
             mainContent = `${start} - ${end}`
             // Only show location if it's NOT "academy" (since 80% are academy, no need to show it)
             if (shift.location && shift.location.toLowerCase() !== 'academy') {
@@ -130,8 +130,8 @@ export const ShiftCell = memo(function ShiftCell({
             if (shift.color) {
                 // Use inline style for custom colors
             }
-            const start = formatTime(shift.start_time)
-            const end = formatTime(shift.end_time)
+            const start = formatTime(shift.start_time ?? undefined)
+            const end = formatTime(shift.end_time ?? undefined)
             mainContent = `${start} - ${end}`
             if (shift.location && shift.location.toLowerCase() !== 'academy') {
                 mainContent += `\n${shift.location}`
