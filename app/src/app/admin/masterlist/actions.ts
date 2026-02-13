@@ -4,19 +4,19 @@ import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { formatLocalDate } from '@/lib/utils'
 
-export type ShiftType = 'work' | 'rest' | 'absent' | 'paid_leave' | 'half_paid_leave' | 'business_trip' | 'flex' | 'special_leave' | 'preferred_rest' | 'present' | 'sick_absent' | 'planned_absent' | 'family_reason' | 'other_reason' | 'work_no_break' | 'user_note'
+export type ShiftType = 'work' | 'rest' | 'absent' | 'paid_leave' | 'half_paid_leave' | 'business_trip' | 'flex' | 'special_leave' | 'preferred_rest' | 'present' | 'sick_absent' | 'planned_absent' | 'family_reason' | 'other_reason' | 'work_no_break' | 'user_note' | 'custom_leave'
 
 export type MasterListShiftData = {
     date: string
     shift_type: ShiftType
-    shift_name?: string
-    start_time?: string
-    end_time?: string
-    location?: string
-    paid_leave_hours?: number
-    memo?: string
-    color?: string
-    force_break?: boolean
+    shift_name?: string | null
+    start_time?: string | null
+    end_time?: string | null
+    location?: string | null
+    paid_leave_hours?: number | null
+    memo?: string | null
+    color?: string | null
+    force_break?: boolean | null
 }
 
 export async function getMonthlyMasterList(year: number, month: number) {
@@ -213,7 +213,8 @@ export async function upsertShift(personId: string, shiftData: MasterListShiftDa
             shiftData.shift_type === 'special_leave' ||
             shiftData.shift_type === 'work' ||
             shiftData.shift_type === 'work_no_break' ||
-            shiftData.shift_type === 'flex') {
+            shiftData.shift_type === 'flex' ||
+            shiftData.shift_type === 'custom_leave') {
             await syncShiftToAttendance(personId, shiftData)
         }
 
@@ -248,15 +249,16 @@ async function syncShiftToAttendance(personId: string, shiftData: MasterListShif
             // based on the new shift times and the existing check-in/out
             // If it's a regular work shift (or flex), we should recalculate the work stats
             // based on the new shift times and the existing check-in/out
-            if (shiftData.shift_type === 'work' || shiftData.shift_type === 'work_no_break' || shiftData.shift_type === 'flex' || (shiftData.shift_type === 'half_paid_leave' && shiftData.start_time && shiftData.end_time)) {
+            if (shiftData.shift_type === 'work' || shiftData.shift_type === 'work_no_break' || shiftData.shift_type === 'flex' || (shiftData.shift_type === 'half_paid_leave' && shiftData.start_time && shiftData.end_time) || (shiftData.shift_type === 'custom_leave' && shiftData.start_time && shiftData.end_time)) {
                 if (existingAttendance.check_in_at && existingAttendance.check_out_at) {
                     // Import helper dynamically to avoid circular deps if any
                     const { calculateDailyStats } = await import('@/app/actions/kiosk-utils')
 
                     const shiftForCalc = {
                         shift_type: shiftData.shift_type,
-                        start_time: shiftData.start_time,
-                        end_time: shiftData.end_time
+                        start_time: shiftData.start_time || undefined,
+                        end_time: shiftData.end_time || undefined,
+                        paid_leave_hours: shiftData.paid_leave_hours || undefined
                     }
 
                     const stats = calculateDailyStats(
@@ -309,12 +311,26 @@ async function syncShiftToAttendance(personId: string, shiftData: MasterListShif
                     if (!shiftData.start_time || !shiftData.end_time) {
                         workMinutes = 0
                         adminNoteAppend = 'Half Paid Leave'
+                    } else {
+                        // With times but no check-in yet
+                        adminNoteAppend = 'Half Paid Leave (with work hours)'
                     }
                     break
                 case 'special_leave':
                     workMinutes = 0
                     paidLeaveMinutes = 0
                     adminNoteAppend = 'Special Leave'
+                    break
+                case 'custom_leave':
+                    // Custom hours based on input
+                    const customHours = shiftData.paid_leave_hours ?? 0
+                    paidLeaveMinutes = customHours * 60
+                    if (!shiftData.start_time || !shiftData.end_time) {
+                        workMinutes = 0
+                        adminNoteAppend = `Custom Leave (${customHours}h)`
+                    } else {
+                        adminNoteAppend = `Custom Leave (${customHours}h) + Work`
+                    }
                     break
             }
 
@@ -327,8 +343,8 @@ async function syncShiftToAttendance(personId: string, shiftData: MasterListShif
                     updated_at: new Date().toISOString()
                 }
 
-                if (shiftData.shift_type !== 'half_paid_leave' || (!shiftData.start_time && !shiftData.end_time)) {
-                    // For half paid leave with times, we handled work minutes in the first block if attendance exists.
+                if ((shiftData.shift_type !== 'half_paid_leave' && shiftData.shift_type !== 'custom_leave') || (!shiftData.start_time && !shiftData.end_time)) {
+                    // For half paid leave/custom leave with times, we handled work minutes in the first block if attendance exists.
                     // If we are here, we might just be setting the paid leave part if work calc wasn't possible?
                     // Actually simplest is: if we are in this block, we are setting fixed values/notes
                     if (workMinutes > 0 || shiftData.shift_type === 'business_trip') {
@@ -337,7 +353,7 @@ async function syncShiftToAttendance(personId: string, shiftData: MasterListShif
                     if (paidLeaveMinutes > 0) {
                         updatePayload.paid_leave_minutes = paidLeaveMinutes
                     }
-                } else if (shiftData.shift_type === 'half_paid_leave') {
+                } else if (shiftData.shift_type === 'half_paid_leave' || shiftData.shift_type === 'custom_leave') {
                     // Start/End times exist but maybe no check-in record yet?
                     // Ensure paid leave is set at least
                     updatePayload.paid_leave_minutes = paidLeaveMinutes
@@ -384,6 +400,17 @@ async function syncShiftToAttendance(personId: string, shiftData: MasterListShif
                     break
                 case 'special_leave':
                     adminNote = 'Special Leave'
+                    shouldCreate = true
+                    break
+                case 'custom_leave':
+                    const cHours = shiftData.paid_leave_hours ?? 0
+                    paidLeaveMinutes = cHours * 60
+                    if (shiftData.start_time && shiftData.end_time) {
+                        adminNote = `Custom Leave (${cHours}h) + Work`
+                        // Work minutes 0 until check-in
+                    } else {
+                        adminNote = `Custom Leave (${cHours}h)`
+                    }
                     shouldCreate = true
                     break
             }

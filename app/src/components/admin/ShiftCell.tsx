@@ -71,6 +71,10 @@ export const ShiftCell = memo(function ShiftCell({
             bgColor = 'bg-green-50'
             textColor = 'text-green-700'
             mainContent = 'Half Paid\nLeave'
+        } else if (shift.shift_type === 'custom_leave') {
+            bgColor = 'bg-green-50'
+            textColor = 'text-green-700'
+            mainContent = 'Custom\nLeave'
         } else if (shift.shift_type === 'special_leave') {
             bgColor = 'bg-yellow-50'
             textColor = 'text-yellow-700'

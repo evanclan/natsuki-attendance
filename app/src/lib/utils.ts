@@ -32,6 +32,18 @@ export function calculateExpectedHours(shift: MasterListShiftData): number {
     }
     return 4
   }
+  if (shift.shift_type === 'custom_leave') {
+    const customHours = shift.paid_leave_hours ?? 0
+    if (shift.start_time && shift.end_time) {
+      const [startH, startM] = shift.start_time.split(':').map(Number)
+      const [endH, endM] = shift.end_time.split(':').map(Number)
+      let duration = (endH + endM / 60) - (startH + startM / 60)
+      if (duration < 0) duration += 24
+      if (duration >= 6) duration -= 1
+      return Math.max(0, duration) + customHours
+    }
+    return customHours
+  }
   if (shift.shift_type === 'business_trip') return 8
   if (shift.shift_type === 'flex') {
     return shift.paid_leave_hours ?? 8

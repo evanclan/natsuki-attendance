@@ -44,6 +44,7 @@ export function calculateDailyStats(
         shift_type: string
         start_time?: string
         end_time?: string
+        paid_leave_hours?: number
     } | null,
     overrideBreakMinutes?: number | null
 ): {
@@ -165,6 +166,79 @@ export function calculateDailyStats(
                 break_exceeded: false,
                 overtime_minutes: 0,
                 paid_leave_minutes: 240, // 4 hours
+                rounded_check_in_at: checkInAt,
+                rounded_check_out_at: checkOutAt
+            }
+        }
+    }
+
+    // Custom Leave: Calculate work hours from check-in/out, PLUS custom paid leave
+    if (shiftType === 'custom_leave') {
+        const customLeaveMinutes = Math.round((shift?.paid_leave_hours ?? 0) * 60)
+
+        // Check if we have valid shift times to calculate working hours
+        if (shift?.start_time && shift?.end_time) {
+            // Apply rounding rules for check-in
+            const roundedCheckIn = getRoundedCheckIn(
+                checkIn,
+                shift.start_time,
+                checkIn
+            )
+
+            // Apply rounding rules for check-out and calculate overtime
+            const { roundedCheckOut, overtimeMinutes } = getRoundedCheckOut(
+                checkOut,
+                shift.end_time,
+                checkOut
+            )
+
+            // Calculate gross work duration using rounded times
+            let grossMinutes = Math.floor((roundedCheckOut.getTime() - roundedCheckIn.getTime()) / 60000)
+            if (grossMinutes < 0) grossMinutes = 0
+
+            // Break Logic
+            let actualBreakMinutes = 0
+            if (breakStartAt && breakEndAt) {
+                const breakStart = new Date(breakStartAt)
+                const breakEnd = new Date(breakEndAt)
+                actualBreakMinutes = Math.floor((breakEnd.getTime() - breakStart.getTime()) / 60000)
+            }
+
+            let applicableBreakMinutes = 0
+            let breakExceeded = false
+
+            // Rule: If work >= 6 hours, deduct 1 hour break
+            if (typeof overrideBreakMinutes === 'number') {
+                applicableBreakMinutes = overrideBreakMinutes
+                if (actualBreakMinutes > 60 && overrideBreakMinutes < actualBreakMinutes) {
+                    breakExceeded = actualBreakMinutes > 60
+                }
+            } else if (grossMinutes >= 360) { // 6 hours
+                applicableBreakMinutes = 60
+                if (actualBreakMinutes > 60) {
+                    breakExceeded = true
+                }
+            }
+
+            const totalWorkMinutes = Math.max(0, grossMinutes - applicableBreakMinutes) + overtimeMinutes
+
+            return {
+                total_work_minutes: totalWorkMinutes,
+                total_break_minutes: applicableBreakMinutes,
+                break_exceeded: breakExceeded,
+                overtime_minutes: overtimeMinutes,
+                paid_leave_minutes: customLeaveMinutes,
+                rounded_check_in_at: roundedCheckIn.toISOString(),
+                rounded_check_out_at: roundedCheckOut.toISOString()
+            }
+        } else {
+            // No shift times defined - just custom paid leave with no work hours
+            return {
+                total_work_minutes: 0,
+                total_break_minutes: 0,
+                break_exceeded: false,
+                overtime_minutes: 0,
+                paid_leave_minutes: customLeaveMinutes,
                 rounded_check_in_at: checkInAt,
                 rounded_check_out_at: checkOutAt
             }

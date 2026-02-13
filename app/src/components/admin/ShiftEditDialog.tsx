@@ -17,7 +17,7 @@ type ShiftEditDialogProps = {
     personName: string
     date: Date
     currentShift?: MasterListShiftData | null
-    onSave: (data: MasterListShiftData) => Promise<void>
+    onSave: (data: MasterListShiftData) => Promise<boolean> // Return boolean for success
     onDelete?: () => Promise<void>
     role?: 'employee' | 'student'
 }
@@ -96,6 +96,8 @@ export function ShiftEditDialog({
                 setColor(currentShift.color || '')
                 if (currentShift.shift_type === 'half_paid_leave') {
                     setFixHalf(!currentShift.start_time && !currentShift.end_time)
+                } else if (currentShift.shift_type === 'custom_leave') {
+                    setFixHalf(false)
                 } else {
                     setFixHalf(true)
                 }
@@ -125,25 +127,26 @@ export function ShiftEditDialog({
         setLoading(true)
         try {
             const dateStr = formatLocalDate(date)
-            await onSave({
+            const success = await onSave({
                 date: dateStr,
                 shift_type: shiftType,
-                start_time: (shiftType === 'work' || shiftType === 'work_no_break' || shiftType === 'flex' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf)) ? startTime : undefined,
-                end_time: (shiftType === 'work' || shiftType === 'work_no_break' || shiftType === 'flex' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf)) ? endTime : undefined,
-                location: (shiftType === 'work' || shiftType === 'work_no_break' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf)) ? location : undefined,
-                paid_leave_hours: (shiftType === 'paid_leave' || shiftType === 'flex') ? paidLeaveHours : undefined,
-                memo: memo,
-                color: (shiftType === 'work' || shiftType === 'work_no_break' || (role === 'student' && shiftType !== 'rest')) ? color : undefined,
-                force_break: (shiftType === 'work') ? forceBreak : undefined
+                start_time: (shiftType === 'work' || shiftType === 'work_no_break' || shiftType === 'flex' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf) || shiftType === 'custom_leave') ? (startTime || null) : null,
+                end_time: (shiftType === 'work' || shiftType === 'work_no_break' || shiftType === 'flex' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf) || shiftType === 'custom_leave') ? (endTime || null) : null,
+                location: (shiftType === 'work' || shiftType === 'work_no_break' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf) || shiftType === 'custom_leave') ? location : null,
+                paid_leave_hours: (shiftType === 'paid_leave' || shiftType === 'flex' || shiftType === 'custom_leave') ? paidLeaveHours : null,
+                memo: memo || null,
+                color: (shiftType === 'work' || shiftType === 'work_no_break' || (role === 'student' && shiftType !== 'rest')) ? (color || null) : null,
+                force_break: (shiftType === 'work') ? forceBreak : false
             })
 
-            // Add to history if color is selected
-            if ((shiftType === 'work' || shiftType === 'work_no_break' || role === 'student') && color) {
+            // Add to history if color is selected and save was successful
+            if (success && (shiftType === 'work' || shiftType === 'work_no_break' || role === 'student') && color) {
                 addToHistory(color)
             }
 
-
-            onOpenChange(false)
+            if (success) {
+                onOpenChange(false)
+            }
         } catch (error) {
             console.error('Failed to save shift', error)
         } finally {
@@ -195,7 +198,7 @@ export function ShiftEditDialog({
                             onValueChange={(v) => {
                                 const newType = v as ShiftType
                                 setShiftType(newType)
-                                if (newType === 'half_paid_leave') {
+                                if (newType === 'half_paid_leave' || newType === 'custom_leave') {
                                     setFixHalf(false)
                                 } else {
                                     setFixHalf(true)
@@ -224,6 +227,7 @@ export function ShiftEditDialog({
 
                                         <SelectItem value="paid_leave">Paid Leave</SelectItem>
                                         <SelectItem value="half_paid_leave">Half Paid Leave</SelectItem>
+                                        <SelectItem value="custom_leave">Custom Leave</SelectItem>
                                         <SelectItem value="special_leave">Special Leave</SelectItem>
                                         <SelectItem value="business_trip">Business Trip</SelectItem>
                                         <SelectItem value="rest">Rest</SelectItem>
@@ -253,7 +257,7 @@ export function ShiftEditDialog({
 
 
                     {/* Student inputs or standard employee inputs */}
-                    {role === 'employee' && (shiftType === 'work' || shiftType === 'work_no_break' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf)) && (
+                    {role === 'employee' && (shiftType === 'work' || shiftType === 'work_no_break' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf) || shiftType === 'custom_leave') && (
 
                         <>
                             <div className="grid grid-cols-4 items-center gap-4">
@@ -328,13 +332,14 @@ export function ShiftEditDialog({
                         </>
                     )}
 
-                    {(shiftType === 'paid_leave' || shiftType === 'flex') && (
+                    {(shiftType === 'paid_leave' || shiftType === 'flex' || shiftType === 'custom_leave') && (
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="paid-leave-hours" className="text-right">
-                                {shiftType === 'flex' ? 'Expected Hours' : 'Hours'}
+                                {(shiftType === 'flex' || shiftType === 'custom_leave') ? 'Custom Leave Hours' : 'Hours'}
                             </Label>
                             <Input
                                 id="paid-leave-hours"
+                                name="paid_leave_hours"
                                 type="number"
                                 min="0"
                                 max="24"
@@ -470,7 +475,7 @@ export function ShiftEditDialog({
                         <Button variant="outline" onClick={() => onOpenChange(false)}>
                             Cancel
                         </Button>
-                        <Button onClick={handleSave} disabled={loading || isDeleting}>
+                        <Button onClick={handleSave} disabled={loading || isDeleting} type="button">
                             {loading ? 'Saving...' : 'Save changes'}
                         </Button>
                     </div>

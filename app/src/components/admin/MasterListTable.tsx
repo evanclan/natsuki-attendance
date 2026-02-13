@@ -390,36 +390,30 @@ export function MasterListTable({
 
             if (result.success) {
                 toast({ description: `Successfully saved ${shiftsToSave.length} shifts` })
+                setSelectedCells([])
+                setSelectionMode('none')
+                router.refresh()
+                return true
             } else {
                 if (result.failures) {
                     alert(`Failed to save ${result.failures.length} shifts. Please check console.`)
                 } else {
                     alert('Failed to save shifts: ' + result.error)
                 }
+                return false
             }
-
-            setSelectedCells([])
-            setSelectionMode('none')
-            // router.refresh() // handled by validPath in action presumably, but good to keep if client state needs update? 
-            // The action calls revalidatePath, so data should refresh.
-            // But we might want to manually refresh if we are using server components mostly.
-            // router.refresh() is redundant if action does it? No, action revalidates cache, router.refresh updates UI.
-            // Actually revalidatePath on server usually triggers a client router refresh automatically if invoked via form?
-            // But here we invoke via async await.
-            // We usually need router.refresh() if not using useFormState etc?
-            // Actually, in Server Actions 14+, revalidatePath should update the client cache and trigger refresh if simple.
-            // Let's keep it safe.
-            router.refresh()
         } else {
             // Single Save
-            if (!selectedPerson) return
+            if (!selectedPerson) return false
 
             const result = await upsertShift(selectedPerson.id, data)
             if (result.success) {
                 toast({ description: "Shift saved" })
                 router.refresh()
+                return true
             } else {
                 alert('Failed to save shift: ' + result.error)
+                return false
             }
         }
     }
