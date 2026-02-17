@@ -100,7 +100,7 @@ export interface DailyAttendance {
     paidLeaveMinutes: number | null
     status: string
     notifications: Array<{
-        type: 'break_exceeded' | 'missing_checkin' | 'missing_checkout' | 'no_break' | 'edited' | 'late' | 'early_out' | 'business_trip' | 'paid_leave' | 'half_paid_leave' | 'special_leave'
+        type: 'break_exceeded' | 'missing_checkin' | 'missing_checkout' | 'no_break' | 'edited' | 'late' | 'early_in' | 'early_out' | 'business_trip' | 'paid_leave' | 'half_paid_leave' | 'special_leave'
         message: string
     }>
 }
@@ -222,7 +222,7 @@ export async function getMonthlyAttendanceReport(
 
         // Build notifications
         const notifications: Array<{
-            type: 'break_exceeded' | 'missing_checkin' | 'missing_checkout' | 'no_break' | 'edited' | 'late' | 'early_out' | 'business_trip' | 'paid_leave' | 'half_paid_leave' | 'special_leave'
+            type: 'break_exceeded' | 'missing_checkin' | 'missing_checkout' | 'no_break' | 'edited' | 'late' | 'early_in' | 'early_out' | 'business_trip' | 'paid_leave' | 'half_paid_leave' | 'special_leave'
             message: string
         }> = []
 
@@ -271,11 +271,15 @@ export async function getMonthlyAttendanceReport(
             if (!isFlex && !isRestDay && shift?.start_time && attendance.check_in_at) {
                 const checkInMinutes = getMinutesFromMidnightJST(attendance.check_in_at)
                 const shiftStartMinutes = getMinutesFromTimeStr(shift.start_time)
-                // Add a small buffer (e.g. 1 minute) if needed, but strictly:
                 if (checkInMinutes > shiftStartMinutes) {
                     notifications.push({
                         type: 'late',
                         message: `Late check-in (shift starts at ${shift.start_time})`
+                    })
+                } else if (checkInMinutes < shiftStartMinutes) {
+                    notifications.push({
+                        type: 'early_in',
+                        message: `Early check-in (shift starts at ${shift.start_time})`
                     })
                 }
             }

@@ -9,7 +9,7 @@ import { getRoundedCheckIn, getRoundedCheckOut } from '@/lib/time-utils'
  * Calculate work hours and break time according to 15-minute rounding rules:
  * 
  * ROUNDING RULES:
- * 1. Early Check-in (before shift): Count from shift start time (no credit for early arrival)
+ * 1. Early Check-in (before shift): Round UP to next 15-min interval (credit for early arrival)
  * 2. Late Check-in (after shift): Round UP to next 15-min interval (9:01→9:15, 9:16→9:30)
  * 3. Early Check-out (before shift end): Round DOWN to previous 15-min (5:50→5:45, 5:44→5:30)
  * 4. Late Check-out (overtime): Calculate overtime rounded to nearest 15-min

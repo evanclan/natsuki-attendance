@@ -141,8 +141,10 @@ export function getRoundedCheckIn(
     const shiftStart = constructJSTDate(checkInDate, shiftStartTime)
 
     if (checkInTime <= shiftStart) {
-        // Early check-in: use shift start time (no credit for early arrival)
-        return shiftStart
+        // Early check-in: round UP to next 15-min interval (gives credit for early arrival)
+        // e.g. 8:43 with 9:00 shift → 8:45 (15 min credit)
+        // e.g. 8:46 with 9:00 shift → 9:00 (within last 15-min window, no credit)
+        return roundTimeUp15(checkInTime)
     } else {
         // Late check-in: round UP to next 15-min interval
         return roundTimeUp15(checkInTime)

@@ -20,7 +20,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { ChevronLeft, ChevronRight, AlertCircle, Clock, AlertTriangle, Pencil, Coffee, Save, X, Loader2, LogOut, Briefcase, CalendarOff, Printer, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, AlertCircle, Clock, AlertTriangle, Pencil, Coffee, Save, X, Loader2, LogIn, LogOut, Briefcase, CalendarOff, Printer, Trash2 } from 'lucide-react'
 import {
     Tooltip,
     TooltipContent,
@@ -135,6 +135,8 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
         switch (type) {
             case 'late':
                 return <AlertTriangle className="h-3 w-3 text-amber-600" />
+            case 'early_in':
+                return <LogIn className="h-3 w-3 text-green-600" />
             case 'early_out':
                 return <LogOut className="h-3 w-3 text-amber-600" />
             case 'break_exceeded':
@@ -461,7 +463,8 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
                                                                                     notif.type === 'paid_leave' ? 'bg-green-50 text-green-700 border-green-200' :
                                                                                         notif.type === 'half_paid_leave' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
                                                                                             notif.type === 'special_leave' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                                                                                                'bg-blue-50 text-blue-700 border-blue-200'
+                                                                                                notif.type === 'early_in' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                                                                    'bg-blue-50 text-blue-700 border-blue-200'
                                                                         }`}
                                                                 >
                                                                     {getNotificationIcon(notif.type)}
@@ -547,6 +550,10 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
                     <div className="flex items-center gap-1.5">
                         <AlertTriangle className="h-3 w-3 text-amber-600" />
                         <span>Late check-in</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <LogIn className="h-3 w-3 text-green-600" />
+                        <span>Early check-in</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                         <LogOut className="h-3 w-3 text-amber-600" />
