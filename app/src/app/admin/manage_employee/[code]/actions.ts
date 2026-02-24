@@ -276,7 +276,7 @@ export async function getMonthlyAttendanceReport(
                         type: 'late',
                         message: `Late check-in (shift starts at ${shift.start_time})`
                     })
-                } else if (checkInMinutes < shiftStartMinutes) {
+                } else if (checkInMinutes <= shiftStartMinutes - 15) {
                     notifications.push({
                         type: 'early_in',
                         message: `Early check-in (shift starts at ${shift.start_time})`
