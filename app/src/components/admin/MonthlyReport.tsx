@@ -92,14 +92,14 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
         loadReport()
     }, [personId, currentYear, currentMonth])
 
-    const loadReport = async () => {
-        setLoading(true)
+    const loadReport = async (quiet = false) => {
+        if (!quiet) setLoading(true)
         const result = await getMonthlyAttendanceReport(personId, currentYear, currentMonth)
         if (result.success && result.data) {
             setReport(result.data)
         }
-        setLoading(false)
-        if (onLoadComplete) {
+        if (!quiet) setLoading(false)
+        if (onLoadComplete && !quiet) {
             onLoadComplete()
         }
     }
@@ -195,10 +195,18 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
             }
         }
 
+        // Automatically determine status if it was absent/present
+        let finalStatus = editForm.status;
+        if (finalStatus === 'absent' && (editForm.checkIn || editForm.checkOut)) {
+            finalStatus = 'present';
+        } else if (finalStatus === 'present' && !editForm.checkIn && !editForm.checkOut) {
+            finalStatus = 'absent';
+        }
+
         const result = await upsertAttendanceRecord(personId, dateStr, {
             check_in_at: constructDateTime(editForm.checkIn),
             check_out_at: constructDateTime(editForm.checkOut),
-            status: editForm.status,
+            status: finalStatus,
             total_break_minutes: totalBreakMinutes
             // We don't set break times manually here for now, relying on auto-calc or separate edit if needed
             // But for simplicity in this report view, we'll just update main times
@@ -207,7 +215,7 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
         if (result.success) {
             // toast.success("Attendance updated")
             setEditingDate(null)
-            loadReport() // Reload to get updated calculations
+            await loadReport(true) // Reload quietly
         } else {
             alert(result.error || "Failed to update attendance")
         }
@@ -230,7 +238,7 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
         if (result.success) {
             setRecordToDelete(null)
             setDeleteDialogOpen(false)
-            loadReport()
+            await loadReport(true)
         } else {
             alert(result.error || "Failed to delete attendance record")
         }
@@ -391,6 +399,9 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
                                                     className="h-8 text-xs"
                                                     value={editForm.checkIn}
                                                     onChange={(e) => setEditForm({ ...editForm, checkIn: e.target.value })}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') handleSaveEdit(record.date)
+                                                    }}
                                                 />
                                             ) : (
                                                 record.status === 'absent' ? (
@@ -407,6 +418,9 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
                                                     className="h-8 text-xs"
                                                     value={editForm.checkOut}
                                                     onChange={(e) => setEditForm({ ...editForm, checkOut: e.target.value })}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') handleSaveEdit(record.date)
+                                                    }}
                                                 />
                                             ) : (
                                                 record.status === 'absent' ? (
