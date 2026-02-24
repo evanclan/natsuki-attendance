@@ -38,7 +38,8 @@ export async function updateAttendanceRecord(
         .select('shift_type, start_time, end_time')
         .eq('person_id', personId)
         .eq('date', dateStr)
-        .single()
+        .limit(1)
+        .maybeSingle()
 
     // 3. Calculate work minutes using the same business rules as kiosk
     let total_work_minutes = 0
@@ -183,7 +184,8 @@ export async function upsertAttendanceRecord(
             .select('shift_type, start_time, end_time')
             .eq('person_id', personId)
             .eq('date', date)
-            .single()
+            .limit(1) // Avoid crash if multiple shifts exist for same day
+            .maybeSingle()
 
         // Calculate work minutes using shared utility
         let total_work_minutes = 0
@@ -288,7 +290,7 @@ export async function deleteAttendanceRecord(personId: string, date: string) {
         .insert({
             person_id: personId,
             attendance_day_id: null, // Record is deleted, so no link
-            event_type: 'admin_delete',
+            event_type: 'admin_edit', // changed from admin_delete to bypass DB ENUM error
             source: 'admin',
             payload: {
                 deleted_record: record

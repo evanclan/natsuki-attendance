@@ -3,7 +3,7 @@
  * Used by both kiosk and admin actions to ensure consistent calculations
  */
 
-import { getRoundedCheckIn, getRoundedCheckOut } from '@/lib/time-utils'
+import { getRoundedCheckIn, getRoundedCheckOut, constructJSTDate } from '@/lib/time-utils'
 
 /**
  * Calculate work hours and break time according to 15-minute rounding rules:
@@ -114,6 +114,15 @@ export function calculateDailyStats(
                 checkOut
             )
 
+            // Explicitly calculate Early Overtime
+            let earlyOvertimeMinutes = 0
+            if (shift.start_time) {
+                const shiftStart = constructJSTDate(checkIn, shift.start_time)
+                if (roundedCheckIn.getTime() < shiftStart.getTime()) {
+                    earlyOvertimeMinutes = Math.floor((shiftStart.getTime() - roundedCheckIn.getTime()) / 60000)
+                }
+            }
+
             // Calculate gross work duration using rounded times
             let grossMinutes = Math.floor((roundedCheckOut.getTime() - roundedCheckIn.getTime()) / 60000)
             if (grossMinutes < 0) grossMinutes = 0
@@ -153,7 +162,7 @@ export function calculateDailyStats(
                 total_work_minutes: totalWorkMinutes,
                 total_break_minutes: applicableBreakMinutes,
                 break_exceeded: breakExceeded,
-                overtime_minutes: overtimeMinutes,
+                overtime_minutes: overtimeMinutes + earlyOvertimeMinutes,
                 paid_leave_minutes: 240, // Always 4 hours for half paid leave
                 rounded_check_in_at: roundedCheckIn.toISOString(),
                 rounded_check_out_at: roundedCheckOut.toISOString()
@@ -192,6 +201,15 @@ export function calculateDailyStats(
                 checkOut
             )
 
+            // Explicitly calculate Early Overtime
+            let earlyOvertimeMinutes = 0
+            if (shift.start_time) {
+                const shiftStart = constructJSTDate(checkIn, shift.start_time)
+                if (roundedCheckIn.getTime() < shiftStart.getTime()) {
+                    earlyOvertimeMinutes = Math.floor((shiftStart.getTime() - roundedCheckIn.getTime()) / 60000)
+                }
+            }
+
             // Calculate gross work duration using rounded times
             let grossMinutes = Math.floor((roundedCheckOut.getTime() - roundedCheckIn.getTime()) / 60000)
             if (grossMinutes < 0) grossMinutes = 0
@@ -226,7 +244,7 @@ export function calculateDailyStats(
                 total_work_minutes: totalWorkMinutes,
                 total_break_minutes: applicableBreakMinutes,
                 break_exceeded: breakExceeded,
-                overtime_minutes: overtimeMinutes,
+                overtime_minutes: overtimeMinutes + earlyOvertimeMinutes,
                 paid_leave_minutes: customLeaveMinutes,
                 rounded_check_in_at: roundedCheckIn.toISOString(),
                 rounded_check_out_at: roundedCheckOut.toISOString()
@@ -314,34 +332,17 @@ export function calculateDailyStats(
     const totalWorkMinutes = Math.max(0, grossMinutes - applicableBreakMinutes)
 
 
-    // Calculate Overtime based on SCHEDULED DURATION if shift exists, otherwise fallback to clock overtime
-    let finalOvertimeMinutes = clockOvertime
-
-    if (shift?.start_time && shift?.end_time) {
-        // Calculate Scheduled Work Duration
-        // Standard work is (ShiftEnd - ShiftStart) - Break(if > 6h)
-
-        const parseMinutes = (timeStr: string) => {
-            const [h, m] = timeStr.split(':').map(Number)
-            return h * 60 + m
+    // Explicitly add Early Overtime (time clocked before scheduled start) and Late Overtime (clockOvertime)
+    let earlyOvertimeMinutes = 0
+    if (shift?.start_time) {
+        // We ensure shiftStart is on the JST checkIn day conceptually to match roundedCheckIn
+        const shiftStart = constructJSTDate(checkIn, shift.start_time)
+        if (roundedCheckIn.getTime() < shiftStart.getTime()) {
+            earlyOvertimeMinutes = Math.floor((shiftStart.getTime() - roundedCheckIn.getTime()) / 60000)
         }
-
-        const startMins = parseMinutes(shift.start_time)
-        const endMins = parseMinutes(shift.end_time)
-        let scheduledGross = endMins - startMins
-        if (scheduledGross < 0) scheduledGross += 24 * 60 // Wrap around midnight if needed (unlikely for day shift but possible)
-
-        // Break deduction for scheduled shift
-        let scheduledBreak = 0
-        // Important: Scheduled break also needs to respect 'work_no_break' for correct overtime calculation!
-        if (!isNoBreak && scheduledGross >= 360) scheduledBreak = 60
-
-        const scheduledWorkMinutes = scheduledGross - scheduledBreak
-
-        // New Overtime Rule: Overtime only if Total Work > Scheduled Work
-        // This implicitly allows "Lateness" to be offset by "Stay Late"
-        finalOvertimeMinutes = Math.max(0, totalWorkMinutes - scheduledWorkMinutes)
     }
+
+    let finalOvertimeMinutes = clockOvertime + earlyOvertimeMinutes
 
     return {
         total_work_minutes: totalWorkMinutes,

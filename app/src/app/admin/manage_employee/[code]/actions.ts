@@ -265,13 +265,13 @@ export async function getMonthlyAttendanceReport(
             }
 
             // Check for late arrival
-            // Skip for Flex shifts
+            // Skip "late" for Flex shifts (they can't be late), but we DO want to show "early_in" if they come before their base shift time
             const isFlex = shift?.shift_type?.toLowerCase() === 'flex'
 
-            if (!isFlex && !isRestDay && shift?.start_time && attendance.check_in_at) {
+            if (!isRestDay && shift?.start_time && attendance.check_in_at) {
                 const checkInMinutes = getMinutesFromMidnightJST(attendance.check_in_at)
                 const shiftStartMinutes = getMinutesFromTimeStr(shift.start_time)
-                if (checkInMinutes > shiftStartMinutes) {
+                if (!isFlex && checkInMinutes > shiftStartMinutes) {
                     notifications.push({
                         type: 'late',
                         message: `Late check-in (shift starts at ${shift.start_time})`
