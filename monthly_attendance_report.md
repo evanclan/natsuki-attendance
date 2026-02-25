@@ -136,9 +136,9 @@ The report generates visual badges based on the following logic:
 
 ### 5.3. Summary Statistics
 Top-of-page cards aggregate data from the daily loop:
-*   **Working Days**: Count of non-rest days in month.
-*   **Attended**: Count of working days with valid check-in.
-*   **Absent**: Count of working days with NO check-in.
+*   **Working Days**: Count of days where the shift status is `work`, `work_no_break`, `flex`, `half_paid_leave`, `business_trip`, or `custom_leave`.
+*   **Attended**: Count of any day with a valid check-in recorded.
+*   **Absent**: Count of Working Days (as defined above) with NO check-in.
 *   **Total Work/Overtime/Leave**: Sum of minutes / 60.
 
 ---

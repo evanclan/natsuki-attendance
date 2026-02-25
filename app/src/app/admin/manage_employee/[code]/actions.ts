@@ -341,14 +341,6 @@ export async function getMonthlyAttendanceReport(
             }
 
             // Update summary stats
-            if (!isRestDay) {
-                if (attendance.check_in_at) {
-                    daysAttended++
-                } else {
-                    daysAbsent++
-                }
-            }
-
             if (attendance.total_work_minutes) {
                 totalWorkMinutes += attendance.total_work_minutes
             }
@@ -360,13 +352,31 @@ export async function getMonthlyAttendanceReport(
             if (attendance.paid_leave_minutes) {
                 totalPaidLeaveMinutes += attendance.paid_leave_minutes
             }
-        } else if (!isRestDay) {
-            // No attendance record on a working day
-            daysAbsent++
         }
 
-        if (!isRestDay) {
+        const currentShiftType = shift?.shift_type?.toLowerCase() || ''
+        const isWorkingStatus = [
+            'work',
+            'work_no_break',
+            'flex',
+            'half_paid_leave',
+            'business_trip',
+            'custom_leave'
+        ].includes(currentShiftType)
+
+        // 1. Working Days
+        if (isWorkingStatus) {
             workingDays++
+        }
+
+        // 2. Attended calculation
+        if (attendance?.check_in_at) {
+            daysAttended++
+        }
+
+        // 3. Absent calculation
+        if (isWorkingStatus && !attendance?.check_in_at) {
+            daysAbsent++
         }
 
         dailyRecords.push({
