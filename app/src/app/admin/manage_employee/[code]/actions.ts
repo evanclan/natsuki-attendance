@@ -99,6 +99,7 @@ export interface DailyAttendance {
     overtimeMinutes: number | null
     paidLeaveMinutes: number | null
     status: string
+    shiftType: string
     notifications: Array<{
         type: 'break_exceeded' | 'missing_checkin' | 'missing_checkout' | 'no_break' | 'edited' | 'late' | 'early_in' | 'early_out' | 'business_trip' | 'paid_leave' | 'half_paid_leave' | 'special_leave'
         message: string
@@ -201,7 +202,7 @@ export async function getMonthlyAttendanceReport(
         const eventTitle = dayEvents.length > 0 ? dayEvents[0].title : undefined
 
         // Determine if it's a rest day
-        const isWeekend = dayNum === 0 || dayNum === 6
+        const isSunday = dayNum === 0
         let isRestDay = false
         let isHoliday = false
 
@@ -212,7 +213,7 @@ export async function getMonthlyAttendanceReport(
             isRestDay = true
         } else if (hasWorkDayEvent) {
             isRestDay = false
-        } else if (isWeekend) {
+        } else if (isSunday) {
             isRestDay = true
         }
 
@@ -382,6 +383,7 @@ export async function getMonthlyAttendanceReport(
             overtimeMinutes: attendance?.overtime_minutes || null,
             paidLeaveMinutes: attendance?.paid_leave_minutes || null,
             status: attendance?.status || '',
+            shiftType: shift?.shift_type || '',
             notifications
         })
     }

@@ -117,6 +117,11 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
         return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
     }
 
+    const formatShiftType = (type: string | undefined | null) => {
+        if (!type) return '-'
+        return type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+    }
+
     // Helper to extract HH:MM from ISO string for input
     const getInputValue = (isoString: string | null) => {
         if (!isoString) return ''
@@ -353,6 +358,7 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
                             <TableRow className="print:h-[26px]">
                                 <TableHead className="w-[60px] text-center print:text-[11px] print:py-0.5 print:h-[26px]">Date</TableHead>
                                 <TableHead className="w-[60px] text-center print:text-[11px] print:py-0.5 print:h-[26px]">Day</TableHead>
+                                <TableHead className="w-[90px] text-center print:text-[11px] print:py-0.5 print:h-[26px]">Status</TableHead>
                                 <TableHead className="w-[110px] text-center print:text-[11px] print:py-0.5 print:h-[26px]">Check In</TableHead>
                                 <TableHead className="w-[110px] text-center print:text-[11px] print:py-0.5 print:h-[26px]">Check Out</TableHead>
                                 <TableHead className="w-[80px] text-center print:text-[11px] print:py-0.5 print:h-[26px]">Break</TableHead>
@@ -383,14 +389,17 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
                                             <div className={isRestDay ? 'text-red-600 font-medium' : ''}>
                                                 {record.dayOfWeek}
                                             </div>
-                                            {isRestDay && !record.isHoliday && !record.eventTitle && (
+                                            {isRestDay && !record.isHoliday && (
                                                 <div className="text-[10px] text-red-500 print:text-[9px]">Rest</div>
                                             )}
-                                            {record.isHoliday && record.eventTitle && (
+                                            {record.isHoliday && (
                                                 <div className="text-[10px] text-red-500 truncate max-w-[60px] print:text-[9px]">
-                                                    {record.eventTitle}
+                                                    {record.eventTitle || 'Holiday'}
                                                 </div>
                                             )}
+                                        </TableCell>
+                                        <TableCell className="text-center text-xs text-muted-foreground print:text-[10px] print:py-0.5 print:h-[26px]">
+                                            {formatShiftType(record.shiftType)}
                                         </TableCell>
                                         <TableCell className="text-center text-sm print:text-[11px] print:py-0.5 print:h-[26px]">
                                             {isEditing ? (
