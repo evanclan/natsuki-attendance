@@ -344,6 +344,30 @@ export function calculateDailyStats(
 
     let finalOvertimeMinutes = clockOvertime + earlyOvertimeMinutes
 
+    // [FLEX SHIFT FIX]: If it's a Flex shift, overtime is ONLY calculated as: Total Work - Scheduled Work
+    // We ignore the actual clock overtime and early overtime since Flex shifts are flexible.
+    if (isFlex && shift?.start_time && shift?.end_time) {
+        // Calculate nominal scheduled work for the flex shift
+        const shiftStart = constructJSTDate(checkIn, shift.start_time)
+        const shiftEnd = constructJSTDate(checkOut, shift.end_time) // Typically same day
+
+        // Calculate scheduled duration
+        let scheduledGrossMinutes = Math.floor((shiftEnd.getTime() - shiftStart.getTime()) / 60000)
+        if (scheduledGrossMinutes < 0) scheduledGrossMinutes = 0
+
+        // Subtract standard 60 min break if scheduled work is >= 6 hours
+        // Note: For 'work_no_break' flex shifts (if they exist), we wouldn't deduct.
+        let scheduledBreakMinutes = 0
+        if (!isNoBreak && scheduledGrossMinutes >= 360) {
+            scheduledBreakMinutes = 60
+        }
+
+        const scheduledWorkMinutes = Math.max(0, scheduledGrossMinutes - scheduledBreakMinutes)
+
+        // Overtime is only the remainder above scheduled work
+        finalOvertimeMinutes = Math.max(0, totalWorkMinutes - scheduledWorkMinutes)
+    }
+
     return {
         total_work_minutes: totalWorkMinutes,
         total_break_minutes: applicableBreakMinutes,
