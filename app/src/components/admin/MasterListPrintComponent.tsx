@@ -190,7 +190,7 @@ export const MasterListPrintComponent = React.forwardRef<HTMLDivElement, MasterL
 
                                     if (shift) {
                                         if (shift.date) { // Just a check
-                                            if (shift.shift_type === 'work' || shift.shift_type === 'work_no_break') {
+                                            if (shift.shift_type === 'work' || shift.shift_type === 'work_no_break' || shift.shift_type === 'custom_leave') {
                                                 const start = shift.start_time?.slice(0, 5)
                                                 const end = shift.end_time?.slice(0, 5)
 
@@ -202,7 +202,7 @@ export const MasterListPrintComponent = React.forwardRef<HTMLDivElement, MasterL
                                                         </div>
                                                     )
                                                 } else {
-                                                    cellContent = 'Work'
+                                                    cellContent = shift.shift_type === 'custom_leave' ? 'Custom Leave' : 'Work'
                                                 }
                                             } else if (shift.shift_type === 'paid_leave') {
                                                 cellContent = '有休'
