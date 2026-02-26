@@ -143,7 +143,7 @@ export default function AdminPage() {
 
     return (
         <div className="container mx-auto py-8">
-            <div className="flex gap-4 mb-6">
+            <div className="flex gap-4 mb-6 flex-wrap">
                 <Link href="/admin/manage_student">
                     <Button variant="outline">Manage Student</Button>
                 </Link>
@@ -152,6 +152,9 @@ export default function AdminPage() {
                 </Link>
                 <Link href="/admin/settings">
                     <Button variant="outline">Settings</Button>
+                </Link>
+                <Link href="/admin/quick-action">
+                    <Button variant="outline" className="border-indigo-200 text-indigo-700 hover:bg-indigo-50">⚡ Quick Action</Button>
                 </Link>
             </div>
 
