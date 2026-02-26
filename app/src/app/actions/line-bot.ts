@@ -177,6 +177,7 @@ async function handleAttendanceUpdate(args: {
     const { data: people, error: searchError } = await supabase
         .from('people')
         .select('id, full_name')
+        .eq('role', 'employee')
         .ilike('full_name', `%${args.employee_name_query}%`)
         .limit(5); // Get up to 5 matches to check for ambiguity
 
