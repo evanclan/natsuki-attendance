@@ -426,3 +426,62 @@ export async function getMonthlyAttendanceReport(
         }
     }
 }
+
+export interface MonthlyMemoEntry {
+    id: string
+    memo_text: string
+    created_at: string
+}
+
+export async function getMonthlyMemos(personId: string, monthYear: string): Promise<{ success: boolean; data?: MonthlyMemoEntry[]; error?: string }> {
+    const supabase = await createClient()
+
+    const { data, error } = await supabase
+        .from('monthly_memos')
+        .select('id, memo_text, created_at')
+        .eq('person_id', personId)
+        .eq('month_year', monthYear)
+        .order('created_at', { ascending: false })
+
+    if (error) {
+        console.error('Error fetching monthly memos:', error)
+        return { success: false, error: error.message }
+    }
+
+    return { success: true, data: data || [] }
+}
+
+export async function addMonthlyMemo(personId: string, monthYear: string, memoText: string): Promise<{ success: boolean; error?: string }> {
+    const supabase = await createClient()
+
+    const { error } = await supabase
+        .from('monthly_memos')
+        .insert({
+            person_id: personId,
+            month_year: monthYear,
+            memo_text: memoText
+        })
+
+    if (error) {
+        console.error('Error adding monthly memo:', error)
+        return { success: false, error: error.message }
+    }
+
+    return { success: true }
+}
+
+export async function deleteMonthlyMemo(memoId: string): Promise<{ success: boolean; error?: string }> {
+    const supabase = await createClient()
+
+    const { error } = await supabase
+        .from('monthly_memos')
+        .delete()
+        .eq('id', memoId)
+
+    if (error) {
+        console.error('Error deleting monthly memo:', error)
+        return { success: false, error: error.message }
+    }
+
+    return { success: true }
+}

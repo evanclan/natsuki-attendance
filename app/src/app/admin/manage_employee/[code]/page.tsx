@@ -30,7 +30,7 @@ import { updateAttendanceRecord } from '../../attendance-actions/actions'
 import { ShiftCalendar } from '@/components/admin/ShiftCalendar'
 import { MonthlyReport } from '@/components/admin/MonthlyReport'
 import { StatusHistoryManager } from '@/components/admin/StatusHistoryManager'
-import { Pencil, Save, X, AlertCircle } from 'lucide-react'
+import { Pencil, Save, X, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react'
 import {
     Tooltip,
     TooltipContent,
@@ -48,6 +48,10 @@ export default function EmployeeDetailPage() {
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
+
+    // UI States
+    const [isPersonalDetailsOpen, setIsPersonalDetailsOpen] = useState(false)
+    const [isRecentActivityOpen, setIsRecentActivityOpen] = useState(false)
 
     // Form states
     const [fullName, setFullName] = useState('')
@@ -124,7 +128,7 @@ export default function EmployeeDetailPage() {
                 .select('*')
                 .eq('person_id', employeeData.id)
                 .order('date', { ascending: false })
-                .limit(20)
+                .limit(5)
 
             setAttendanceHistory(attendanceData || [])
             setLoading(false)
@@ -273,270 +277,282 @@ export default function EmployeeDetailPage() {
             <div className="space-y-6">
                 {/* Personal Details Section */}
                 <Card>
-                    <CardHeader>
-                        <CardTitle>Personal Details</CardTitle>
+                    <CardHeader
+                        className="cursor-pointer hover:bg-muted/50 transition-colors flex flex-row items-center justify-between"
+                        onClick={() => setIsPersonalDetailsOpen(!isPersonalDetailsOpen)}
+                    >
+                        <CardTitle className="text-lg">Personal Details</CardTitle>
+                        {isPersonalDetailsOpen ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="code">Code</Label>
-                                <Input
-                                    id="code"
-                                    value={code || ''}
-                                    disabled
-                                    className="bg-muted"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="fullName">Full Name</Label>
-                                <Input
-                                    id="fullName"
-                                    value={fullName}
-                                    onChange={(e) => setFullName(e.target.value)}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="japaneseName">Japanese Name</Label>
-                                <Input
-                                    id="japaneseName"
-                                    value={japaneseName}
-                                    onChange={(e) => setJapaneseName(e.target.value)}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="category">Category</Label>
-                                <Select
-                                    value={categoryId}
-                                    onValueChange={(val) => {
-                                        if (val === '_add_new_') {
-                                            router.push('/admin/settings/categories')
-                                            return
-                                        }
-                                        setCategoryId(val)
-                                    }}
-                                >
-                                    <SelectTrigger id="category">
-                                        <SelectValue placeholder="Select category" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">None</SelectItem>
-                                        {categories.map((cat) => (
-                                            <SelectItem key={cat.id} value={cat.id}>
-                                                {cat.name}
+                    {isPersonalDetailsOpen && (
+                        <CardContent className="space-y-4 pt-4 border-t">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="code">Code</Label>
+                                    <Input
+                                        id="code"
+                                        value={code || ''}
+                                        disabled
+                                        className="bg-muted"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="fullName">Full Name</Label>
+                                    <Input
+                                        id="fullName"
+                                        value={fullName}
+                                        onChange={(e) => setFullName(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="japaneseName">Japanese Name</Label>
+                                    <Input
+                                        id="japaneseName"
+                                        value={japaneseName}
+                                        onChange={(e) => setJapaneseName(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="category">Category</Label>
+                                    <Select
+                                        value={categoryId}
+                                        onValueChange={(val) => {
+                                            if (val === '_add_new_') {
+                                                router.push('/admin/settings/categories')
+                                                return
+                                            }
+                                            setCategoryId(val)
+                                        }}
+                                    >
+                                        <SelectTrigger id="category">
+                                            <SelectValue placeholder="Select category" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">None</SelectItem>
+                                            {categories.map((cat) => (
+                                                <SelectItem key={cat.id} value={cat.id}>
+                                                    {cat.name}
+                                                </SelectItem>
+                                            ))}
+                                            <div className="border-t my-1" />
+                                            <SelectItem value="_add_new_" className="text-blue-600 font-medium">
+                                                + Add Category
                                             </SelectItem>
-                                        ))}
-                                        <div className="border-t my-1" />
-                                        <SelectItem value="_add_new_" className="text-blue-600 font-medium">
-                                            + Add Category
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="registrationDate">Registration Date</Label>
+                                    <Input
+                                        id="registrationDate"
+                                        type="date"
+                                        value={registrationDate}
+                                        onChange={(e) => setRegistrationDate(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="status">Status</Label>
+                                    <Select value={status} onValueChange={setStatus}>
+                                        <SelectTrigger id="status">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="active">Active</SelectItem>
+                                            <SelectItem value="inactive">Inactive</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="jobType">Job Type</Label>
+                                    <Input
+                                        id="jobType"
+                                        value={jobType}
+                                        onChange={(e) => setJobType(e.target.value)}
+                                        placeholder="e.g. Developer, Designer"
+                                    />
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="registrationDate">Registration Date</Label>
-                                <Input
-                                    id="registrationDate"
-                                    type="date"
-                                    value={registrationDate}
-                                    onChange={(e) => setRegistrationDate(e.target.value)}
-                                />
+                            <div className="flex justify-end">
+                                <Button
+                                    onClick={handleSaveDetails}
+                                    disabled={saving}
+                                >
+                                    {saving ? 'Saving...' : 'Save Details'}
+                                </Button>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="status">Status</Label>
-                                <Select value={status} onValueChange={setStatus}>
-                                    <SelectTrigger id="status">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="active">Active</SelectItem>
-                                        <SelectItem value="inactive">Inactive</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="jobType">Job Type</Label>
-                                <Input
-                                    id="jobType"
-                                    value={jobType}
-                                    onChange={(e) => setJobType(e.target.value)}
-                                    placeholder="e.g. Developer, Designer"
-                                />
-                            </div>
-                        </div>
-                        <div className="flex justify-end">
-                            <Button
-                                onClick={handleSaveDetails}
-                                disabled={saving}
-                            >
-                                {saving ? 'Saving...' : 'Save Details'}
-                            </Button>
-                        </div>
-                    </CardContent>
+                        </CardContent>
+                    )}
                 </Card>
 
                 {/* Recent Activity Section */}
                 <Card>
-                    <CardHeader>
-                        <CardTitle>Recent Activity</CardTitle>
+                    <CardHeader
+                        className="cursor-pointer hover:bg-muted/50 transition-colors flex flex-row items-center justify-between"
+                        onClick={() => setIsRecentActivityOpen(!isRecentActivityOpen)}
+                    >
+                        <CardTitle className="text-lg">Recent Activity (Last 5)</CardTitle>
+                        {isRecentActivityOpen ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
                     </CardHeader>
-                    <CardContent>
-                        {attendanceHistory.length === 0 ? (
-                            <div className="text-center py-8 text-muted-foreground">
-                                No attendance records found
-                            </div>
-                        ) : (
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Date</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Check In</TableHead>
-                                        <TableHead>Check Out</TableHead>
-                                        <TableHead>Work Time</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {attendanceHistory.map((record) => (
-                                        <React.Fragment key={record.id}>
-                                            <TableRow className={editingId === record.id ? "bg-muted/50 border-b-0" : ""}>
-                                                <TableCell>
-                                                    <div className="flex items-center gap-2">
-                                                        {new Date(record.date).toLocaleDateString('en-US', {
-                                                            month: 'short',
-                                                            day: 'numeric',
-                                                            year: 'numeric'
-                                                        })}
-                                                        {record.is_edited && (
-                                                            <TooltipProvider>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger>
-                                                                        <Badge variant="outline" className="h-5 px-1 bg-yellow-500/10 text-yellow-600 border-yellow-200 text-[10px]">
-                                                                            Edited
-                                                                        </Badge>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>
-                                                                        <p>Manually edited by admin</p>
-                                                                        {record.admin_note && <p className="text-xs text-muted-foreground mt-1">Note: {record.admin_note}</p>}
-                                                                    </TooltipContent>
-                                                                </Tooltip>
-                                                            </TooltipProvider>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {editingId === record.id ? (
-                                                        <Select
-                                                            value={editForm.status}
-                                                            onValueChange={(val) => setEditForm({ ...editForm, status: val })}
-                                                        >
-                                                            <SelectTrigger className="w-[100px] h-8">
-                                                                <SelectValue />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="present">Present</SelectItem>
-                                                                <SelectItem value="absent">Absent</SelectItem>
-                                                                <SelectItem value="late">Late</SelectItem>
-                                                                <SelectItem value="half_day">Half Day</SelectItem>
-                                                                <SelectItem value="off">Off</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                    ) : (
-                                                        <Badge variant={record.status === 'present' ? 'default' : 'secondary'}>
-                                                            {record.status}
-                                                        </Badge>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {editingId === record.id ? (
-                                                        <Input
-                                                            type="datetime-local"
-                                                            className="h-8 w-[180px]"
-                                                            value={editForm.check_in_at}
-                                                            onChange={(e) => setEditForm({ ...editForm, check_in_at: e.target.value })}
-                                                        />
-                                                    ) : (
-                                                        record.check_in_at ? new Date(record.check_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {editingId === record.id ? (
-                                                        <Input
-                                                            type="datetime-local"
-                                                            className="h-8 w-[180px]"
-                                                            value={editForm.check_out_at}
-                                                            onChange={(e) => setEditForm({ ...editForm, check_out_at: e.target.value })}
-                                                        />
-                                                    ) : (
-                                                        record.check_out_at ? new Date(record.check_out_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {record.total_work_minutes ? `${Math.floor(record.total_work_minutes / 60)}h ${record.total_work_minutes % 60}m` : '-'}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    {editingId === record.id ? (
-                                                        <div className="flex items-center justify-end gap-2">
-                                                            <Button
-                                                                size="sm"
-                                                                variant="ghost"
-                                                                className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                                                onClick={() => handleSaveAttendance(record.id)}
-                                                                disabled={saving}
-                                                            >
-                                                                <Save className="h-4 w-4" />
-                                                            </Button>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="ghost"
-                                                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                                onClick={handleCancelEdit}
-                                                            >
-                                                                <X className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                    ) : (
-                                                        <Button
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            className="h-8 w-8 p-0"
-                                                            onClick={() => handleEditClick(record)}
-                                                        >
-                                                            <Pencil className="h-4 w-4 text-muted-foreground" />
-                                                        </Button>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-                                            {editingId === record.id && (
-                                                <TableRow className="bg-muted/50 border-t-0">
-                                                    <TableCell colSpan={6} className="pt-0 pb-4">
-                                                        <div className="flex items-center gap-2 px-2">
-                                                            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                                                            <Input
-                                                                placeholder="Reason for edit (optional)"
-                                                                className="h-8 text-sm bg-transparent border-none shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/70"
-                                                                value={editForm.admin_note}
-                                                                onChange={(e) => setEditForm({ ...editForm, admin_note: e.target.value })}
-                                                            />
+                    {isRecentActivityOpen && (
+                        <CardContent className="pt-4 border-t">
+                            {attendanceHistory.length === 0 ? (
+                                <div className="text-center py-8 text-muted-foreground">
+                                    No attendance records found
+                                </div>
+                            ) : (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Date</TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead>Check In</TableHead>
+                                            <TableHead>Check Out</TableHead>
+                                            <TableHead>Work Time</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {attendanceHistory.map((record) => (
+                                            <React.Fragment key={record.id}>
+                                                <TableRow className={editingId === record.id ? "bg-muted/50 border-b-0" : ""}>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            {new Date(record.date).toLocaleDateString('en-US', {
+                                                                month: 'short',
+                                                                day: 'numeric',
+                                                                year: 'numeric'
+                                                            })}
+                                                            {record.is_edited && (
+                                                                <TooltipProvider>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger>
+                                                                            <Badge variant="outline" className="h-5 px-1 bg-yellow-500/10 text-yellow-600 border-yellow-200 text-[10px]">
+                                                                                Edited
+                                                                            </Badge>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent>
+                                                                            <p>Manually edited by admin</p>
+                                                                            {record.admin_note && <p className="text-xs text-muted-foreground mt-1">Note: {record.admin_note}</p>}
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
+                                                            )}
                                                         </div>
                                                     </TableCell>
+                                                    <TableCell>
+                                                        {editingId === record.id ? (
+                                                            <Select
+                                                                value={editForm.status}
+                                                                onValueChange={(val) => setEditForm({ ...editForm, status: val })}
+                                                            >
+                                                                <SelectTrigger className="w-[100px] h-8">
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="present">Present</SelectItem>
+                                                                    <SelectItem value="absent">Absent</SelectItem>
+                                                                    <SelectItem value="late">Late</SelectItem>
+                                                                    <SelectItem value="half_day">Half Day</SelectItem>
+                                                                    <SelectItem value="off">Off</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        ) : (
+                                                            <Badge variant={record.status === 'present' ? 'default' : 'secondary'}>
+                                                                {record.status}
+                                                            </Badge>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {editingId === record.id ? (
+                                                            <Input
+                                                                type="datetime-local"
+                                                                className="h-8 w-[180px]"
+                                                                value={editForm.check_in_at}
+                                                                onChange={(e) => setEditForm({ ...editForm, check_in_at: e.target.value })}
+                                                            />
+                                                        ) : (
+                                                            record.check_in_at ? new Date(record.check_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {editingId === record.id ? (
+                                                            <Input
+                                                                type="datetime-local"
+                                                                className="h-8 w-[180px]"
+                                                                value={editForm.check_out_at}
+                                                                onChange={(e) => setEditForm({ ...editForm, check_out_at: e.target.value })}
+                                                            />
+                                                        ) : (
+                                                            record.check_out_at ? new Date(record.check_out_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {record.total_work_minutes ? `${Math.floor(record.total_work_minutes / 60)}h ${record.total_work_minutes % 60}m` : '-'}
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        {editingId === record.id ? (
+                                                            <div className="flex items-center justify-end gap-2">
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                                    onClick={() => handleSaveAttendance(record.id)}
+                                                                    disabled={saving}
+                                                                >
+                                                                    <Save className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                                    onClick={handleCancelEdit}
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        ) : (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="h-8 w-8 p-0"
+                                                                onClick={() => handleEditClick(record)}
+                                                            >
+                                                                <Pencil className="h-4 w-4 text-muted-foreground" />
+                                                            </Button>
+                                                        )}
+                                                    </TableCell>
                                                 </TableRow>
-                                            )}
-                                        </React.Fragment>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        )}
-                    </CardContent>
+                                                {editingId === record.id && (
+                                                    <TableRow className="bg-muted/50 border-t-0">
+                                                        <TableCell colSpan={6} className="pt-0 pb-4">
+                                                            <div className="flex items-center gap-2 px-2">
+                                                                <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                                                                <Input
+                                                                    placeholder="Reason for edit (optional)"
+                                                                    className="h-8 text-sm bg-transparent border-none shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/70"
+                                                                    value={editForm.admin_note}
+                                                                    onChange={(e) => setEditForm({ ...editForm, admin_note: e.target.value })}
+                                                                />
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </React.Fragment>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            )}
+                        </CardContent>
+                    )}
                 </Card>
 
                 {/* Monthly Attendance Report */}
                 <MonthlyReport personId={employee.id} />
 
-                {/* Admin Memo Section */}
+                {/* General Admin Memo Section */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Admin Memo</CardTitle>
+                        <CardTitle>General Admin Memo</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">

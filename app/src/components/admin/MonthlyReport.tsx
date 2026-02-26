@@ -38,9 +38,10 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { getMonthlyAttendanceReport, type DailyAttendance, type MonthlyAttendanceReport } from '@/app/admin/manage_employee/[code]/actions'
+import { getMonthlyAttendanceReport, getMonthlyMemos, addMonthlyMemo, deleteMonthlyMemo, type DailyAttendance, type MonthlyAttendanceReport, type MonthlyMemoEntry } from '@/app/admin/manage_employee/[code]/actions'
 import { upsertAttendanceRecord, deleteAttendanceRecord } from '@/app/admin/attendance-actions/actions'
-
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 // Create a list of break options in 15-minute intervals
 const BREAK_OPTIONS = [
     "0:00", "0:15", "0:30", "0:45",
@@ -61,6 +62,10 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
     const [loading, setLoading] = useState(true)
     const [report, setReport] = useState<MonthlyAttendanceReport | null>(null)
     const [currentDate, setCurrentDate] = useState(initialDate || new Date())
+    const [newMemoText, setNewMemoText] = useState('')
+    const [memoList, setMemoList] = useState<MonthlyMemoEntry[]>([])
+    const [savingMemo, setSavingMemo] = useState(false)
+    const [deletingMemoId, setDeletingMemoId] = useState<string | null>(null)
 
     // Editing state
     const [editingDate, setEditingDate] = useState<string | null>(null)
@@ -98,11 +103,51 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
         if (result.success && result.data) {
             setReport(result.data)
         }
+
+        // Fetch monthly memos
+        const formattedMonth = `${currentYear}-${currentMonth.toString().padStart(2, '0')}`
+        const memosResult = await getMonthlyMemos(personId, formattedMonth)
+        if (memosResult.success) {
+            setMemoList(memosResult.data || [])
+        } else {
+            setMemoList([])
+        }
+
         if (!quiet) setLoading(false)
         if (onLoadComplete && !quiet) {
             onLoadComplete()
         }
     }
+
+    const handleAddMemo = async () => {
+        if (!newMemoText.trim()) return
+        setSavingMemo(true)
+        const formattedMonth = `${currentYear}-${currentMonth.toString().padStart(2, '0')}`
+        const result = await addMonthlyMemo(personId, formattedMonth, newMemoText.trim())
+        if (result.success) {
+            setNewMemoText('')
+            // Reload memos
+            const memosResult = await getMonthlyMemos(personId, formattedMonth)
+            if (memosResult.success) {
+                setMemoList(memosResult.data || [])
+            }
+        } else {
+            alert(result.error || "Failed to add memo")
+        }
+        setSavingMemo(false)
+    }
+
+    const handleDeleteMemo = async (memoId: string) => {
+        setDeletingMemoId(memoId)
+        const result = await deleteMonthlyMemo(memoId)
+        if (result.success) {
+            setMemoList(prev => prev.filter(m => m.id !== memoId))
+        } else {
+            alert(result.error || "Failed to delete memo")
+        }
+        setDeletingMemoId(null)
+    }
+
 
     const handlePreviousMonth = () => {
         setCurrentDate(new Date(currentYear, currentMonth - 2, 1))
@@ -615,7 +660,83 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
                         <span>Special leave</span>
                     </div>
                 </div>
-            </CardContent >
+
+                {/* Monthly Admin Memo */}
+                <div className="pt-6 border-t print:hidden mt-6">
+                    <div className="space-y-4">
+                        <div>
+                            <Label htmlFor="monthly-memo" className="text-base font-semibold">Monthly Admin Memo ({monthName})</Label>
+                            <p className="text-xs text-muted-foreground mt-1">Add notes, events, or details specific to this month for this employee.</p>
+                        </div>
+
+                        {/* Add new memo input */}
+                        <div className="flex gap-2">
+                            <Input
+                                id="monthly-memo"
+                                value={newMemoText}
+                                onChange={(e) => setNewMemoText(e.target.value)}
+                                placeholder={`Add a memo for ${monthName}...`}
+                                className="flex-1"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault()
+                                        handleAddMemo()
+                                    }
+                                }}
+                            />
+                            <Button
+                                onClick={handleAddMemo}
+                                disabled={savingMemo || !newMemoText.trim()}
+                                size="sm"
+                                className="px-4"
+                            >
+                                {savingMemo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                <span className="ml-1.5">Add</span>
+                            </Button>
+                        </div>
+
+                        {/* Saved memos list */}
+                        {memoList.length > 0 ? (
+                            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                                {memoList.map((memo) => (
+                                    <div
+                                        key={memo.id}
+                                        className="flex items-start gap-3 p-3 bg-muted/40 rounded-lg border border-border/50 group hover:bg-muted/60 transition-colors"
+                                    >
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm whitespace-pre-wrap break-words">{memo.memo_text}</p>
+                                            <p className="text-[11px] text-muted-foreground mt-1.5">
+                                                {new Date(memo.created_at).toLocaleDateString('en-US', {
+                                                    month: 'short', day: 'numeric', year: 'numeric'
+                                                })} at {new Date(memo.created_at).toLocaleTimeString([], {
+                                                    hour: '2-digit', minute: '2-digit', hour12: true
+                                                })}
+                                            </p>
+                                        </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-red-600 hover:bg-red-50 transition-all"
+                                            onClick={() => handleDeleteMemo(memo.id)}
+                                            disabled={deletingMemoId === memo.id}
+                                        >
+                                            {deletingMemoId === memo.id ? (
+                                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                            ) : (
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                            )}
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-muted-foreground text-center py-4 bg-muted/20 rounded-lg border border-dashed">
+                                No memos for {monthName} yet.
+                            </p>
+                        )}
+                    </div>
+                </div>
+            </CardContent>
 
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                 <AlertDialogContent>
