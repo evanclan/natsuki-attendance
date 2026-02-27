@@ -31,7 +31,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { createSystemEvent, updateSystemEvent, deleteSystemEvent, SystemEvent, EventType } from '@/app/admin/settings/actions'
+import { createSystemEvent, updateSystemEvent, deleteSystemEvent, getEventTypes, SystemEvent, EventType } from '@/app/admin/settings/actions'
 import { formatLocalDate } from '@/lib/utils'
 
 type SystemEventDialogProps = {
@@ -40,7 +40,7 @@ type SystemEventDialogProps = {
     selectedDate: Date | null
     existingEvent: SystemEvent | null
     onEventSaved: () => void
-    eventTypes: EventType[]
+    eventTypes?: EventType[]
 }
 
 export function SystemEventDialog({
@@ -49,7 +49,7 @@ export function SystemEventDialog({
     selectedDate,
     existingEvent,
     onEventSaved,
-    eventTypes
+    eventTypes: eventTypesProp
 }: SystemEventDialogProps) {
     const [title, setTitle] = useState('')
     const [description, setDescription] = useState('')
@@ -57,6 +57,20 @@ export function SystemEventDialog({
     const [isHoliday, setIsHoliday] = useState(false)
     const [loading, setLoading] = useState(false)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+    const [localEventTypes, setLocalEventTypes] = useState<EventType[]>([])
+
+    // Use provided types or fetch them locally
+    const eventTypes = eventTypesProp && eventTypesProp.length > 0 ? eventTypesProp : localEventTypes
+
+    useEffect(() => {
+        if (!eventTypesProp || eventTypesProp.length === 0) {
+            getEventTypes().then(result => {
+                if (result.success && result.data) {
+                    setLocalEventTypes(result.data)
+                }
+            })
+        }
+    }, [eventTypesProp])
 
     useEffect(() => {
         if (existingEvent) {
