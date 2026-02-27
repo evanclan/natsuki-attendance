@@ -227,12 +227,26 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
                                                 cellContent = ''
                                             }
                                         } else if (shift.shift_type === 'user_note' || shift.shift_type === 'other_reason') {
-                                            // Memo content
-                                            cellContent = (
-                                                <div className="line-clamp-2 overflow-hidden whitespace-normal break-words leading-tight">
-                                                    {shift.memo || shift.shift_name || shift.shift_type}
-                                                </div>
-                                            )
+                                            // For students/satursaurus: show check-in/check-out times instead of memo
+                                            if ((type === 'students' || type === 'satursaurus') && attendanceRecord && attendanceRecord.check_in_at && attendanceRecord.check_out_at) {
+                                                const start = formatTime(attendanceRecord.check_in_at)
+                                                const end = formatTime(attendanceRecord.check_out_at)
+                                                cellContent = (
+                                                    <div className="flex flex-col items-center justify-center leading-[0.85] gap-[1px]">
+                                                        <div>{start}</div>
+                                                        <div>{end}</div>
+                                                    </div>
+                                                )
+                                            } else if ((type === 'students' || type === 'satursaurus') && attendanceRecord && attendanceRecord.check_in_at) {
+                                                cellContent = formatTime(attendanceRecord.check_in_at)
+                                            } else {
+                                                // Memo content (for employees)
+                                                cellContent = (
+                                                    <div className="line-clamp-2 overflow-hidden whitespace-normal break-words leading-tight">
+                                                        {shift.memo || shift.shift_name || shift.shift_type}
+                                                    </div>
+                                                )
+                                            }
                                         } else {
                                             // Other types
                                             cellContent = shift.shift_name || shift.shift_type || ''
