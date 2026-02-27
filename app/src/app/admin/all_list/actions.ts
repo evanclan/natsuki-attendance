@@ -3,6 +3,46 @@
 import { createClient } from '@/utils/supabase/server'
 import { formatLocalDate } from '@/lib/utils'
 
+/**
+ * Supabase enforces a server-side max of 1000 rows per request.
+ * This helper paginates through all rows using .range() to ensure
+ * no data is silently dropped.
+ */
+async function fetchAllRows(
+    supabase: any,
+    table: string,
+    dateColumn: string,
+    startDateStr: string,
+    endDateStr: string,
+    pageSize: number = 1000
+): Promise<any[]> {
+    let allRows: any[] = []
+    let from = 0
+    let hasMore = true
+
+    while (hasMore) {
+        const { data, error } = await supabase
+            .from(table)
+            .select('*')
+            .gte(dateColumn, startDateStr)
+            .lte(dateColumn, endDateStr)
+            .range(from, from + pageSize - 1)
+
+        if (error) throw error
+        if (!data || data.length === 0) {
+            hasMore = false
+        } else {
+            allRows = allRows.concat(data)
+            if (data.length < pageSize) {
+                hasMore = false
+            } else {
+                from += pageSize
+            }
+        }
+    }
+    return allRows
+}
+
 export async function getAllEmployeesAttendance(year: number, month: number) {
     try {
         const supabase = await createClient()
@@ -14,10 +54,6 @@ export async function getAllEmployeesAttendance(year: number, month: number) {
         const endDateStr = formatLocalDate(endDate)
 
         // 1. Fetch all people (employees and students) with categories
-        // We use the same RPC or query as masterlist to ensure consistent opportunities for sorting
-        // Actually, let's use the RPC 'get_active_people_in_range' if available, as MasterList uses it.
-        // It provides 'person_categories' which is needed for proper sorting.
-
         const { data: people, error: peopleError } = await supabase
             .rpc('get_active_people_in_range', {
                 range_start: startDateStr,
@@ -74,24 +110,15 @@ export async function getAllEmployeesAttendance(year: number, month: number) {
         const students = sortedPeople.filter(p => p.role === 'student')
 
         // 2. Fetch attendance records for the month
-        const { data: attendance, error: attendanceError } = await supabase
-            .from('attendance_days')
-            .select('*')
-            .gte('date', startDateStr)
-            .lte('date', endDateStr)
+        // IMPORTANT: Supabase enforces a server-side max of 1000 rows per request.
+        // With many employees+students, monthly attendance easily exceeds 1000 rows.
+        // We use paginated fetching to ensure ALL records are returned.
+        const attendance = await fetchAllRows(supabase, 'attendance_days', 'date', startDateStr, endDateStr)
 
-        if (attendanceError) throw attendanceError
+        // 3. Fetch shifts for the month (can also exceed 1000 rows)
+        const shifts = await fetchAllRows(supabase, 'shifts', 'date', startDateStr, endDateStr)
 
-        // 3. Fetch shifts for the month (New addition for styling/status)
-        const { data: shifts, error: shiftsError } = await supabase
-            .from('shifts')
-            .select('*')
-            .gte('date', startDateStr)
-            .lte('date', endDateStr)
-
-        if (shiftsError) throw shiftsError
-
-        // 4. Fetch system events for the month
+        // 4. Fetch system events for the month (typically small, no pagination needed)
         const { data: events, error: eventsError } = await supabase
             .from('system_events')
             .select('*')

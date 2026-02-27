@@ -4,6 +4,47 @@ import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { formatLocalDate } from '@/lib/utils'
 
+/**
+ * Supabase enforces a server-side max of 1000 rows per request.
+ * This helper paginates through all rows using .range() to ensure
+ * no data is silently dropped.
+ */
+async function fetchAllRows(
+    supabase: any,
+    table: string,
+    selectColumns: string,
+    dateColumn: string,
+    startDateStr: string,
+    endDateStr: string,
+    pageSize: number = 1000
+): Promise<any[]> {
+    let allRows: any[] = []
+    let from = 0
+    let hasMore = true
+
+    while (hasMore) {
+        const { data, error } = await supabase
+            .from(table)
+            .select(selectColumns)
+            .gte(dateColumn, startDateStr)
+            .lte(dateColumn, endDateStr)
+            .range(from, from + pageSize - 1)
+
+        if (error) throw error
+        if (!data || data.length === 0) {
+            hasMore = false
+        } else {
+            allRows = allRows.concat(data)
+            if (data.length < pageSize) {
+                hasMore = false
+            } else {
+                from += pageSize
+            }
+        }
+    }
+    return allRows
+}
+
 export type ShiftType = 'work' | 'rest' | 'absent' | 'paid_leave' | 'half_paid_leave' | 'business_trip' | 'flex' | 'special_leave' | 'preferred_rest' | 'present' | 'sick_absent' | 'planned_absent' | 'family_reason' | 'other_reason' | 'work_no_break' | 'user_note' | 'custom_leave'
 
 export type MasterListShiftData = {
@@ -46,14 +87,8 @@ export async function getMonthlyMasterList(year: number, month: number) {
 
         if (peopleError) throw peopleError
 
-        // 2. Fetch shifts for the month
-        const { data: shifts, error: shiftsError } = await supabase
-            .from('shifts')
-            .select('*')
-            .gte('date', startDateStr)
-            .lte('date', endDateStr)
-
-        if (shiftsError) throw shiftsError
+        // 2. Fetch shifts for the month (can exceed 1000 rows with many employees)
+        const shifts = await fetchAllRows(supabase, 'shifts', '*', 'date', startDateStr, endDateStr)
 
         // DEBUG: Log shifts for Dec 17 only
         const dec17Shifts = shifts?.filter(s => s.date === '2025-12-17')
@@ -68,14 +103,8 @@ export async function getMonthlyMasterList(year: number, month: number) {
 
         if (eventsError) throw eventsError
 
-        // 4. Fetch attendance days for the month
-        const { data: attendance, error: attendanceError } = await supabase
-            .from('attendance_days')
-            .select('person_id, date, total_work_minutes')
-            .gte('date', startDateStr)
-            .lte('date', endDateStr)
-
-        if (attendanceError) throw attendanceError
+        // 4. Fetch attendance days for the month (can exceed 1000 rows)
+        const attendance = await fetchAllRows(supabase, 'attendance_days', 'person_id, date, total_work_minutes, paid_leave_minutes', 'date', startDateStr, endDateStr)
 
         return {
             success: true,

@@ -25,6 +25,8 @@ type AttendanceRecord = {
     break_end_at: string | null
     total_work_minutes: number | null
     total_break_minutes: number | null
+    paid_leave_minutes: number | null
+    overtime_minutes: number | null
     status: string
     is_edited: boolean
     admin_note: string | null
@@ -168,10 +170,18 @@ export function AllListTable({ year, month, employees, students, attendance, shi
 
     const calculateMonthlyStats = (employeeId: string) => {
         const employeeAttendance = attendance.filter(a => a.person_id === employeeId)
-        const totalMinutes = employeeAttendance.reduce((sum, a) => sum + (a.total_work_minutes || 0), 0)
+        const totalWorkMinutes = employeeAttendance.reduce((sum, a) => sum + (a.total_work_minutes || 0), 0)
+        const totalPaidLeaveMinutes = employeeAttendance.reduce((sum, a) => sum + (a.paid_leave_minutes || 0), 0)
+        const totalMinutes = totalWorkMinutes + totalPaidLeaveMinutes
         const totalHours = Math.floor(totalMinutes / 60)
         const totalMins = totalMinutes % 60
-        const daysAttended = employeeAttendance.filter(a => a.check_in_at || a.check_out_at).length
+        const daysAttended = employeeAttendance.filter(a => {
+            // Count days with actual check-in/out
+            if (a.check_in_at || a.check_out_at) return true
+            // Also count paid_leave, business_trip records as attended even without check-in/out
+            if ((a.paid_leave_minutes && a.paid_leave_minutes > 0) || (a.total_work_minutes && a.total_work_minutes > 0)) return true
+            return false
+        }).length
         return {
             totalHours: `${totalHours}:${totalMins.toString().padStart(2, '0')}`,
             daysAttended
@@ -238,8 +248,8 @@ export function AllListTable({ year, month, employees, students, attendance, shi
                         >
                             {/* Top: Shift Status/Info */}
                             <div className={`text-[10px] font-semibold text-slate-700 mb-1 px-1 rounded bg-white/40 w-full max-w-full ${shift && (shift.shift_type === 'user_note' || shift.shift_type === 'other_reason')
-                                    ? 'line-clamp-2 whitespace-normal break-words leading-tight'
-                                    : 'truncate'
+                                ? 'line-clamp-2 whitespace-normal break-words leading-tight'
+                                : 'truncate'
                                 }`}>
                                 {shift ? (
                                     (shift.shift_type === 'user_note' || shift.shift_type === 'other_reason')
@@ -272,7 +282,17 @@ export function AllListTable({ year, month, employees, students, attendance, shi
                                     </div>
                                 )
                             ) : (
-                                <div className="text-xs text-muted-foreground text-center mt-auto opacity-50">-</div>
+                                shift && ['paid_leave', 'half_paid_leave', 'business_trip', 'special_leave'].includes(shift.shift_type) ? (
+                                    <div className="flex items-center justify-center h-full">
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${shift.shift_type === 'paid_leave' ? 'text-green-600 bg-green-50 border-green-100' :
+                                                shift.shift_type === 'half_paid_leave' ? 'text-yellow-600 bg-yellow-50 border-yellow-100' :
+                                                    shift.shift_type === 'business_trip' ? 'text-purple-600 bg-purple-50 border-purple-100' :
+                                                        'text-orange-600 bg-orange-50 border-orange-100'
+                                            }`}>{getShiftLabel(shift.shift_type).toUpperCase()}</span>
+                                    </div>
+                                ) : (
+                                    <div className="text-xs text-muted-foreground text-center mt-auto opacity-50">-</div>
+                                )
                             )}
                         </div>
                     )
