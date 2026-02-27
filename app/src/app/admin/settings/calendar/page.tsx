@@ -4,11 +4,61 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import { getSystemEvents, SystemEvent } from '@/app/admin/settings/actions'
+import { Input } from "@/components/ui/input"
+import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, Tag } from 'lucide-react'
+import { getSystemEvents, getEventTypes, createEventType, deleteEventType, SystemEvent, EventType } from '@/app/admin/settings/actions'
 import { SystemEventDialog } from '@/components/admin/SystemEventDialog'
 import { Badge } from "@/components/ui/badge"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { formatLocalDate } from '@/lib/utils'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+
+const COLOR_OPTIONS = [
+    { value: 'blue', label: 'Blue', class: 'bg-blue-500' },
+    { value: 'red', label: 'Red', class: 'bg-red-500' },
+    { value: 'green', label: 'Green', class: 'bg-green-500' },
+    { value: 'purple', label: 'Purple', class: 'bg-purple-500' },
+    { value: 'orange', label: 'Orange', class: 'bg-orange-500' },
+    { value: 'yellow', label: 'Yellow', class: 'bg-yellow-500' },
+]
+
+function getEventBadgeClasses(eventType: string, isHoliday: boolean, eventTypes: EventType[]) {
+    // Built-in types keep their original styling
+    if (eventType === 'holiday' || isHoliday || eventType === 'rest_day') {
+        return 'bg-red-100 text-red-700 border border-red-200'
+    }
+    if (eventType === 'work_day') {
+        return 'bg-green-100 text-green-700 border border-green-200'
+    }
+
+    // Look up custom type color
+    const typeInfo = eventTypes.find(t => t.slug === eventType)
+    const color = typeInfo?.color || 'blue'
+
+    switch (color) {
+        case 'red': return 'bg-red-100 text-red-700 border border-red-200'
+        case 'green': return 'bg-green-100 text-green-700 border border-green-200'
+        case 'purple': return 'bg-purple-100 text-purple-700 border border-purple-200'
+        case 'orange': return 'bg-orange-100 text-orange-700 border border-orange-200'
+        case 'yellow': return 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+        default: return 'bg-blue-100 text-blue-700 border border-blue-200'
+    }
+}
 
 export default function CalendarSettingsPage() {
     // Default to next month (advance by 1 month for shift preparation)
@@ -26,6 +76,13 @@ export default function CalendarSettingsPage() {
     const [selectedDate, setSelectedDate] = useState<Date | null>(null)
     const [selectedEvent, setSelectedEvent] = useState<SystemEvent | null>(null)
 
+    // Event Type Management state
+    const [eventTypes, setEventTypes] = useState<EventType[]>([])
+    const [newTypeName, setNewTypeName] = useState('')
+    const [newTypeColor, setNewTypeColor] = useState('blue')
+    const [typeLoading, setTypeLoading] = useState(false)
+    const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
+
     const currentYear = currentDate.getFullYear()
     const currentMonth = currentDate.getMonth()
 
@@ -33,9 +90,12 @@ export default function CalendarSettingsPage() {
         loadEvents()
     }, [currentYear, currentMonth])
 
+    useEffect(() => {
+        loadEventTypes()
+    }, [])
+
     const loadEvents = async () => {
         setLoading(true)
-        // Get first and last day of month
         const firstDay = new Date(currentYear, currentMonth, 1)
         const lastDay = new Date(currentYear, currentMonth + 1, 0)
 
@@ -50,13 +110,42 @@ export default function CalendarSettingsPage() {
         setLoading(false)
     }
 
+    const loadEventTypes = async () => {
+        const result = await getEventTypes()
+        if (result.success && result.data) {
+            setEventTypes(result.data)
+        }
+    }
+
+    const handleAddType = async () => {
+        if (!newTypeName.trim()) return
+        setTypeLoading(true)
+        const result = await createEventType(newTypeName.trim(), newTypeColor)
+        if (result.success) {
+            setNewTypeName('')
+            setNewTypeColor('blue')
+            await loadEventTypes()
+        } else {
+            alert('Failed to create type: ' + result.error)
+        }
+        setTypeLoading(false)
+    }
+
+    const handleDeleteType = async () => {
+        if (!deleteConfirm) return
+        setTypeLoading(true)
+        const result = await deleteEventType(deleteConfirm.id)
+        if (result.success) {
+            await loadEventTypes()
+        } else {
+            alert('Failed to delete type: ' + result.error)
+        }
+        setDeleteConfirm(null)
+        setTypeLoading(false)
+    }
+
     const handleDateClick = (date: Date) => {
         setSelectedDate(date)
-        // Check if there's an event on this date? 
-        // Actually, we might want to show a list of events for that day if multiple are allowed.
-        // But for now, let's assume we can click a day to add an event.
-        // If we click an existing event badge, we edit it.
-
         setSelectedEvent(null)
         setDialogOpen(true)
     }
@@ -174,9 +263,7 @@ export default function CalendarSettingsPage() {
                                 onClick={(e) => handleEventClick(e, event)}
                                 className={`
                                     text-xs p-1 rounded px-2 truncate cursor-pointer hover:opacity-80
-                                    ${(event.event_type === 'holiday' || event.is_holiday || event.event_type === 'rest_day') ? 'bg-red-100 text-red-700 border border-red-200' :
-                                        event.event_type === 'work_day' ? 'bg-green-100 text-green-700 border border-green-200' :
-                                            'bg-blue-100 text-blue-700 border border-blue-200'}
+                                    ${getEventBadgeClasses(event.event_type, event.is_holiday, eventTypes)}
                                 `}
                             >
                                 {event.title}
@@ -245,13 +332,124 @@ export default function CalendarSettingsPage() {
                 </CardContent>
             </Card>
 
+            {/* Event Type Management Section */}
+            <Card className="mt-6">
+                <CardHeader>
+                    <div className="flex items-center gap-2">
+                        <Tag className="h-5 w-5 text-muted-foreground" />
+                        <CardTitle className="text-lg">Event Type Management</CardTitle>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                        Manage the types of events that can be added to the calendar. Default types cannot be deleted.
+                    </p>
+                </CardHeader>
+                <CardContent>
+                    {/* Add New Type Form */}
+                    <div className="flex gap-3 mb-6">
+                        <Input
+                            placeholder="Type name (e.g., Teachers Meeting)"
+                            value={newTypeName}
+                            onChange={(e) => setNewTypeName(e.target.value)}
+                            className="flex-1"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleAddType()
+                            }}
+                        />
+                        <Select value={newTypeColor} onValueChange={setNewTypeColor}>
+                            <SelectTrigger className="w-[140px]">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {COLOR_OPTIONS.map(c => (
+                                    <SelectItem key={c.value} value={c.value}>
+                                        <span className="flex items-center gap-2">
+                                            <span className={`inline-block w-3 h-3 rounded-full ${c.class}`} />
+                                            {c.label}
+                                        </span>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Button
+                            onClick={handleAddType}
+                            disabled={typeLoading || !newTypeName.trim()}
+                        >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add Type
+                        </Button>
+                    </div>
+
+                    {/* Existing Types List */}
+                    <div className="grid gap-2">
+                        {eventTypes.map(type => {
+                            const colorClass = COLOR_OPTIONS.find(c => c.value === type.color)?.class || 'bg-blue-500'
+                            return (
+                                <div
+                                    key={type.id}
+                                    className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <span className={`inline-block w-3 h-3 rounded-full ${colorClass}`} />
+                                        <span className="font-medium text-sm">{type.name}</span>
+                                        {type.is_default && (
+                                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                                Default
+                                            </Badge>
+                                        )}
+                                    </div>
+                                    {!type.is_default && (
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                            onClick={() => setDeleteConfirm({ id: type.id, name: type.name })}
+                                            disabled={typeLoading}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    )}
+                                </div>
+                            )
+                        })}
+                        {eventTypes.length === 0 && (
+                            <div className="text-center py-8 text-muted-foreground text-sm">
+                                Loading event types...
+                            </div>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+
             <SystemEventDialog
                 open={dialogOpen}
                 onOpenChange={setDialogOpen}
                 selectedDate={selectedDate}
                 existingEvent={selectedEvent}
                 onEventSaved={loadEvents}
+                eventTypes={eventTypes}
             />
+
+            {/* Delete Type Confirmation Dialog */}
+            <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => { if (!open) setDeleteConfirm(null) }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Event Type</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete the type &ldquo;{deleteConfirm?.name}&rdquo;? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={typeLoading}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteType}
+                            disabled={typeLoading}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {typeLoading ? 'Deleting...' : 'Delete'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }
