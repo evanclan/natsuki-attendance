@@ -26,6 +26,7 @@ async function fetchAllRows(
             .select('*')
             .gte(dateColumn, startDateStr)
             .lte(dateColumn, endDateStr)
+            .order('id')
             .range(from, from + pageSize - 1)
 
         if (error) throw error

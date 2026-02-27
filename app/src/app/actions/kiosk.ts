@@ -281,6 +281,8 @@ export async function logAttendance(personId: string, eventType: string) {
 
     revalidatePath('/kiosk')
     revalidatePath('/kiosk/employee')
+    revalidatePath('/admin/all_list')
+    revalidatePath('/admin/masterlist')
 
     return { success: true, timestamp: Date.now() }
 }
@@ -333,6 +335,8 @@ export async function clearDailyLogs() {
 
     revalidatePath('/kiosk')
     revalidatePath('/kiosk/employee')
+    revalidatePath('/admin/all_list')
+    revalidatePath('/admin/masterlist')
 
     if ((daysCount === 0 || daysCount === null) && (eventsCount === 0 || eventsCount === null)) {
         return { success: true, message: `No logs found for today (${today})` }
@@ -389,6 +393,8 @@ export async function clearAllRecentData() {
 
     revalidatePath('/kiosk')
     revalidatePath('/kiosk/employee')
+    revalidatePath('/admin/all_list')
+    revalidatePath('/admin/masterlist')
     return { success: true, message: `Cleared all recent data: ${daysCount ?? 0} attendance records and ${eventsCount ?? 0} events from yesterday and today` }
 }
 
@@ -425,6 +431,8 @@ export async function undoAbsent(personId: string) {
 
     revalidatePath('/kiosk')
     revalidatePath('/kiosk/employee')
+    revalidatePath('/admin/all_list')
+    revalidatePath('/admin/masterlist')
     return { success: true }
 }
 
@@ -465,6 +473,8 @@ export async function undoCheckIn(personId: string) {
 
     revalidatePath('/kiosk')
     revalidatePath('/kiosk/employee')
+    revalidatePath('/admin/all_list')
+    revalidatePath('/admin/masterlist')
     return { success: true }
 }
 
@@ -512,6 +522,8 @@ export async function undoCheckOut(personId: string) {
 
     revalidatePath('/kiosk')
     revalidatePath('/kiosk/employee')
+    revalidatePath('/admin/all_list')
+    revalidatePath('/admin/masterlist')
     return { success: true }
 }
 
@@ -601,5 +613,7 @@ export async function bulkCheckIn(personIds: string[]) {
 
     revalidatePath('/kiosk')
     revalidatePath('/kiosk/employee')
+    revalidatePath('/admin/all_list')
+    revalidatePath('/admin/masterlist')
     return { success: true }
 }

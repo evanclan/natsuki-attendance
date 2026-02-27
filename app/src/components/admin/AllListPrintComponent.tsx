@@ -77,7 +77,7 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
         }
 
         const formatTime = (isoString: string | null) => {
-            if (!isoString) return ''
+            if (!isoString) return '-'
             return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
         }
 
@@ -213,7 +213,7 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
                                             cellClass = 'bg-red-50'
                                         } else if (shift.shift_type === 'work' || shift.shift_type === 'work_no_break' || shift.shift_type === 'flex') {
                                             // Show Raw Time Logic
-                                            if (attendanceRecord && attendanceRecord.check_in_at && attendanceRecord.check_out_at) {
+                                            if (attendanceRecord && (attendanceRecord.check_in_at || attendanceRecord.check_out_at)) {
                                                 const start = formatTime(attendanceRecord.check_in_at)
                                                 const end = formatTime(attendanceRecord.check_out_at)
                                                 cellContent = (
@@ -229,7 +229,7 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
                                             }
                                         } else if (shift.shift_type === 'user_note' || shift.shift_type === 'other_reason') {
                                             // For students/satursaurus: show check-in/check-out times instead of memo
-                                            if ((type === 'students' || type === 'satursaurus') && attendanceRecord && attendanceRecord.check_in_at && attendanceRecord.check_out_at) {
+                                            if ((type === 'students' || type === 'satursaurus') && attendanceRecord && (attendanceRecord.check_in_at || attendanceRecord.check_out_at)) {
                                                 const start = formatTime(attendanceRecord.check_in_at)
                                                 const end = formatTime(attendanceRecord.check_out_at)
                                                 cellContent = (
@@ -238,8 +238,6 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
                                                         <div>{end}</div>
                                                     </div>
                                                 )
-                                            } else if ((type === 'students' || type === 'satursaurus') && attendanceRecord && attendanceRecord.check_in_at) {
-                                                cellContent = formatTime(attendanceRecord.check_in_at)
                                             } else {
                                                 // Memo content (for employees)
                                                 cellContent = (
@@ -261,7 +259,7 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
 
                                     // Fallback: If cellContent is still empty (no shift, or shift didn't set content),
                                     // check if we have raw attendance time
-                                    if (cellContent === '' && attendanceRecord && attendanceRecord.check_in_at && attendanceRecord.check_out_at) {
+                                    if (cellContent === '' && attendanceRecord && (attendanceRecord.check_in_at || attendanceRecord.check_out_at)) {
                                         const start = formatTime(attendanceRecord.check_in_at)
                                         const end = formatTime(attendanceRecord.check_out_at)
                                         cellContent = (
