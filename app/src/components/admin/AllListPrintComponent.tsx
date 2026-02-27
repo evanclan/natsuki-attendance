@@ -17,6 +17,7 @@ interface AttendanceRecord {
     check_in_at: string | null
     check_out_at: string | null
     total_work_minutes: number | null
+    status?: string
 }
 
 interface Person {
@@ -196,7 +197,7 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
                                             cellContent = '特休'
                                             cellClass = 'bg-blue-50'
                                         } else if (shift.shift_type === 'absent') {
-                                            cellContent = '欠勤'
+                                            cellContent = (type === 'students' || type === 'satursaurus') ? '休み' : '欠勤'
                                             cellClass = 'bg-red-50'
                                         } else if (shift.shift_type === 'business_trip') {
                                             cellContent = '出張'
@@ -269,6 +270,12 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
                                                 <div>{end}</div>
                                             </div>
                                         )
+                                    }
+
+                                    // Fallback: If still empty and attendance status is 'absent', show absent label
+                                    if (cellContent === '' && attendanceRecord && attendanceRecord.status === 'absent') {
+                                        cellContent = (type === 'students' || type === 'satursaurus') ? '休み' : '欠勤'
+                                        cellClass = 'bg-red-50'
                                     }
 
                                     return (
