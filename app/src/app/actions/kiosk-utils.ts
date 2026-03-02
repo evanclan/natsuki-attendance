@@ -114,17 +114,10 @@ export function calculateDailyStats(
                 checkOut
             )
 
-            // Explicitly calculate Early Overtime
-            let earlyOvertimeMinutes = 0
-            if (shift.start_time) {
-                const shiftStart = constructJSTDate(checkIn, shift.start_time)
-                if (roundedCheckIn.getTime() < shiftStart.getTime()) {
-                    earlyOvertimeMinutes = Math.floor((shiftStart.getTime() - roundedCheckIn.getTime()) / 60000)
-                }
-            }
-
             // Calculate gross work duration using rounded times
-            let grossMinutes = Math.floor((roundedCheckOut.getTime() - roundedCheckIn.getTime()) / 60000)
+            // Reconstruct effective end time from capped roundedCheckOut + clockOvertime
+            const hplEffectiveEndTimeMs = roundedCheckOut.getTime() + (overtimeMinutes * 60000)
+            let grossMinutes = Math.floor((hplEffectiveEndTimeMs - roundedCheckIn.getTime()) / 60000)
             if (grossMinutes < 0) grossMinutes = 0
 
             // Break Logic
@@ -143,10 +136,6 @@ export function calculateDailyStats(
             if (typeof overrideBreakMinutes === 'number') {
                 applicableBreakMinutes = overrideBreakMinutes
                 if (actualBreakMinutes > 60 && overrideBreakMinutes < actualBreakMinutes) {
-                    // This logic is tricky with overrides. 
-                    // If manually set to 60, but scanned break was 70, is it exceeded?
-                    // Let's assume manual edit resolves the "exceeded" status conceptually, or we keep it.
-                    // For now, let's keep strict check against actual scanned break if available.
                     breakExceeded = actualBreakMinutes > 60
                 }
             } else if (grossMinutes >= 360) { // 6 hours
@@ -156,13 +145,22 @@ export function calculateDailyStats(
                 }
             }
 
-            const totalWorkMinutes = Math.max(0, grossMinutes - applicableBreakMinutes) + overtimeMinutes
+            const totalWorkMinutes = Math.max(0, grossMinutes - applicableBreakMinutes)
+
+            // Overtime = max(0, Total Work - Scheduled Work)
+            const shiftStart = constructJSTDate(checkIn, shift.start_time)
+            const shiftEnd = constructJSTDate(checkOut, shift.end_time)
+            let scheduledGrossMinutes = Math.floor((shiftEnd.getTime() - shiftStart.getTime()) / 60000)
+            if (scheduledGrossMinutes < 0) scheduledGrossMinutes = 0
+            let scheduledBreakMinutes = scheduledGrossMinutes >= 360 ? 60 : 0
+            const scheduledWorkMinutes = Math.max(0, scheduledGrossMinutes - scheduledBreakMinutes)
+            const finalOvertimeMinutes = Math.max(0, totalWorkMinutes - scheduledWorkMinutes)
 
             return {
                 total_work_minutes: totalWorkMinutes,
                 total_break_minutes: applicableBreakMinutes,
                 break_exceeded: breakExceeded,
-                overtime_minutes: overtimeMinutes + earlyOvertimeMinutes,
+                overtime_minutes: finalOvertimeMinutes,
                 paid_leave_minutes: 240, // Always 4 hours for half paid leave
                 rounded_check_in_at: roundedCheckIn.toISOString(),
                 rounded_check_out_at: roundedCheckOut.toISOString()
@@ -201,17 +199,10 @@ export function calculateDailyStats(
                 checkOut
             )
 
-            // Explicitly calculate Early Overtime
-            let earlyOvertimeMinutes = 0
-            if (shift.start_time) {
-                const shiftStart = constructJSTDate(checkIn, shift.start_time)
-                if (roundedCheckIn.getTime() < shiftStart.getTime()) {
-                    earlyOvertimeMinutes = Math.floor((shiftStart.getTime() - roundedCheckIn.getTime()) / 60000)
-                }
-            }
-
             // Calculate gross work duration using rounded times
-            let grossMinutes = Math.floor((roundedCheckOut.getTime() - roundedCheckIn.getTime()) / 60000)
+            // Reconstruct effective end time from capped roundedCheckOut + clockOvertime
+            const clEffectiveEndTimeMs = roundedCheckOut.getTime() + (overtimeMinutes * 60000)
+            let grossMinutes = Math.floor((clEffectiveEndTimeMs - roundedCheckIn.getTime()) / 60000)
             if (grossMinutes < 0) grossMinutes = 0
 
             // Break Logic
@@ -238,13 +229,22 @@ export function calculateDailyStats(
                 }
             }
 
-            const totalWorkMinutes = Math.max(0, grossMinutes - applicableBreakMinutes) + overtimeMinutes
+            const totalWorkMinutes = Math.max(0, grossMinutes - applicableBreakMinutes)
+
+            // Overtime = max(0, Total Work - Scheduled Work)
+            const clShiftStart = constructJSTDate(checkIn, shift.start_time)
+            const clShiftEnd = constructJSTDate(checkOut, shift.end_time)
+            let clScheduledGrossMinutes = Math.floor((clShiftEnd.getTime() - clShiftStart.getTime()) / 60000)
+            if (clScheduledGrossMinutes < 0) clScheduledGrossMinutes = 0
+            let clScheduledBreakMinutes = clScheduledGrossMinutes >= 360 ? 60 : 0
+            const clScheduledWorkMinutes = Math.max(0, clScheduledGrossMinutes - clScheduledBreakMinutes)
+            const clFinalOvertimeMinutes = Math.max(0, totalWorkMinutes - clScheduledWorkMinutes)
 
             return {
                 total_work_minutes: totalWorkMinutes,
                 total_break_minutes: applicableBreakMinutes,
                 break_exceeded: breakExceeded,
-                overtime_minutes: overtimeMinutes + earlyOvertimeMinutes,
+                overtime_minutes: clFinalOvertimeMinutes,
                 paid_leave_minutes: customLeaveMinutes,
                 rounded_check_in_at: roundedCheckIn.toISOString(),
                 rounded_check_out_at: roundedCheckOut.toISOString()
@@ -331,32 +331,18 @@ export function calculateDailyStats(
 
     const totalWorkMinutes = Math.max(0, grossMinutes - applicableBreakMinutes)
 
-
-    // Explicitly add Early Overtime (time clocked before scheduled start) and Late Overtime (clockOvertime)
-    let earlyOvertimeMinutes = 0
-    if (shift?.start_time) {
-        // We ensure shiftStart is on the JST checkIn day conceptually to match roundedCheckIn
+    // Overtime = max(0, Total Work - Scheduled Work)
+    // This applies to ALL shift types (work, work_no_break, flex) uniformly.
+    let finalOvertimeMinutes = 0
+    if (shift?.start_time && shift?.end_time) {
         const shiftStart = constructJSTDate(checkIn, shift.start_time)
-        if (roundedCheckIn.getTime() < shiftStart.getTime()) {
-            earlyOvertimeMinutes = Math.floor((shiftStart.getTime() - roundedCheckIn.getTime()) / 60000)
-        }
-    }
+        const shiftEnd = constructJSTDate(checkOut, shift.end_time)
 
-    let finalOvertimeMinutes = clockOvertime + earlyOvertimeMinutes
-
-    // [FLEX SHIFT FIX]: If it's a Flex shift, overtime is ONLY calculated as: Total Work - Scheduled Work
-    // We ignore the actual clock overtime and early overtime since Flex shifts are flexible.
-    if (isFlex && shift?.start_time && shift?.end_time) {
-        // Calculate nominal scheduled work for the flex shift
-        const shiftStart = constructJSTDate(checkIn, shift.start_time)
-        const shiftEnd = constructJSTDate(checkOut, shift.end_time) // Typically same day
-
-        // Calculate scheduled duration
         let scheduledGrossMinutes = Math.floor((shiftEnd.getTime() - shiftStart.getTime()) / 60000)
         if (scheduledGrossMinutes < 0) scheduledGrossMinutes = 0
 
         // Subtract standard 60 min break if scheduled work is >= 6 hours
-        // Note: For 'work_no_break' flex shifts (if they exist), we wouldn't deduct.
+        // For 'work_no_break', we do NOT deduct scheduled break
         let scheduledBreakMinutes = 0
         if (!isNoBreak && scheduledGrossMinutes >= 360) {
             scheduledBreakMinutes = 60
@@ -366,6 +352,9 @@ export function calculateDailyStats(
 
         // Overtime is only the remainder above scheduled work
         finalOvertimeMinutes = Math.max(0, totalWorkMinutes - scheduledWorkMinutes)
+    } else {
+        // No scheduled shift times: fall back to clock-based overtime only
+        finalOvertimeMinutes = clockOvertime
     }
 
     return {
