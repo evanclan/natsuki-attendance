@@ -15,7 +15,7 @@ import { getRoundedCheckIn, getRoundedCheckOut, constructJSTDate } from '@/lib/t
  * 4. Late Check-out (overtime): Calculate overtime rounded to nearest 15-min
  * 
  * BREAK RULES:
- * - Work >= 6 hours: Deduct 1 hour break (default)
+ * - Work > 6 hours: Deduct 1 hour break (default)
  * - Work < 6 hours: No break deduction
  * - Break > 60 minutes: Flag as exceeded
  * 
@@ -131,14 +131,14 @@ export function calculateDailyStats(
             let applicableBreakMinutes = 0
             let breakExceeded = false
 
-            // Rule: If work >= 6 hours, deduct 1 hour break
+            // Rule: If work > 6 hours, deduct 1 hour break
             // If override is provided, use it directly (skip auto-calc logic)
             if (typeof overrideBreakMinutes === 'number') {
                 applicableBreakMinutes = overrideBreakMinutes
                 if (actualBreakMinutes > 60 && overrideBreakMinutes < actualBreakMinutes) {
                     breakExceeded = actualBreakMinutes > 60
                 }
-            } else if (grossMinutes >= 360) { // 6 hours
+            } else if (grossMinutes > 360) { // more than 6 hours
                 applicableBreakMinutes = 60
                 if (actualBreakMinutes > 60) {
                     breakExceeded = true
@@ -152,7 +152,7 @@ export function calculateDailyStats(
             const shiftEnd = constructJSTDate(checkOut, shift.end_time)
             let scheduledGrossMinutes = Math.floor((shiftEnd.getTime() - shiftStart.getTime()) / 60000)
             if (scheduledGrossMinutes < 0) scheduledGrossMinutes = 0
-            let scheduledBreakMinutes = scheduledGrossMinutes >= 360 ? 60 : 0
+            let scheduledBreakMinutes = scheduledGrossMinutes > 360 ? 60 : 0
             const scheduledWorkMinutes = Math.max(0, scheduledGrossMinutes - scheduledBreakMinutes)
             const finalOvertimeMinutes = Math.max(0, totalWorkMinutes - scheduledWorkMinutes)
 
@@ -216,13 +216,13 @@ export function calculateDailyStats(
             let applicableBreakMinutes = 0
             let breakExceeded = false
 
-            // Rule: If work >= 6 hours, deduct 1 hour break
+            // Rule: If work > 6 hours, deduct 1 hour break
             if (typeof overrideBreakMinutes === 'number') {
                 applicableBreakMinutes = overrideBreakMinutes
                 if (actualBreakMinutes > 60 && overrideBreakMinutes < actualBreakMinutes) {
                     breakExceeded = actualBreakMinutes > 60
                 }
-            } else if (grossMinutes >= 360) { // 6 hours
+            } else if (grossMinutes > 360) { // more than 6 hours
                 applicableBreakMinutes = 60
                 if (actualBreakMinutes > 60) {
                     breakExceeded = true
@@ -236,7 +236,7 @@ export function calculateDailyStats(
             const clShiftEnd = constructJSTDate(checkOut, shift.end_time)
             let clScheduledGrossMinutes = Math.floor((clShiftEnd.getTime() - clShiftStart.getTime()) / 60000)
             if (clScheduledGrossMinutes < 0) clScheduledGrossMinutes = 0
-            let clScheduledBreakMinutes = clScheduledGrossMinutes >= 360 ? 60 : 0
+            let clScheduledBreakMinutes = clScheduledGrossMinutes > 360 ? 60 : 0
             const clScheduledWorkMinutes = Math.max(0, clScheduledGrossMinutes - clScheduledBreakMinutes)
             const clFinalOvertimeMinutes = Math.max(0, totalWorkMinutes - clScheduledWorkMinutes)
 
@@ -311,7 +311,7 @@ export function calculateDailyStats(
     let applicableBreakMinutes = 0
     let breakExceeded = false
 
-    // Rule: If work >= 6 hours, deduct 1 hour break
+    // Rule: If work > 6 hours, deduct 1 hour break
     // BUT if it's 'work_no_break', we do NOT deduct break
     // If override is provided, use it directly
     if (typeof overrideBreakMinutes === 'number') {
@@ -319,7 +319,7 @@ export function calculateDailyStats(
         if (actualBreakMinutes > 60) { // Keep warning if physically took long break? Or ignore?
             breakExceeded = actualBreakMinutes > 60
         }
-    } else if (!isNoBreak && grossMinutes >= 360) { // 6 hours
+    } else if (!isNoBreak && grossMinutes > 360) { // more than 6 hours
         applicableBreakMinutes = 60
         if (actualBreakMinutes > 60) {
             breakExceeded = true
@@ -341,10 +341,10 @@ export function calculateDailyStats(
         let scheduledGrossMinutes = Math.floor((shiftEnd.getTime() - shiftStart.getTime()) / 60000)
         if (scheduledGrossMinutes < 0) scheduledGrossMinutes = 0
 
-        // Subtract standard 60 min break if scheduled work is >= 6 hours
+        // Subtract standard 60 min break if scheduled work is > 6 hours
         // For 'work_no_break', we do NOT deduct scheduled break
         let scheduledBreakMinutes = 0
-        if (!isNoBreak && scheduledGrossMinutes >= 360) {
+        if (!isNoBreak && scheduledGrossMinutes > 360) {
             scheduledBreakMinutes = 60
         }
 

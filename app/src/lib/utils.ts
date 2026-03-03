@@ -14,7 +14,7 @@ export function calculateExpectedHours(shift: MasterListShiftData): number {
     let duration = (endH + endM / 60) - (startH + startM / 60)
     if (duration < 0) duration += 24 // Handle overnight shifts
     // Only deduct break if it's 'work' type (not 'work_no_break')
-    if (shift.shift_type === 'work' && (duration >= 6 || shift.force_break)) {
+    if (shift.shift_type === 'work' && (duration > 6 || shift.force_break)) {
       duration -= 1 // 1 hour break
     }
     return Math.max(0, duration)
@@ -27,7 +27,7 @@ export function calculateExpectedHours(shift: MasterListShiftData): number {
       const [endH, endM] = shift.end_time.split(':').map(Number)
       let duration = (endH + endM / 60) - (startH + startM / 60)
       if (duration < 0) duration += 24
-      if (duration >= 6) duration -= 1
+      if (duration > 6) duration -= 1
       return Math.max(0, duration) + 4
     }
     return 4
@@ -39,7 +39,7 @@ export function calculateExpectedHours(shift: MasterListShiftData): number {
       const [endH, endM] = shift.end_time.split(':').map(Number)
       let duration = (endH + endM / 60) - (startH + startM / 60)
       if (duration < 0) duration += 24
-      if (duration >= 6) duration -= 1
+      if (duration > 6) duration -= 1
       return Math.max(0, duration) + customHours
     }
     return customHours
