@@ -1522,7 +1522,7 @@ export function MasterListTable({
 
                 {/* Bulk Actions Bar */}
                 {
-                    selectionMode !== 'none' && selectedCells.length > 0 && (
+                    selectionMode !== 'none' && selectedCells.length > 0 && !dialogOpen && (
                         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white shadow-lg border rounded-full px-6 py-3 flex items-center gap-4 z-[60]">
                             <div className="font-medium text-sm">
                                 {selectedCells.length} selected
