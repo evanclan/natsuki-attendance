@@ -9,7 +9,10 @@ import { ArrowLeft, Printer, ChevronLeft, ChevronRight, CheckCircle2, Loader2 } 
 import Link from 'next/link'
 
 export default function PrintAllPage() {
-    const [date, setDate] = useState<Date>(new Date())
+    const [date, setDate] = useState<Date>(() => {
+        const now = new Date()
+        return new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    })
     const [employees, setEmployees] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [loadedCount, setLoadedCount] = useState(0)
