@@ -39,33 +39,30 @@ export async function addStatusPeriod(data: {
 }) {
     const supabase = await createClient()
 
-    // 1. Find any existing open period (valid_until is active) that started before this one
-    // We want to close it.
-    // Note: This logic assumes a linear progression. If inserting a period in the past, it's more complex.
-    // For now, we assume "add period" is mostly used for "from now" or "recent past".
-
-    const { data: openPeriod } = await supabase
+    // 1. Find ALL existing open periods (valid_until is null) that started before this one
+    // We want to close them all to prevent stale open-ended records.
+    const { data: openPeriods } = await supabase
         .from('person_status_history')
         .select('id, valid_from')
         .eq('person_id', data.person_id)
         .is('valid_until', null)
-        .lt('valid_from', data.valid_from) // Started before the new one
+        .lte('valid_from', data.valid_from) // Started on or before the new one
         .order('valid_from', { ascending: false })
-        .limit(1)
-        .single()
 
-    if (openPeriod) {
-        // Close it the day before the new period starts
+    if (openPeriods && openPeriods.length > 0) {
+        // Close them the day before the new period starts
         const newStart = new Date(data.valid_from)
         newStart.setDate(newStart.getDate() - 1)
         const closeDate = formatLocalDate(newStart)
 
-        // Ensure closeDate is not before valid_from (sanity check)
-        if (closeDate >= openPeriod.valid_from) {
-            await supabase
-                .from('person_status_history')
-                .update({ valid_until: closeDate })
-                .eq('id', openPeriod.id)
+        for (const openPeriod of openPeriods) {
+            // Ensure closeDate is not before valid_from (sanity check)
+            if (closeDate >= openPeriod.valid_from) {
+                await supabase
+                    .from('person_status_history')
+                    .update({ valid_until: closeDate })
+                    .eq('id', openPeriod.id)
+            }
         }
     }
 
@@ -113,6 +110,37 @@ export async function deleteStatusPeriod(id: number, personId: string) {
     }
 
     await syncCurrentStatus(personId)
+
+    return { success: true }
+}
+
+export async function updateStatusPeriod(id: number, personId: string, data: {
+    status: 'active' | 'inactive'
+    valid_from: string
+    valid_until: string | null
+    note: string | null
+}) {
+    const supabase = await createClient()
+
+    const { error } = await supabase
+        .from('person_status_history')
+        .update({
+            status: data.status,
+            valid_from: data.valid_from,
+            valid_until: data.valid_until,
+            note: data.note
+        })
+        .eq('id', id)
+
+    if (error) {
+        console.error('Error updating status period:', error)
+        return { success: false, error: error.message }
+    }
+
+    await syncCurrentStatus(personId)
+
+    revalidatePath('/admin/manage_employee')
+    revalidatePath('/admin/manage_student')
 
     return { success: true }
 }

@@ -61,7 +61,6 @@ export async function getAllEmployeesAttendance(year: number, month: number) {
                 range_end: endDateStr
             })
             .select('id, full_name, code, role, job_type, display_order, status, person_categories(categories(name))')
-            .eq('status', 'active')
             .order('role', { ascending: true })
             .order('display_order', { ascending: true })
             .order('code', { ascending: true })

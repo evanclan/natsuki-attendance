@@ -131,26 +131,55 @@ export async function getAvailableCategories(role: string) {
 export async function deletePerson(id: string) {
     const supabase = await createClient()
 
-    // Delete related records first if not cascading (though usually cascading is better)
-    // Assuming cascading delete is set up in DB or we just try deleting person.
-    // If cascading is not set, we might need to delete attendance_days and shifts first.
-    // Based on previous clear_db script, we deleted them separately.
-    // Let's try deleting person directly first. If it fails, we delete children.
+    // Soft-delete: set status to inactive and add a status history record.
+    // All attendance, shifts, and other data remain intact.
+    const today = new Date().toISOString().split('T')[0]
 
-    // Actually, for safety and ensuring clean deletion, let's delete children first.
-    // Delete person_categories first
-    await supabase.from('person_categories').delete().eq('person_id', id)
-    await supabase.from('attendance_days').delete().eq('person_id', id)
-    await supabase.from('shifts').delete().eq('person_id', id)
-
-    const { error } = await supabase
+    // Update status to inactive
+    const { error: updateError } = await supabase
         .from('people')
-        .delete()
+        .update({ status: 'inactive', updated_at: new Date().toISOString() })
         .eq('id', id)
 
-    if (error) {
-        return { success: false, error: error.message }
+    if (updateError) {
+        return { success: false, error: updateError.message }
     }
+
+    // Close any open active period and add an inactive period
+    const { data: openPeriod } = await supabase
+        .from('person_status_history')
+        .select('id, valid_from')
+        .eq('person_id', id)
+        .eq('status', 'active')
+        .is('valid_until', null)
+        .order('valid_from', { ascending: false })
+        .limit(1)
+        .single()
+
+    if (openPeriod) {
+        // Close the active period at yesterday
+        const yesterday = new Date()
+        yesterday.setDate(yesterday.getDate() - 1)
+        const closeDate = yesterday.toISOString().split('T')[0]
+
+        if (closeDate >= openPeriod.valid_from) {
+            await supabase
+                .from('person_status_history')
+                .update({ valid_until: closeDate })
+                .eq('id', openPeriod.id)
+        }
+    }
+
+    // Add an inactive period starting today
+    await supabase
+        .from('person_status_history')
+        .insert({
+            person_id: id,
+            status: 'inactive',
+            valid_from: today,
+            valid_until: null,
+            note: 'Deactivated (soft delete)'
+        })
 
     revalidatePath('/admin/manage_employee')
     revalidatePath('/admin/manage_student')
