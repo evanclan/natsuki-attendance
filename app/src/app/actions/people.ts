@@ -105,6 +105,43 @@ export async function createPerson(data: CreatePersonData) {
         // We don't fail, but this is critical for masterlist
     }
 
+    // Insert initial category history for students
+    if (data.role === 'student') {
+        const categoryIdsToRecord = data.category_ids && data.category_ids.length > 0
+            ? data.category_ids
+            : (data.category_id ? [data.category_id] : [])
+
+        if (categoryIdsToRecord.length > 0) {
+            const { data: historyPeriod, error: histError } = await supabase
+                .from('person_category_history')
+                .insert({
+                    person_id: person.id,
+                    valid_from: data.registration_date,
+                    valid_until: null,
+                    note: 'Initial creation'
+                })
+                .select()
+                .single()
+
+            if (histError) {
+                console.error('Error inserting category history:', histError)
+            } else if (historyPeriod) {
+                const histCatInserts = categoryIdsToRecord.map(catId => ({
+                    history_id: historyPeriod.id,
+                    category_id: catId
+                }))
+
+                const { error: histCatError } = await supabase
+                    .from('person_category_history_categories')
+                    .insert(histCatInserts)
+
+                if (histCatError) {
+                    console.error('Error inserting category history categories:', histCatError)
+                }
+            }
+        }
+    }
+
     revalidatePath('/admin/manage_employee')
     revalidatePath('/admin/manage_student')
 

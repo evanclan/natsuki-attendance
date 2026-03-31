@@ -146,15 +146,106 @@ export async function GET() {
             }
         }
 
+        // ─── Step 3: Sync student categories from category history ───
+        let categorySyncResult = { synced: 0, changes: [] as any[] };
+        try {
+            // Inline category sync (using same supabase client with service role)
+            const { data: students } = await supabase
+                .from('people')
+                .select('id')
+                .eq('role', 'student');
+
+            if (students) {
+                for (const student of students) {
+                    // Check if this student has any category history
+                    const { data: historyCheck } = await supabase
+                        .from('person_category_history')
+                        .select('id')
+                        .eq('person_id', student.id)
+                        .limit(1);
+
+                    if (!historyCheck || historyCheck.length === 0) continue;
+
+                    // Get current person_categories
+                    const { data: oldCats } = await supabase
+                        .from('person_categories')
+                        .select('category_id, categories(name)')
+                        .eq('person_id', student.id);
+
+                    const oldCatNames = (oldCats || []).map((c: any) => c.categories?.name || '').filter(Boolean);
+
+                    // Find the period that covers today
+                    const { data: currentPeriod } = await supabase
+                        .from('person_category_history')
+                        .select('id')
+                        .eq('person_id', student.id)
+                        .lte('valid_from', today)
+                        .or(`valid_until.is.null,valid_until.gte.${today}`)
+                        .order('valid_from', { ascending: false })
+                        .limit(1)
+                        .single();
+
+                    // Delete current person_categories
+                    await supabase
+                        .from('person_categories')
+                        .delete()
+                        .eq('person_id', student.id);
+
+                    if (currentPeriod) {
+                        const { data: periodCats } = await supabase
+                            .from('person_category_history_categories')
+                            .select('category_id, categories(name)')
+                            .eq('history_id', currentPeriod.id);
+
+                        if (periodCats && periodCats.length > 0) {
+                            const inserts = periodCats.map((pc: any) => ({
+                                person_id: student.id,
+                                category_id: pc.category_id
+                            }));
+
+                            await supabase
+                                .from('person_categories')
+                                .insert(inserts);
+
+                            await supabase
+                                .from('people')
+                                .update({ category_id: periodCats[0].category_id })
+                                .eq('id', student.id);
+
+                            const newCatNames = periodCats.map((c: any) => c.categories?.name || '').filter(Boolean);
+                            const oldSorted = [...oldCatNames].sort().join(',');
+                            const newSorted = [...newCatNames].sort().join(',');
+                            if (oldSorted !== newSorted) {
+                                categorySyncResult.changes.push({
+                                    personId: student.id,
+                                    oldCats: oldCatNames,
+                                    newCats: newCatNames
+                                });
+                            }
+                        }
+                    }
+
+                    categorySyncResult.synced++;
+                }
+            }
+        } catch (catSyncError: any) {
+            console.error('Category sync error:', catSyncError);
+        }
+
         return NextResponse.json({
-            message: 'Status sync completed',
+            message: 'Status & category sync completed',
             timestamp: new Date().toISOString(),
             today,
             totalPeople: allPeople?.length || 0,
             cleanedUp,
             cleanedUpCount: cleanedUp.length,
             changes,
-            changesCount: changes.length
+            changesCount: changes.length,
+            categorySync: {
+                studentsProcessed: categorySyncResult.synced,
+                categoryChanges: categorySyncResult.changes,
+                categoryChangesCount: categorySyncResult.changes.length
+            }
         });
     } catch (error: any) {
         console.error('Status sync error:', error);

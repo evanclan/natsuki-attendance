@@ -313,33 +313,15 @@ export default function EmployeeDetailPage() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="category">Category</Label>
-                                    <Select
-                                        value={categoryId}
-                                        onValueChange={(val) => {
-                                            if (val === '_add_new_') {
-                                                router.push('/admin/settings/categories')
-                                                return
-                                            }
-                                            setCategoryId(val)
-                                        }}
-                                    >
-                                        <SelectTrigger id="category">
-                                            <SelectValue placeholder="Select category" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="none">None</SelectItem>
-                                            {categories.map((cat) => (
-                                                <SelectItem key={cat.id} value={cat.id}>
-                                                    {cat.name}
-                                                </SelectItem>
-                                            ))}
-                                            <div className="border-t my-1" />
-                                            <SelectItem value="_add_new_" className="text-blue-600 font-medium">
-                                                + Add Category
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                    <Label>Category</Label>
+                                    <div className="border rounded-md p-2 bg-muted/30">
+                                        <Badge variant="outline" className="text-xs">
+                                            {categories.find(c => c.id === categoryId)?.name || 'None'}
+                                        </Badge>
+                                        <p className="text-[10px] text-muted-foreground mt-1.5">
+                                            Managed via settings
+                                        </p>
+                                    </div>
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="registrationDate">Registration Date</Label>
@@ -351,16 +333,15 @@ export default function EmployeeDetailPage() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="status">Status</Label>
-                                    <Select value={status} onValueChange={setStatus}>
-                                        <SelectTrigger id="status">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="active">Active</SelectItem>
-                                            <SelectItem value="inactive">Inactive</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                    <Label>Status</Label>
+                                    <div className="border rounded-md p-2 bg-muted/30">
+                                        <Badge variant={status === 'active' ? 'default' : 'secondary'}>
+                                            {status}
+                                        </Badge>
+                                        <p className="text-[10px] text-muted-foreground mt-1.5">
+                                            Managed via Status History section below
+                                        </p>
+                                    </div>
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="jobType">Job Type</Label>

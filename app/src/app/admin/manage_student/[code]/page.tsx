@@ -29,6 +29,7 @@ import { updateStudentDetails, updateStudentMemo } from './actions'
 import { updateAttendanceRecord } from '../../attendance-actions/actions'
 import { ShiftCalendar } from '@/components/admin/ShiftCalendar'
 import { StatusHistoryManager } from '@/components/admin/StatusHistoryManager'
+import { CategoryHistoryManager } from '@/components/admin/CategoryHistoryManager'
 import { Pencil, Save, X, AlertCircle } from 'lucide-react'
 import {
     Tooltip,
@@ -318,29 +319,22 @@ export default function StudentDetailPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label>Category</Label>
-                                <div className="border rounded-md p-2 max-h-[150px] overflow-y-auto space-y-2">
-                                    {categories.length === 0 && <div className="text-sm text-muted-foreground">No categories available</div>}
-                                    {categories.map((cat) => (
-                                        <div key={cat.id} className="flex items-center space-x-2">
-                                            <input
-                                                type="checkbox"
-                                                id={`cat-edit-${cat.id}`}
-                                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                                checked={categoryIds.includes(cat.id)}
-                                                onChange={(e) => {
-                                                    const isChecked = e.target.checked
-                                                    if (isChecked) {
-                                                        setCategoryIds([...categoryIds, cat.id])
-                                                    } else {
-                                                        setCategoryIds(categoryIds.filter(id => id !== cat.id))
-                                                    }
-                                                }}
-                                            />
-                                            <Label htmlFor={`cat-edit-${cat.id}`} className="font-normal cursor-pointer">
-                                                {cat.name}
-                                            </Label>
-                                        </div>
-                                    ))}
+                                <div className="border rounded-md p-2 bg-muted/30">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        {categoryIds.length > 0
+                                            ? categories
+                                                .filter(cat => categoryIds.includes(cat.id))
+                                                .map(cat => (
+                                                    <Badge key={cat.id} variant="outline" className="text-xs">
+                                                        {cat.name}
+                                                    </Badge>
+                                                ))
+                                            : <span className="text-sm text-muted-foreground">No category assigned</span>
+                                        }
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground mt-1.5">
+                                        Managed via Category History section below
+                                    </p>
                                 </div>
                             </div>
                             <div className="space-y-2">
@@ -353,16 +347,15 @@ export default function StudentDetailPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="status">Status</Label>
-                                <Select value={status} onValueChange={setStatus}>
-                                    <SelectTrigger id="status">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="active">Active</SelectItem>
-                                        <SelectItem value="inactive">Inactive</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <Label>Status</Label>
+                                <div className="border rounded-md p-2 bg-muted/30">
+                                    <Badge variant={status === 'active' ? 'default' : 'secondary'}>
+                                        {status}
+                                    </Badge>
+                                    <p className="text-[10px] text-muted-foreground mt-1.5">
+                                        Managed via Status History section below
+                                    </p>
+                                </div>
                             </div>
                         </div>
                         <div className="flex justify-end">
@@ -375,6 +368,13 @@ export default function StudentDetailPage() {
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Category History Section */}
+                {student && (
+                    <CategoryHistoryManager
+                        personId={student.id}
+                    />
+                )}
 
                 {/* Recent Activity Section */}
                 <Card>
