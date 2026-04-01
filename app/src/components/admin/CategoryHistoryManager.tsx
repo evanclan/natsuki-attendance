@@ -65,6 +65,7 @@ export function CategoryHistoryManager({ personId }: CategoryHistoryManagerProps
     const [validFrom, setValidFrom] = useState('')
     const [validUntil, setValidUntil] = useState('')
     const [note, setNote] = useState('')
+    const [closeExisting, setCloseExisting] = useState(false)
 
     useEffect(() => {
         loadData()
@@ -133,7 +134,8 @@ export function CategoryHistoryManager({ personId }: CategoryHistoryManagerProps
                 category_ids: selectedCategoryIds,
                 valid_from: validFrom,
                 valid_until: validUntil || null,
-                note: note || null
+                note: note || null,
+                closeExisting: closeExisting
             })
 
             if (result.success) {
@@ -166,6 +168,7 @@ export function CategoryHistoryManager({ personId }: CategoryHistoryManagerProps
         setValidFrom('')
         setValidUntil('')
         setNote('')
+        setCloseExisting(false)
         setEditingPeriod(null)
     }
 
@@ -214,8 +217,8 @@ export function CategoryHistoryManager({ personId }: CategoryHistoryManagerProps
                     <Info className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
                     <p className="text-xs text-purple-700 dark:text-purple-300">
                         Category history tracks which class(es) this student belongs to over time.
-                        When a student graduates from a class and moves to another, close the current period and add a new one.
-                        The student&apos;s active categories are automatically updated based on today&apos;s date.
+                        Multiple periods can overlap — the student&apos;s active categories are the combined result of all periods covering today&apos;s date.
+                        Check &quot;Close existing open periods&quot; when adding a new period if the student is fully leaving their current class(es).
                     </p>
                 </div>
 
@@ -324,7 +327,7 @@ export function CategoryHistoryManager({ personId }: CategoryHistoryManagerProps
                             <DialogDescription>
                                 {editingPeriod
                                     ? 'Update the date range and categories for this period.'
-                                    : 'Set a date range and select the categories for this period. Adding a new period will auto-close any current open-ended period.'}
+                                    : 'Add a new category period. By default, existing periods stay open (overlapping). Check "Close existing" if the student is leaving their current class(es).'}
                             </DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
@@ -396,6 +399,25 @@ export function CategoryHistoryManager({ personId }: CategoryHistoryManagerProps
                                     className="col-span-3"
                                 />
                             </div>
+                            {/* Close existing toggle - only show when adding, not editing */}
+                            {!editingPeriod && (
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <div className="col-start-2 col-span-3">
+                                        <div className="flex items-center space-x-2 p-2 rounded-md border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/30">
+                                            <input
+                                                type="checkbox"
+                                                id="close-existing"
+                                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                                checked={closeExisting}
+                                                onChange={(e) => setCloseExisting(e.target.checked)}
+                                            />
+                                            <Label htmlFor="close-existing" className="font-normal cursor-pointer text-xs">
+                                                Close existing open periods (use when student is <strong>leaving</strong> current class)
+                                            </Label>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>

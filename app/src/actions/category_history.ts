@@ -67,7 +67,8 @@ export async function getCategoryHistory(personId: string) {
 
 /**
  * Add a new category period.
- * Auto-closes any existing open-ended periods (valid_until = null) for this person.
+ * If closeExisting is true, auto-closes any existing open-ended periods.
+ * If false (default), the new period is added alongside existing ones (overlapping).
  */
 export async function addCategoryPeriod(data: {
     person_id: string
@@ -75,31 +76,34 @@ export async function addCategoryPeriod(data: {
     valid_from: string
     valid_until: string | null
     note: string | null
+    closeExisting?: boolean
 }) {
     const supabase = await createClient()
 
-    // 1. Close any existing open-ended periods that started before or on the new one
-    const { data: openPeriods } = await supabase
-        .from('person_category_history')
-        .select('id, valid_from')
-        .eq('person_id', data.person_id)
-        .is('valid_until', null)
-        .lte('valid_from', data.valid_from)
-        .order('valid_from', { ascending: false })
+    // 1. Optionally close existing open-ended periods
+    if (data.closeExisting) {
+        const { data: openPeriods } = await supabase
+            .from('person_category_history')
+            .select('id, valid_from')
+            .eq('person_id', data.person_id)
+            .is('valid_until', null)
+            .lte('valid_from', data.valid_from)
+            .order('valid_from', { ascending: false })
 
-    if (openPeriods && openPeriods.length > 0) {
-        // Close them the day before the new period starts
-        const newStart = new Date(data.valid_from)
-        newStart.setDate(newStart.getDate() - 1)
-        const closeDate = formatLocalDate(newStart)
+        if (openPeriods && openPeriods.length > 0) {
+            // Close them the day before the new period starts
+            const newStart = new Date(data.valid_from)
+            newStart.setDate(newStart.getDate() - 1)
+            const closeDate = formatLocalDate(newStart)
 
-        for (const openPeriod of openPeriods) {
-            // Ensure closeDate is not before valid_from
-            if (closeDate >= openPeriod.valid_from) {
-                await supabase
-                    .from('person_category_history')
-                    .update({ valid_until: closeDate })
-                    .eq('id', openPeriod.id)
+            for (const openPeriod of openPeriods) {
+                // Ensure closeDate is not before valid_from
+                if (closeDate >= openPeriod.valid_from) {
+                    await supabase
+                        .from('person_category_history')
+                        .update({ valid_until: closeDate })
+                        .eq('id', openPeriod.id)
+                }
             }
         }
     }
@@ -223,23 +227,21 @@ export async function deleteCategoryPeriod(id: number, personId: string) {
 }
 
 /**
- * Sync the person_categories table based on which category period
- * covers today's date. This keeps the existing system working without changes.
+ * Sync the person_categories table based on ALL category periods
+ * that cover today's date. Merges categories from overlapping periods.
+ * This keeps the existing system working without changes.
  */
 export async function syncCurrentCategories(personId: string) {
     const supabase = await createClient()
     const today = formatLocalDate(new Date())
 
-    // Find the period that covers today
-    const { data: currentPeriod } = await supabase
+    // Find ALL periods that cover today (not just one!)
+    const { data: currentPeriods } = await supabase
         .from('person_category_history')
         .select('id')
         .eq('person_id', personId)
         .lte('valid_from', today)
         .or(`valid_until.is.null,valid_until.gte.${today}`)
-        .order('valid_from', { ascending: false })
-        .limit(1)
-        .single()
 
     // Delete all existing person_categories for this person
     await supabase
@@ -247,17 +249,21 @@ export async function syncCurrentCategories(personId: string) {
         .delete()
         .eq('person_id', personId)
 
-    if (currentPeriod) {
-        // Get the categories for the current period
+    if (currentPeriods && currentPeriods.length > 0) {
+        // Get categories from ALL current periods
+        const periodIds = currentPeriods.map(p => p.id)
         const { data: periodCats } = await supabase
             .from('person_category_history_categories')
             .select('category_id')
-            .eq('history_id', currentPeriod.id)
+            .in('history_id', periodIds)
 
         if (periodCats && periodCats.length > 0) {
-            const inserts = periodCats.map(pc => ({
+            // Deduplicate category IDs (a category might appear in multiple periods)
+            const uniqueCatIds = [...new Set(periodCats.map(pc => pc.category_id))]
+
+            const inserts = uniqueCatIds.map(catId => ({
                 person_id: personId,
-                category_id: pc.category_id
+                category_id: catId
             }))
 
             await supabase
@@ -267,7 +273,7 @@ export async function syncCurrentCategories(personId: string) {
             // Also update the legacy category_id on people table (first category)
             await supabase
                 .from('people')
-                .update({ category_id: periodCats[0].category_id })
+                .update({ category_id: uniqueCatIds[0] })
                 .eq('id', personId)
         }
     }

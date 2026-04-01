@@ -174,16 +174,13 @@ export async function GET() {
 
                     const oldCatNames = (oldCats || []).map((c: any) => c.categories?.name || '').filter(Boolean);
 
-                    // Find the period that covers today
-                    const { data: currentPeriod } = await supabase
+                    // Find ALL periods that cover today (not just one!)
+                    const { data: currentPeriods } = await supabase
                         .from('person_category_history')
                         .select('id')
                         .eq('person_id', student.id)
                         .lte('valid_from', today)
-                        .or(`valid_until.is.null,valid_until.gte.${today}`)
-                        .order('valid_from', { ascending: false })
-                        .limit(1)
-                        .single();
+                        .or(`valid_until.is.null,valid_until.gte.${today}`);
 
                     // Delete current person_categories
                     await supabase
@@ -191,16 +188,27 @@ export async function GET() {
                         .delete()
                         .eq('person_id', student.id);
 
-                    if (currentPeriod) {
+                    if (currentPeriods && currentPeriods.length > 0) {
+                        const periodIds = currentPeriods.map(p => p.id);
                         const { data: periodCats } = await supabase
                             .from('person_category_history_categories')
                             .select('category_id, categories(name)')
-                            .eq('history_id', currentPeriod.id);
+                            .in('history_id', periodIds);
 
                         if (periodCats && periodCats.length > 0) {
-                            const inserts = periodCats.map((pc: any) => ({
+                            // Deduplicate
+                            const seen = new Set<string>();
+                            const uniqueCats: { category_id: string; name: string }[] = [];
+                            for (const pc of periodCats as any[]) {
+                                if (!seen.has(pc.category_id)) {
+                                    seen.add(pc.category_id);
+                                    uniqueCats.push({ category_id: pc.category_id, name: pc.categories?.name || '' });
+                                }
+                            }
+
+                            const inserts = uniqueCats.map(uc => ({
                                 person_id: student.id,
-                                category_id: pc.category_id
+                                category_id: uc.category_id
                             }));
 
                             await supabase
@@ -209,10 +217,10 @@ export async function GET() {
 
                             await supabase
                                 .from('people')
-                                .update({ category_id: periodCats[0].category_id })
+                                .update({ category_id: uniqueCats[0].category_id })
                                 .eq('id', student.id);
 
-                            const newCatNames = periodCats.map((c: any) => c.categories?.name || '').filter(Boolean);
+                            const newCatNames = uniqueCats.map(c => c.name).filter(Boolean);
                             const oldSorted = [...oldCatNames].sort().join(',');
                             const newSorted = [...newCatNames].sort().join(',');
                             if (oldSorted !== newSorted) {
