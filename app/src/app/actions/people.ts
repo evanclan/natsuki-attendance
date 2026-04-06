@@ -168,55 +168,29 @@ export async function getAvailableCategories(role: string) {
 export async function deletePerson(id: string) {
     const supabase = await createClient()
 
-    // Soft-delete: set status to inactive and add a status history record.
-    // All attendance, shifts, and other data remain intact.
-    const today = new Date().toISOString().split('T')[0]
-
-    // Update status to inactive
-    const { error: updateError } = await supabase
+    // First fetch the person to return their name for confirmation
+    const { data: person, error: fetchError } = await supabase
         .from('people')
-        .update({ status: 'inactive', updated_at: new Date().toISOString() })
+        .select('id, full_name, code')
         .eq('id', id)
-
-    if (updateError) {
-        return { success: false, error: updateError.message }
-    }
-
-    // Close any open active period and add an inactive period
-    const { data: openPeriod } = await supabase
-        .from('person_status_history')
-        .select('id, valid_from')
-        .eq('person_id', id)
-        .eq('status', 'active')
-        .is('valid_until', null)
-        .order('valid_from', { ascending: false })
-        .limit(1)
         .single()
 
-    if (openPeriod) {
-        // Close the active period at yesterday
-        const yesterday = new Date()
-        yesterday.setDate(yesterday.getDate() - 1)
-        const closeDate = yesterday.toISOString().split('T')[0]
-
-        if (closeDate >= openPeriod.valid_from) {
-            await supabase
-                .from('person_status_history')
-                .update({ valid_until: closeDate })
-                .eq('id', openPeriod.id)
-        }
+    if (fetchError || !person) {
+        return { success: false, error: 'Person not found' }
     }
 
-    // Add an inactive period starting today
-    await supabase
-        .from('person_status_history')
-        .insert({
-            person_id: id,
-            status: 'inactive',
-            valid_from: today,
-            valid_until: null,
-            note: 'Deactivated (soft delete)'
-        })
+    // Hard delete: permanently remove the person.
+    // All related records (attendance, shifts, person_categories,
+    // status_history, monthly_memos, category_history) are automatically
+    // deleted via ON DELETE CASCADE constraints.
+    const { error: deleteError } = await supabase
+        .from('people')
+        .delete()
+        .eq('id', id)
+
+    if (deleteError) {
+        return { success: false, error: deleteError.message }
+    }
 
     revalidatePath('/admin/manage_employee')
     revalidatePath('/admin/manage_student')

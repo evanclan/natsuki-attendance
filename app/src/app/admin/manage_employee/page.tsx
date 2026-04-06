@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AddPersonDialog } from "@/components/admin/AddPersonDialog"
-import { Trash2, Printer } from 'lucide-react'
+import { Trash2, Printer, AlertTriangle, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import {
     AlertDialog,
@@ -29,6 +29,15 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 import { deletePerson } from "@/app/actions/people"
 
 export default function ManageEmployeePage() {
@@ -38,6 +47,12 @@ export default function ManageEmployeePage() {
     const [searchQuery, setSearchQuery] = useState('')
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
+
+    // Delete confirmation state
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    const [employeeToDelete, setEmployeeToDelete] = useState<any | null>(null)
+    const [confirmationText, setConfirmationText] = useState('')
+    const [isDeleting, setIsDeleting] = useState(false)
 
     const fetchEmployees = async () => {
         setLoading(true)
@@ -81,14 +96,33 @@ export default function ManageEmployeePage() {
         return <div className="p-8 text-red-500">Error loading data: {error}</div>
     }
 
-    const handleDelete = async (id: string) => {
-        const result = await deletePerson(id)
+    const openDeleteDialog = (employee: any) => {
+        setEmployeeToDelete(employee)
+        setConfirmationText('')
+        setDeleteDialogOpen(true)
+    }
+
+    const handleDelete = async () => {
+        if (!employeeToDelete) return
+
+        setIsDeleting(true)
+        const result = await deletePerson(employeeToDelete.id)
+        setIsDeleting(false)
+
         if (result.success) {
+            setDeleteDialogOpen(false)
+            setEmployeeToDelete(null)
+            setConfirmationText('')
             fetchEmployees()
         } else {
             setError(result.error || 'Failed to delete')
         }
     }
+
+    const requiredConfirmation = employeeToDelete
+        ? `DELETE ${employeeToDelete.full_name}`
+        : ''
+    const isConfirmationValid = confirmationText === requiredConfirmation
 
     return (
         <div className="container mx-auto py-8">
@@ -203,38 +237,18 @@ export default function ManageEmployeePage() {
                                             </Link>
                                         </TableCell>
                                         <TableCell>
-                                            <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-muted-foreground hover:text-red-600"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle>Are you really sure?</AlertDialogTitle>
-                                                        <AlertDialogDescription>
-                                                            This action cannot be undone. This will permanently delete {employee.full_name} and all their data.
-                                                        </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                        <AlertDialogAction
-                                                            className="bg-red-600 hover:bg-red-700"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation()
-                                                                handleDelete(employee.id)
-                                                            }}
-                                                        >
-                                                            Delete
-                                                        </AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    e.preventDefault()
+                                                    openDeleteDialog(employee)
+                                                }}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -250,6 +264,93 @@ export default function ManageEmployeePage() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={deleteDialogOpen} onOpenChange={(open) => {
+                if (!isDeleting) {
+                    setDeleteDialogOpen(open)
+                    if (!open) {
+                        setEmployeeToDelete(null)
+                        setConfirmationText('')
+                    }
+                }
+            }}>
+                <DialogContent className="sm:max-w-[480px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-red-600">
+                            <AlertTriangle className="h-5 w-5" />
+                            Permanently Delete Employee
+                        </DialogTitle>
+                        <DialogDescription className="pt-2 space-y-3">
+                            <span className="block">
+                                You are about to <strong className="text-red-600">permanently delete</strong>{' '}
+                                <strong>{employeeToDelete?.full_name}</strong> ({employeeToDelete?.code}).
+                            </span>
+                            <span className="block text-red-600 font-medium">
+                                This will remove ALL data associated with this employee including:
+                            </span>
+                            <span className="block text-sm">
+                                • All attendance records (check-in/check-out history)<br />
+                                • All shift schedules<br />
+                                • Status history<br />
+                                • Category assignments<br />
+                                • Monthly memos<br />
+                                • All other associated data
+                            </span>
+                            <span className="block font-semibold text-destructive">
+                                ⚠️ This action is IRREVERSIBLE. There is no way to recover the data.
+                            </span>
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-3 py-2">
+                        <Label htmlFor="delete-confirmation" className="text-sm">
+                            To confirm, type{' '}
+                            <code className="px-1.5 py-0.5 bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 rounded text-xs font-bold">
+                                DELETE {employeeToDelete?.full_name}
+                            </code>{' '}
+                            below:
+                        </Label>
+                        <Input
+                            id="delete-confirmation"
+                            value={confirmationText}
+                            onChange={(e) => setConfirmationText(e.target.value)}
+                            placeholder={`DELETE ${employeeToDelete?.full_name || ''}`}
+                            className="font-mono"
+                            disabled={isDeleting}
+                            autoComplete="off"
+                        />
+                    </div>
+
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setDeleteDialogOpen(false)
+                                setEmployeeToDelete(null)
+                                setConfirmationText('')
+                            }}
+                            disabled={isDeleting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleDelete}
+                            disabled={!isConfirmationValid || isDeleting}
+                        >
+                            {isDeleting ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Deleting...
+                                </>
+                            ) : (
+                                'Permanently Delete'
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
