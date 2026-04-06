@@ -35,7 +35,7 @@ export async function updateAttendanceRecord(
     const dateStr = originalRecord.date
     const { data: shift } = await supabase
         .from('shifts')
-        .select('shift_type, start_time, end_time')
+        .select('shift_type, start_time, end_time, paid_leave_hours')
         .eq('person_id', personId)
         .eq('date', dateStr)
         .limit(1)
@@ -181,7 +181,7 @@ export async function upsertAttendanceRecord(
         // 1b. Fetch shift for proper rounding (mirroring update logic)
         const { data: shift } = await supabase
             .from('shifts')
-            .select('shift_type, start_time, end_time')
+            .select('shift_type, start_time, end_time, paid_leave_hours')
             .eq('person_id', personId)
             .eq('date', date)
             .limit(1) // Avoid crash if multiple shifts exist for same day

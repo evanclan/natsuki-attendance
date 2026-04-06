@@ -203,7 +203,7 @@ export async function logAttendance(personId: string, eventType: string) {
     // Fetch assigned shift for today
     const { data: shift } = await supabase
         .from('shifts')
-        .select('shift_type, start_time, end_time')
+        .select('shift_type, start_time, end_time, paid_leave_hours')
         .eq('person_id', personId)
         .eq('date', today)
         .single()
