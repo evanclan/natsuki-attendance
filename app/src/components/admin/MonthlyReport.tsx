@@ -458,7 +458,7 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
                                                     }}
                                                 />
                                             ) : (
-                                                record.status === 'absent' ? (
+                                                record.status === 'absent' && !record.isRestDay ? (
                                                     <span className="text-red-500 font-bold text-xs">ABSENT</span>
                                                 ) : (
                                                     formatTime(record.checkIn)
@@ -477,7 +477,7 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
                                                     }}
                                                 />
                                             ) : (
-                                                record.status === 'absent' ? (
+                                                record.status === 'absent' && !record.isRestDay ? (
                                                     <span className="text-red-500 font-bold text-xs">-</span>
                                                 ) : (
                                                     formatTime(record.checkOut)

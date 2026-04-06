@@ -217,9 +217,14 @@ export async function getMonthlyAttendanceReport(
             isRestDay = true
         }
 
+        // Also check individual shift assignment for rest
+        const shift = shifts.find(s => s.date === dateStr)
+        if (shift?.shift_type === 'rest' || shift?.shift_type === 'preferred_rest') {
+            isRestDay = true
+        }
+
         // Get attendance record for this day
         const attendance = attendanceData?.find(a => a.date === dateStr)
-        const shift = shifts.find(s => s.date === dateStr)
 
         // Build notifications
         const notifications: Array<{
