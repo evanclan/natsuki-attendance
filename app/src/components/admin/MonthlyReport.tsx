@@ -614,7 +614,7 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
                 </div>
 
                 {/* Legend */}
-                <div className="flex flex-wrap gap-4 text-xs text-muted-foreground pt-2 border-t print:text-[10px] print:gap-2">
+                <div className="flex flex-wrap gap-4 text-xs text-muted-foreground pt-2 border-t print:text-[10px] print:gap-2 print:hidden">
                     <div className="flex items-center gap-1.5">
                         <AlertTriangle className="h-3 w-3 text-amber-600" />
                         <span>Late check-in</span>
