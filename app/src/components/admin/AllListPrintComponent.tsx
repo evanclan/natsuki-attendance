@@ -179,6 +179,7 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
 
                                     let cellContent: React.ReactNode = ''
                                     let cellClass = ''
+                                    let overrideShiftColor = false
 
                                     // Base color on isRestDay
                                     if (isRestDay) {
@@ -249,6 +250,7 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
                                             if (isStudentType && attendanceRecord && attendanceRecord.status === 'absent') {
                                                 cellContent = '休み'
                                                 cellClass = 'bg-red-50'
+                                                overrideShiftColor = true
                                             } else {
                                                 // Memo content (students with no time data fall here, plus employees)
                                                 cellContent = (
@@ -291,7 +293,7 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
                                         <td
                                             key={day}
                                             className={`border border-gray-400 p-[5px] text-center whitespace-nowrap overflow-hidden text-[8px] ${cellClass}`}
-                                            style={shift?.color ? { backgroundColor: shift.color } : {}}
+                                            style={shift?.color && !overrideShiftColor ? { backgroundColor: shift.color } : {}}
                                         >
                                             {cellContent}
                                         </td>
