@@ -245,12 +245,18 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
                                                 cellContent = ''
                                             }
                                         } else if (shift.shift_type === 'user_note' || shift.shift_type === 'other_reason') {
-                                            // Memo content (students with no time data fall here, plus employees)
-                                            cellContent = (
-                                                <div className="line-clamp-2 overflow-hidden whitespace-normal break-words leading-tight">
-                                                    {shift.memo || shift.shift_name || shift.shift_type}
-                                                </div>
-                                            )
+                                            // If the student is absent but has a memo, show absent status instead of memo
+                                            if (isStudentType && attendanceRecord && attendanceRecord.status === 'absent') {
+                                                cellContent = '休み'
+                                                cellClass = 'bg-red-50'
+                                            } else {
+                                                // Memo content (students with no time data fall here, plus employees)
+                                                cellContent = (
+                                                    <div className="line-clamp-2 overflow-hidden whitespace-normal break-words leading-tight">
+                                                        {shift.memo || shift.shift_name || shift.shift_type}
+                                                    </div>
+                                                )
+                                            }
                                         } else {
                                             // Other types
                                             cellContent = shift.shift_name || shift.shift_type || ''
