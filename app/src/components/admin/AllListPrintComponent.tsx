@@ -185,8 +185,25 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
                                         cellClass = 'bg-red-100'
                                     }
 
-                                    if (shift) {
-                                        // Specific Status Handling
+                                    // For students/satursaurus: if there's check-in/check-out time data,
+                                    // ALWAYS prioritize showing times regardless of shift status
+                                    const isStudentType = type === 'students' || type === 'satursaurus'
+                                    const hasTimeData = attendanceRecord && (attendanceRecord.check_in_at || attendanceRecord.check_out_at)
+
+                                    if (isStudentType && hasTimeData) {
+                                        // Students: time in/out always takes priority over any status
+                                        const start = formatTime(attendanceRecord.check_in_at)
+                                        const end = formatTime(attendanceRecord.check_out_at)
+                                        cellContent = (
+                                            <div className="flex flex-col items-center justify-center leading-[0.85] gap-[1px]">
+                                                <div>{start}</div>
+                                                <div>{end}</div>
+                                            </div>
+                                        )
+                                        cellClass = '' // Normal background when showing times
+                                    } else if (shift) {
+                                        // Specific Status Handling (original logic for employees,
+                                        // and fallback for students with no time data)
                                         if (shift.shift_type === 'paid_leave') {
                                             cellContent = '有休'
                                             cellClass = 'bg-red-50'
@@ -197,7 +214,7 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
                                             cellContent = '特休'
                                             cellClass = 'bg-blue-50'
                                         } else if (shift.shift_type === 'absent') {
-                                            cellContent = (type === 'students' || type === 'satursaurus') ? '休み' : '欠勤'
+                                            cellContent = isStudentType ? '休み' : '欠勤'
                                             cellClass = 'bg-red-50'
                                         } else if (shift.shift_type === 'business_trip') {
                                             cellContent = '出張'
@@ -212,7 +229,7 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
                                             cellContent = '予欠'
                                             cellClass = 'bg-red-50'
                                         } else if (shift.shift_type === 'work' || shift.shift_type === 'work_no_break' || shift.shift_type === 'flex') {
-                                            // Show Raw Time Logic
+                                            // Show Raw Time Logic (for employees, since students are handled above)
                                             if (attendanceRecord && (attendanceRecord.check_in_at || attendanceRecord.check_out_at)) {
                                                 const start = formatTime(attendanceRecord.check_in_at)
                                                 const end = formatTime(attendanceRecord.check_out_at)
@@ -228,24 +245,12 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
                                                 cellContent = ''
                                             }
                                         } else if (shift.shift_type === 'user_note' || shift.shift_type === 'other_reason') {
-                                            // For students/satursaurus: show check-in/check-out times instead of memo
-                                            if ((type === 'students' || type === 'satursaurus') && attendanceRecord && (attendanceRecord.check_in_at || attendanceRecord.check_out_at)) {
-                                                const start = formatTime(attendanceRecord.check_in_at)
-                                                const end = formatTime(attendanceRecord.check_out_at)
-                                                cellContent = (
-                                                    <div className="flex flex-col items-center justify-center leading-[0.85] gap-[1px]">
-                                                        <div>{start}</div>
-                                                        <div>{end}</div>
-                                                    </div>
-                                                )
-                                            } else {
-                                                // Memo content (for employees)
-                                                cellContent = (
-                                                    <div className="line-clamp-2 overflow-hidden whitespace-normal break-words leading-tight">
-                                                        {shift.memo || shift.shift_name || shift.shift_type}
-                                                    </div>
-                                                )
-                                            }
+                                            // Memo content (students with no time data fall here, plus employees)
+                                            cellContent = (
+                                                <div className="line-clamp-2 overflow-hidden whitespace-normal break-words leading-tight">
+                                                    {shift.memo || shift.shift_name || shift.shift_type}
+                                                </div>
+                                            )
                                         } else {
                                             // Other types
                                             cellContent = shift.shift_name || shift.shift_type || ''
