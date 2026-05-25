@@ -208,7 +208,18 @@ export const MasterListPrintComponent = React.forwardRef<HTMLDivElement, MasterL
                                                 cellContent = '有休'
                                                 cellClass = 'bg-red-50'
                                             } else if (shift.shift_type === 'half_paid_leave') {
-                                                cellContent = '半休'
+                                                const start = shift.start_time?.slice(0, 5)
+                                                const end = shift.end_time?.slice(0, 5)
+                                                if (start && end) {
+                                                    cellContent = (
+                                                        <div className="flex flex-col items-center justify-center leading-[0.85] gap-[1px]">
+                                                            <div>{start}</div>
+                                                            <div>{end}</div>
+                                                        </div>
+                                                    )
+                                                } else {
+                                                    cellContent = '半休'
+                                                }
                                                 cellClass = 'bg-yellow-50'
                                             } else if (shift.shift_type === 'special_leave') {
                                                 cellContent = '特休'
