@@ -257,7 +257,7 @@ export function ShiftEditDialog({
 
 
                     {/* Student inputs or standard employee inputs */}
-                    {role === 'employee' && (shiftType === 'work' || shiftType === 'work_no_break' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf) || shiftType === 'custom_leave') && (
+                    {role === 'employee' && (shiftType === 'work' || shiftType === 'work_no_break' || shiftType === 'flex' || shiftType === 'business_trip' || (shiftType === 'half_paid_leave' && !fixHalf) || shiftType === 'custom_leave') && (
 
                         <>
                             <div className="grid grid-cols-4 items-center gap-4">

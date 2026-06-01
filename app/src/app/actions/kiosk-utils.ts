@@ -354,7 +354,13 @@ export function calculateDailyStats(
         finalOvertimeMinutes = Math.max(0, totalWorkMinutes - scheduledWorkMinutes)
     } else {
         // No scheduled shift times: fall back to clock-based overtime only
-        finalOvertimeMinutes = clockOvertime
+        if (isFlex) {
+            // Flex with missing shift times: assume standard 8h (480 min) scheduled work
+            const defaultScheduledWork = 480
+            finalOvertimeMinutes = Math.max(0, totalWorkMinutes - defaultScheduledWork)
+        } else {
+            finalOvertimeMinutes = clockOvertime
+        }
     }
 
     return {
