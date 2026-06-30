@@ -302,59 +302,73 @@ async function syncShiftToAttendance(personId: string, shiftData: MasterListShif
                 return // Recalculation done
             }
 
-            // 2. If it does NOT have check-in/out times, map new shift parameters to correct attendance state
-            let workMinutes = 0
-            let paidLeaveMinutes = 0
-            let status = 'present'
-            let adminNoteAppend = ''
-
+            // 2. If it does NOT have check-in/out times:
             const shiftTypeLower = shiftData.shift_type?.toLowerCase()
+            const isSpecialShift = [
+                'paid_leave',
+                'half_paid_leave',
+                'custom_leave',
+                'business_trip',
+                'special_leave'
+            ].includes(shiftTypeLower)
 
-            if (shiftTypeLower === 'paid_leave') {
-                const hours = shiftData.paid_leave_hours ?? 8
-                paidLeaveMinutes = hours * 60
-                status = 'present'
-                adminNoteAppend = `Paid Leave (${hours}h)`
-            } else if (shiftTypeLower === 'half_paid_leave') {
-                paidLeaveMinutes = 240
-                status = 'present'
-                adminNoteAppend = 'Half Paid Leave'
-            } else if (shiftTypeLower === 'custom_leave') {
-                const customHours = shiftData.paid_leave_hours ?? 0
-                paidLeaveMinutes = customHours * 60
-                status = 'present'
-                adminNoteAppend = `Custom Leave (${customHours}h)`
-            } else if (shiftTypeLower === 'business_trip') {
-                workMinutes = 480
-                status = 'present'
-                adminNoteAppend = 'Business Trip'
-            } else if (shiftTypeLower === 'special_leave') {
-                status = 'present'
-                adminNoteAppend = 'Special Leave'
-            } else if (shiftTypeLower === 'rest' || shiftTypeLower === 'preferred_rest') {
-                status = 'off'
-                adminNoteAppend = 'Rest Day'
+            if (isSpecialShift) {
+                let workMinutes = 0
+                let paidLeaveMinutes = 0
+                let status = 'present'
+                let adminNoteAppend = ''
+
+                if (shiftTypeLower === 'paid_leave') {
+                    const hours = shiftData.paid_leave_hours ?? 8
+                    paidLeaveMinutes = hours * 60
+                    status = 'present'
+                    adminNoteAppend = `Paid Leave (${hours}h)`
+                } else if (shiftTypeLower === 'half_paid_leave') {
+                    paidLeaveMinutes = 240
+                    status = 'present'
+                    adminNoteAppend = 'Half Paid Leave'
+                } else if (shiftTypeLower === 'custom_leave') {
+                    const customHours = shiftData.paid_leave_hours ?? 0
+                    paidLeaveMinutes = customHours * 60
+                    status = 'present'
+                    adminNoteAppend = `Custom Leave (${customHours}h)`
+                } else if (shiftTypeLower === 'business_trip') {
+                    workMinutes = 480
+                    status = 'present'
+                    adminNoteAppend = 'Business Trip'
+                } else if (shiftTypeLower === 'special_leave') {
+                    status = 'present'
+                    adminNoteAppend = 'Special Leave'
+                }
+
+                await supabase
+                    .from('attendance_days')
+                    .update({
+                        total_work_minutes: workMinutes,
+                        total_break_minutes: 0,
+                        break_exceeded: false,
+                        overtime_minutes: 0,
+                        paid_leave_minutes: paidLeaveMinutes,
+                        status: status,
+                        admin_note: existingAttendance.admin_note
+                            ? `${existingAttendance.admin_note}; Shift changed to ${adminNoteAppend}`
+                            : `Shift changed to ${adminNoteAppend}`,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', existingAttendance.id)
             } else {
-                // Regular work shifts or flex or absent shifts with no check-in/out mean the person was absent
-                status = 'absent'
-                adminNoteAppend = 'Absent'
-            }
+                // If it is NOT a special shift type and has no check-in/out times, we can safely delete it
+                // to remove any auto-generated paid leave/business trip records
+                await supabase
+                    .from('attendance_events')
+                    .update({ attendance_day_id: null })
+                    .eq('attendance_day_id', existingAttendance.id)
 
-            await supabase
-                .from('attendance_days')
-                .update({
-                    total_work_minutes: workMinutes,
-                    total_break_minutes: 0,
-                    break_exceeded: false,
-                    overtime_minutes: 0,
-                    paid_leave_minutes: paidLeaveMinutes,
-                    status: status,
-                    admin_note: existingAttendance.admin_note
-                        ? `${existingAttendance.admin_note}; Shift changed to ${adminNoteAppend}`
-                        : `Shift changed to ${adminNoteAppend}`,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', existingAttendance.id)
+                await supabase
+                    .from('attendance_days')
+                    .delete()
+                    .eq('id', existingAttendance.id)
+            }
 
         } else {
             // No record exists -> Create one if it's a special shift type that implies attendance details
@@ -424,26 +438,80 @@ export async function deleteShift(personId: string, date: string) {
     try {
         const supabase = await createClient()
 
-        // Get the shift first to check type (to remove attendance if needed?)
-        // For now, just delete the shift.
-        // If we want to be clean, we might want to remove the auto-generated attendance too?
-        // But attendance might have manual edits.
-        // Let's just delete the shift. The attendance record will remain but won't be linked to a shift type.
-        // However, if it was a business trip, the attendance record says "Business Trip".
-        // If we delete the shift, the attendance record is still there.
-        // Maybe we should clear the attendance record if it was auto-generated?
-        // That's complex. Let's stick to deleting the shift row.
-
-
-        const { error } = await supabase
+        // 1. Delete the shift
+        const { error: deleteShiftError } = await supabase
             .from('shifts')
             .delete()
             .eq('person_id', personId)
             .eq('date', date)
 
-        if (error) throw error
+        if (deleteShiftError) throw deleteShiftError
+
+        // 2. Handle corresponding attendance record cleanup
+        const { data: attendance } = await supabase
+            .from('attendance_days')
+            .select('id, check_in_at, check_out_at, break_start_at, break_end_at, total_break_minutes')
+            .eq('person_id', personId)
+            .eq('date', date)
+            .limit(1)
+            .maybeSingle()
+
+        if (attendance) {
+            if (attendance.check_in_at || attendance.check_out_at) {
+                // If there are check-in/out times, keep the record but recalculate stats without a shift
+                const { calculateDailyStats } = await import('@/app/actions/kiosk-utils')
+                
+                if (attendance.check_in_at && attendance.check_out_at) {
+                    const stats = calculateDailyStats(
+                        attendance.check_in_at,
+                        attendance.check_out_at,
+                        attendance.break_start_at,
+                        attendance.break_end_at,
+                        null // No shift
+                    )
+
+                    await supabase
+                        .from('attendance_days')
+                        .update({
+                            total_work_minutes: stats.total_work_minutes,
+                            total_break_minutes: stats.total_break_minutes,
+                            break_exceeded: stats.break_exceeded,
+                            overtime_minutes: stats.overtime_minutes,
+                            paid_leave_minutes: 0, // Reset paid leave
+                            rounded_check_in_at: stats.rounded_check_in_at,
+                            rounded_check_out_at: stats.rounded_check_out_at,
+                            status: 'present',
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', attendance.id)
+                } else {
+                    // Only check-in or only check-out: just clear paid_leave_minutes and set status
+                    await supabase
+                        .from('attendance_days')
+                        .update({
+                            paid_leave_minutes: 0,
+                            total_work_minutes: 0,
+                            status: attendance.check_in_at ? 'present' : 'absent',
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', attendance.id)
+                }
+            } else {
+                // If there are no check-in/out times, we can safely delete the attendance record
+                await supabase
+                    .from('attendance_events')
+                    .update({ attendance_day_id: null })
+                    .eq('attendance_day_id', attendance.id)
+
+                await supabase
+                    .from('attendance_days')
+                    .delete()
+                    .eq('id', attendance.id)
+            }
+        }
 
         revalidatePath('/admin/masterlist')
+        revalidatePath('/admin/manage_employee')
         return { success: true }
     } catch (error: any) {
         console.error('Error in deleteShift:', error)
