@@ -49,6 +49,7 @@ export async function updateAttendanceRecord(
     let paid_leave_minutes = 0
     let rounded_check_in_at = data.check_in_at
     let rounded_check_out_at = data.check_out_at
+    let finalStatus = data.status
 
     if (data.check_in_at && data.check_out_at) {
         // Import the calculateDailyStats function from kiosk actions
@@ -72,6 +73,42 @@ export async function updateAttendanceRecord(
         paid_leave_minutes = calculation.paid_leave_minutes
         rounded_check_in_at = calculation.rounded_check_in_at
         rounded_check_out_at = calculation.rounded_check_out_at
+    } else {
+        // No check-in/out: preserve paid leave minutes and avoid setting status to absent for special shift types
+        if (shift) {
+            const shiftType = shift.shift_type?.toLowerCase()
+            if (shiftType === 'paid_leave') {
+                paid_leave_minutes = (shift.paid_leave_hours ?? 8) * 60
+                total_work_minutes = 0
+                if (finalStatus === 'absent') {
+                    finalStatus = 'present'
+                }
+            } else if (shiftType === 'half_paid_leave') {
+                paid_leave_minutes = 240
+                total_work_minutes = 0
+                if (finalStatus === 'absent') {
+                    finalStatus = 'present'
+                }
+            } else if (shiftType === 'custom_leave') {
+                paid_leave_minutes = (shift.paid_leave_hours ?? 0) * 60
+                total_work_minutes = 0
+                if (finalStatus === 'absent') {
+                    finalStatus = 'present'
+                }
+            } else if (shiftType === 'business_trip') {
+                paid_leave_minutes = 0
+                total_work_minutes = 480
+                if (finalStatus === 'absent') {
+                    finalStatus = 'present'
+                }
+            } else if (shiftType === 'special_leave') {
+                paid_leave_minutes = 0
+                total_work_minutes = 0
+                if (finalStatus === 'absent') {
+                    finalStatus = 'present'
+                }
+            }
+        }
     }
 
     // 4. Update the record
@@ -80,7 +117,7 @@ export async function updateAttendanceRecord(
         check_out_at: data.check_out_at,
         break_start_at: data.break_start_at,
         break_end_at: data.break_end_at,
-        status: data.status,
+        status: finalStatus,
         total_work_minutes,
         total_break_minutes,
         break_exceeded,
@@ -195,6 +232,7 @@ export async function upsertAttendanceRecord(
         let paid_leave_minutes = 0
         let rounded_check_in_at = data.check_in_at
         let rounded_check_out_at = data.check_out_at
+        let finalStatus = data.status
 
         if (data.check_in_at && data.check_out_at) {
             const { calculateDailyStats } = await import('@/app/actions/kiosk-utils')
@@ -215,6 +253,42 @@ export async function upsertAttendanceRecord(
             paid_leave_minutes = calculation.paid_leave_minutes
             rounded_check_in_at = calculation.rounded_check_in_at
             rounded_check_out_at = calculation.rounded_check_out_at
+        } else {
+            // No check-in/out: preserve paid leave minutes and avoid setting status to absent for special shift types
+            if (shift) {
+                const shiftType = shift.shift_type?.toLowerCase()
+                if (shiftType === 'paid_leave') {
+                    paid_leave_minutes = (shift.paid_leave_hours ?? 8) * 60
+                    total_work_minutes = 0
+                    if (finalStatus === 'absent') {
+                        finalStatus = 'present'
+                    }
+                } else if (shiftType === 'half_paid_leave') {
+                    paid_leave_minutes = 240
+                    total_work_minutes = 0
+                    if (finalStatus === 'absent') {
+                        finalStatus = 'present'
+                    }
+                } else if (shiftType === 'custom_leave') {
+                    paid_leave_minutes = (shift.paid_leave_hours ?? 0) * 60
+                    total_work_minutes = 0
+                    if (finalStatus === 'absent') {
+                        finalStatus = 'present'
+                    }
+                } else if (shiftType === 'business_trip') {
+                    paid_leave_minutes = 0
+                    total_work_minutes = 480
+                    if (finalStatus === 'absent') {
+                        finalStatus = 'present'
+                    }
+                } else if (shiftType === 'special_leave') {
+                    paid_leave_minutes = 0
+                    total_work_minutes = 0
+                    if (finalStatus === 'absent') {
+                        finalStatus = 'present'
+                    }
+                }
+            }
         }
 
         const { error: insertError } = await supabase
@@ -224,7 +298,7 @@ export async function upsertAttendanceRecord(
                 date: date,
                 check_in_at: data.check_in_at,
                 check_out_at: data.check_out_at,
-                status: data.status,
+                status: finalStatus,
                 total_work_minutes,
                 total_break_minutes,
                 break_exceeded,

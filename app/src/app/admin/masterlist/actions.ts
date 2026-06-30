@@ -235,17 +235,8 @@ export async function upsertShift(personId: string, shiftData: MasterListShiftDa
 
         if (result.error) throw result.error
 
-        // Auto-create attendance records for special types, OR sync/recalculate for work types
-        if (shiftData.shift_type === 'business_trip' ||
-            shiftData.shift_type === 'paid_leave' ||
-            shiftData.shift_type === 'half_paid_leave' ||
-            shiftData.shift_type === 'special_leave' ||
-            shiftData.shift_type === 'work' ||
-            shiftData.shift_type === 'work_no_break' ||
-            shiftData.shift_type === 'flex' ||
-            shiftData.shift_type === 'custom_leave') {
-            await syncShiftToAttendance(personId, shiftData)
-        }
+        // Sync/recalculate attendance record to match the updated shift
+        await syncShiftToAttendance(personId, shiftData)
 
         revalidatePath('/admin/masterlist')
         revalidatePath('/admin/manage_employee')
@@ -257,7 +248,7 @@ export async function upsertShift(personId: string, shiftData: MasterListShiftDa
 }
 
 /**
- * Sync special shift types (business trip, paid leave, half paid leave) to attendance records
+ * Sync shift adjustments to attendance records to keep reports correct
  */
 async function syncShiftToAttendance(personId: string, shiftData: MasterListShiftData) {
     try {
@@ -274,174 +265,136 @@ async function syncShiftToAttendance(personId: string, shiftData: MasterListShif
         if (existingAttendance) {
             // Record exists (from kiosk check-in/out or previous edits)
 
-            // If it's a regular work shift (or flex), we should recalculate the work stats
-            // based on the new shift times and the existing check-in/out
-            // If it's a regular work shift (or flex), we should recalculate the work stats
-            // based on the new shift times and the existing check-in/out
-            if (shiftData.shift_type === 'work' || shiftData.shift_type === 'work_no_break' || shiftData.shift_type === 'flex' || (shiftData.shift_type === 'half_paid_leave' && shiftData.start_time && shiftData.end_time) || (shiftData.shift_type === 'custom_leave' && shiftData.start_time && shiftData.end_time)) {
-                if (existingAttendance.check_in_at && existingAttendance.check_out_at) {
-                    // Import helper dynamically to avoid circular deps if any
-                    const { calculateDailyStats } = await import('@/app/actions/kiosk-utils')
+            // 1. If it has check-in and check-out times, recalculate stats using the shared business rules utility
+            if (existingAttendance.check_in_at && existingAttendance.check_out_at) {
+                // Import helper dynamically to avoid circular deps if any
+                const { calculateDailyStats } = await import('@/app/actions/kiosk-utils')
 
-                    const shiftForCalc = {
-                        shift_type: shiftData.shift_type,
-                        start_time: shiftData.start_time || undefined,
-                        end_time: shiftData.end_time || undefined,
-                        paid_leave_hours: shiftData.paid_leave_hours || undefined
-                    }
-
-                    const stats = calculateDailyStats(
-                        existingAttendance.check_in_at,
-                        existingAttendance.check_out_at,
-                        existingAttendance.break_start_at,
-                        existingAttendance.break_end_at,
-                        shiftForCalc
-                    )
-
-                    await supabase
-                        .from('attendance_days')
-                        .update({
-                            total_work_minutes: stats.total_work_minutes,
-                            total_break_minutes: stats.total_break_minutes,
-                            break_exceeded: stats.break_exceeded,
-                            overtime_minutes: stats.overtime_minutes,
-                            paid_leave_minutes: stats.paid_leave_minutes,
-                            rounded_check_in_at: stats.rounded_check_in_at,
-                            rounded_check_out_at: stats.rounded_check_out_at,
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('id', existingAttendance.id)
-
-                    return // Done for work shift
-                }
-            }
-
-            // Handle special shift types logic (mostly for non-work calculations or overrides)
-            let workMinutes = 0
-            let paidLeaveMinutes = 0
-            let adminNoteAppend = ''
-
-            switch (shiftData.shift_type) {
-                case 'business_trip':
-                    workMinutes = 480 // 8 hours
-                    paidLeaveMinutes = 0
-                    adminNoteAppend = 'Business Trip'
-                    break
-                case 'paid_leave':
-                    workMinutes = 0
-                    const hours = shiftData.paid_leave_hours ?? 8
-                    paidLeaveMinutes = hours * 60
-                    adminNoteAppend = `Paid Leave (${hours}h)`
-                    break
-                case 'half_paid_leave':
-                    // If we are here, it means we didn't match the recalculation block above 
-                    // (e.g. no check-in/out yet, or no shift times defined)
-                    paidLeaveMinutes = 240 // 4 hours
-                    if (!shiftData.start_time || !shiftData.end_time) {
-                        workMinutes = 0
-                        adminNoteAppend = 'Half Paid Leave'
-                    } else {
-                        // With times but no check-in yet
-                        adminNoteAppend = 'Half Paid Leave (with work hours)'
-                    }
-                    break
-                case 'special_leave':
-                    workMinutes = 0
-                    paidLeaveMinutes = 0
-                    adminNoteAppend = 'Special Leave'
-                    break
-                case 'custom_leave':
-                    // Custom hours based on input
-                    const customHours = shiftData.paid_leave_hours ?? 0
-                    paidLeaveMinutes = customHours * 60
-                    if (!shiftData.start_time || !shiftData.end_time) {
-                        workMinutes = 0
-                        adminNoteAppend = `Custom Leave (${customHours}h)`
-                    } else {
-                        adminNoteAppend = `Custom Leave (${customHours}h) + Work`
-                    }
-                    break
-            }
-
-            // Only update if we have a special note or values to set that aren't dynamic work calculations
-            if (adminNoteAppend) {
-                const updatePayload: any = {
-                    admin_note: existingAttendance.admin_note
-                        ? `${existingAttendance.admin_note}; ${adminNoteAppend}`
-                        : adminNoteAppend,
-                    updated_at: new Date().toISOString()
+                const shiftForCalc = {
+                    shift_type: shiftData.shift_type,
+                    start_time: shiftData.start_time || undefined,
+                    end_time: shiftData.end_time || undefined,
+                    paid_leave_hours: shiftData.paid_leave_hours || undefined
                 }
 
-                if ((shiftData.shift_type !== 'half_paid_leave' && shiftData.shift_type !== 'custom_leave') || (!shiftData.start_time && !shiftData.end_time)) {
-                    // For half paid leave/custom leave with times, we handled work minutes in the first block if attendance exists.
-                    // If we are here, we might just be setting the paid leave part if work calc wasn't possible?
-                    // Actually simplest is: if we are in this block, we are setting fixed values/notes
-                    if (workMinutes > 0 || shiftData.shift_type === 'business_trip') {
-                        updatePayload.total_work_minutes = workMinutes
-                    }
-                    if (paidLeaveMinutes > 0) {
-                        updatePayload.paid_leave_minutes = paidLeaveMinutes
-                    }
-                } else if (shiftData.shift_type === 'half_paid_leave' || shiftData.shift_type === 'custom_leave') {
-                    // Start/End times exist but maybe no check-in record yet?
-                    // Ensure paid leave is set at least
-                    updatePayload.paid_leave_minutes = paidLeaveMinutes
-                }
+                const stats = calculateDailyStats(
+                    existingAttendance.check_in_at,
+                    existingAttendance.check_out_at,
+                    existingAttendance.break_start_at,
+                    existingAttendance.break_end_at,
+                    shiftForCalc
+                )
 
                 await supabase
                     .from('attendance_days')
-                    .update(updatePayload)
+                    .update({
+                        total_work_minutes: stats.total_work_minutes,
+                        total_break_minutes: stats.total_break_minutes,
+                        break_exceeded: stats.break_exceeded,
+                        overtime_minutes: stats.overtime_minutes,
+                        paid_leave_minutes: stats.paid_leave_minutes,
+                        rounded_check_in_at: stats.rounded_check_in_at,
+                        rounded_check_out_at: stats.rounded_check_out_at,
+                        updated_at: new Date().toISOString()
+                    })
                     .eq('id', existingAttendance.id)
+
+                return // Recalculation done
             }
 
-        } else {
-            // No record exists -> Create one if it's a special shift type that implies attendance
-            // (Business trip, paid leave, etc.)
-            // Regular work shifts don't create attendance records until check-in
+            // 2. If it does NOT have check-in/out times, map new shift parameters to correct attendance state
+            let workMinutes = 0
+            let paidLeaveMinutes = 0
+            let status = 'present'
+            let adminNoteAppend = ''
 
+            const shiftTypeLower = shiftData.shift_type?.toLowerCase()
+
+            if (shiftTypeLower === 'paid_leave') {
+                const hours = shiftData.paid_leave_hours ?? 8
+                paidLeaveMinutes = hours * 60
+                status = 'present'
+                adminNoteAppend = `Paid Leave (${hours}h)`
+            } else if (shiftTypeLower === 'half_paid_leave') {
+                paidLeaveMinutes = 240
+                status = 'present'
+                adminNoteAppend = 'Half Paid Leave'
+            } else if (shiftTypeLower === 'custom_leave') {
+                const customHours = shiftData.paid_leave_hours ?? 0
+                paidLeaveMinutes = customHours * 60
+                status = 'present'
+                adminNoteAppend = `Custom Leave (${customHours}h)`
+            } else if (shiftTypeLower === 'business_trip') {
+                workMinutes = 480
+                status = 'present'
+                adminNoteAppend = 'Business Trip'
+            } else if (shiftTypeLower === 'special_leave') {
+                status = 'present'
+                adminNoteAppend = 'Special Leave'
+            } else if (shiftTypeLower === 'rest' || shiftTypeLower === 'preferred_rest') {
+                status = 'off'
+                adminNoteAppend = 'Rest Day'
+            } else {
+                // Regular work shifts or flex or absent shifts with no check-in/out mean the person was absent
+                status = 'absent'
+                adminNoteAppend = 'Absent'
+            }
+
+            await supabase
+                .from('attendance_days')
+                .update({
+                    total_work_minutes: workMinutes,
+                    total_break_minutes: 0,
+                    break_exceeded: false,
+                    overtime_minutes: 0,
+                    paid_leave_minutes: paidLeaveMinutes,
+                    status: status,
+                    admin_note: existingAttendance.admin_note
+                        ? `${existingAttendance.admin_note}; Shift changed to ${adminNoteAppend}`
+                        : `Shift changed to ${adminNoteAppend}`,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', existingAttendance.id)
+
+        } else {
+            // No record exists -> Create one if it's a special shift type that implies attendance details
+            // Regular work/rest shifts don't create attendance records until check-in
             let workMinutes = 0
             let paidLeaveMinutes = 0
             let adminNote = ''
             let shouldCreate = false
 
-            switch (shiftData.shift_type) {
-                case 'business_trip':
-                    workMinutes = 480
-                    adminNote = 'Business Trip'
-                    shouldCreate = true
-                    break
-                case 'paid_leave':
-                    workMinutes = 0
-                    const hours = shiftData.paid_leave_hours ?? 8
-                    paidLeaveMinutes = hours * 60
-                    adminNote = `Paid Leave (${hours}h)`
-                    shouldCreate = true
-                    break
-                case 'half_paid_leave':
-                    paidLeaveMinutes = 240
-                    if (shiftData.start_time && shiftData.end_time) {
-                        adminNote = 'Half Paid Leave (with work hours)'
-                        // Work minutes 0 until check-in
-                    } else {
-                        adminNote = 'Half Paid Leave'
-                    }
-                    shouldCreate = true
-                    break
-                case 'special_leave':
-                    adminNote = 'Special Leave'
-                    shouldCreate = true
-                    break
-                case 'custom_leave':
-                    const cHours = shiftData.paid_leave_hours ?? 0
-                    paidLeaveMinutes = cHours * 60
-                    if (shiftData.start_time && shiftData.end_time) {
-                        adminNote = `Custom Leave (${cHours}h) + Work`
-                        // Work minutes 0 until check-in
-                    } else {
-                        adminNote = `Custom Leave (${cHours}h)`
-                    }
-                    shouldCreate = true
-                    break
+            const shiftTypeLower = shiftData.shift_type?.toLowerCase()
+
+            if (shiftTypeLower === 'paid_leave') {
+                const hours = shiftData.paid_leave_hours ?? 8
+                paidLeaveMinutes = hours * 60
+                adminNote = `Paid Leave (${hours}h)`
+                shouldCreate = true
+            } else if (shiftTypeLower === 'half_paid_leave') {
+                paidLeaveMinutes = 240
+                if (shiftData.start_time && shiftData.end_time) {
+                    adminNote = 'Half Paid Leave (with work hours)'
+                } else {
+                    adminNote = 'Half Paid Leave'
+                }
+                shouldCreate = true
+            } else if (shiftTypeLower === 'custom_leave') {
+                const cHours = shiftData.paid_leave_hours ?? 0
+                paidLeaveMinutes = cHours * 60
+                if (shiftData.start_time && shiftData.end_time) {
+                    adminNote = `Custom Leave (${cHours}h) + Work`
+                } else {
+                    adminNote = `Custom Leave (${cHours}h)`
+                }
+                shouldCreate = true
+            } else if (shiftTypeLower === 'business_trip') {
+                workMinutes = 480
+                adminNote = 'Business Trip'
+                shouldCreate = true
+            } else if (shiftTypeLower === 'special_leave') {
+                adminNote = 'Special Leave'
+                shouldCreate = true
             }
 
             if (shouldCreate) {
@@ -455,7 +408,7 @@ async function syncShiftToAttendance(personId: string, shiftData: MasterListShif
                         total_work_minutes: workMinutes,
                         total_break_minutes: 0,
                         paid_leave_minutes: paidLeaveMinutes,
-                        status: 'present', // or should this be something else for leave?
+                        status: 'present',
                         is_edited: true,
                         admin_note: adminNote
                     })
@@ -463,7 +416,6 @@ async function syncShiftToAttendance(personId: string, shiftData: MasterListShif
         }
     } catch (error) {
         console.error('Error syncing shift to attendance:', error)
-        // Don't throw - we don't want to fail the shift creation if attendance sync fails
     }
 }
 

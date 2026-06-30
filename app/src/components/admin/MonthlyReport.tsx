@@ -211,10 +211,22 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
 
     const handleEditClick = (day: DailyAttendance) => {
         setEditingDate(day.date)
+        const isSpecialShift = [
+            'paid_leave',
+            'half_paid_leave',
+            'business_trip',
+            'special_leave',
+            'custom_leave'
+        ].includes(day.shiftType?.toLowerCase())
+
+        const defaultStatus = day.isRestDay
+            ? (day.isHoliday ? 'holiday' : 'rest_day')
+            : (isSpecialShift ? 'present' : (day.checkIn ? 'present' : 'absent'))
+
         setEditForm({
             checkIn: getInputValue(day.checkIn),
             checkOut: getInputValue(day.checkOut),
-            status: day.isRestDay ? (day.isHoliday ? 'holiday' : 'rest_day') : (day.checkIn ? 'present' : 'absent'),
+            status: day.status || defaultStatus,
             breakChunk: day.breakMinutes !== null ? formatMinutesToHours(day.breakMinutes) : ''
         })
     }
@@ -245,11 +257,20 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
             }
         }
 
+        const record = report?.dailyRecords.find(r => r.date === dateStr)
+        const isSpecialShift = record && [
+            'paid_leave',
+            'half_paid_leave',
+            'business_trip',
+            'special_leave',
+            'custom_leave'
+        ].includes(record.shiftType?.toLowerCase())
+
         // Automatically determine status if it was absent/present
         let finalStatus = editForm.status;
         if (finalStatus === 'absent' && (editForm.checkIn || editForm.checkOut)) {
             finalStatus = 'present';
-        } else if (finalStatus === 'present' && !editForm.checkIn && !editForm.checkOut) {
+        } else if (finalStatus === 'present' && !editForm.checkIn && !editForm.checkOut && !isSpecialShift) {
             finalStatus = 'absent';
         }
 
