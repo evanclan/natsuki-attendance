@@ -248,6 +248,35 @@ export async function upsertShift(personId: string, shiftData: MasterListShiftDa
 }
 
 /**
+ * Strip away any auto-generated shift notes, preserving custom manual admin notes.
+ */
+function cleanAdminNote(note: string | null | undefined): string | null {
+    if (!note) return null
+
+    const patterns = [
+        /Shift changed to [^;]*/gi,
+        /Paid Leave \(\d+h\)/gi,
+        /Half Paid Leave/gi,
+        /Business Trip/gi,
+        /Special Leave/gi,
+        /Custom Leave \(\d+h\)/gi
+    ]
+
+    let cleaned = note
+    for (const pattern of patterns) {
+        cleaned = cleaned.replace(pattern, '')
+    }
+
+    cleaned = cleaned
+        .split(';')
+        .map(s => s.trim())
+        .filter(s => s.length > 0)
+        .join('; ')
+
+    return cleaned.length > 0 ? cleaned : null
+}
+
+/**
  * Sync shift adjustments to attendance records to keep reports correct
  */
 async function syncShiftToAttendance(personId: string, shiftData: MasterListShiftData) {
@@ -257,7 +286,7 @@ async function syncShiftToAttendance(personId: string, shiftData: MasterListShif
         // Check if attendance record already exists
         const { data: existingAttendance } = await supabase
             .from('attendance_days')
-            .select('id, check_in_at, check_out_at, break_start_at, break_end_at, total_work_minutes, paid_leave_minutes, admin_note')
+            .select('id, check_in_at, check_out_at, break_start_at, break_end_at, total_work_minutes, paid_leave_minutes, admin_note, is_edited')
             .eq('person_id', personId)
             .eq('date', shiftData.date)
             .single()
@@ -274,7 +303,8 @@ async function syncShiftToAttendance(personId: string, shiftData: MasterListShif
                     shift_type: shiftData.shift_type,
                     start_time: shiftData.start_time || undefined,
                     end_time: shiftData.end_time || undefined,
-                    paid_leave_hours: shiftData.paid_leave_hours || undefined
+                    paid_leave_hours: shiftData.paid_leave_hours || undefined,
+                    force_break: shiftData.force_break || undefined
                 }
 
                 const stats = calculateDailyStats(
@@ -284,6 +314,45 @@ async function syncShiftToAttendance(personId: string, shiftData: MasterListShif
                     existingAttendance.break_end_at,
                     shiftForCalc
                 )
+
+                // If transitioning to a non-special shift, clean the admin_note!
+                const isSpecialShift = [
+                    'paid_leave',
+                    'half_paid_leave',
+                    'custom_leave',
+                    'business_trip',
+                    'special_leave'
+                ].includes(shiftData.shift_type?.toLowerCase() || '')
+
+                let cleanedNote = existingAttendance.admin_note
+                let isEdited = existingAttendance.is_edited
+                
+                if (!isSpecialShift) {
+                    cleanedNote = cleanAdminNote(existingAttendance.admin_note)
+                    isEdited = cleanedNote !== null
+                } else {
+                    const shiftTypeLower = shiftData.shift_type?.toLowerCase()
+                    let adminNoteAppend = ''
+                    if (shiftTypeLower === 'paid_leave') {
+                        adminNoteAppend = `Paid Leave (${shiftData.paid_leave_hours ?? 8}h)`
+                    } else if (shiftTypeLower === 'half_paid_leave') {
+                        adminNoteAppend = 'Half Paid Leave'
+                    } else if (shiftTypeLower === 'custom_leave') {
+                        adminNoteAppend = `Custom Leave (${shiftData.paid_leave_hours ?? 0}h)`
+                    } else if (shiftTypeLower === 'business_trip') {
+                        adminNoteAppend = 'Business Trip'
+                    } else if (shiftTypeLower === 'special_leave') {
+                        adminNoteAppend = 'Special Leave'
+                    }
+
+                    if (adminNoteAppend) {
+                        const baseNote = cleanAdminNote(existingAttendance.admin_note)
+                        cleanedNote = baseNote 
+                            ? `${baseNote}; Shift changed to ${adminNoteAppend}`
+                            : `Shift changed to ${adminNoteAppend}`
+                        isEdited = true
+                    }
+                }
 
                 await supabase
                     .from('attendance_days')
@@ -295,6 +364,8 @@ async function syncShiftToAttendance(personId: string, shiftData: MasterListShif
                         paid_leave_minutes: stats.paid_leave_minutes,
                         rounded_check_in_at: stats.rounded_check_in_at,
                         rounded_check_out_at: stats.rounded_check_out_at,
+                        admin_note: cleanedNote,
+                        is_edited: isEdited,
                         updated_at: new Date().toISOString()
                     })
                     .eq('id', existingAttendance.id)
@@ -341,6 +412,11 @@ async function syncShiftToAttendance(personId: string, shiftData: MasterListShif
                     adminNoteAppend = 'Special Leave'
                 }
 
+                const baseNote = cleanAdminNote(existingAttendance.admin_note)
+                const newNote = baseNote 
+                    ? `${baseNote}; Shift changed to ${adminNoteAppend}`
+                    : `Shift changed to ${adminNoteAppend}`
+
                 await supabase
                     .from('attendance_days')
                     .update({
@@ -350,9 +426,8 @@ async function syncShiftToAttendance(personId: string, shiftData: MasterListShif
                         overtime_minutes: 0,
                         paid_leave_minutes: paidLeaveMinutes,
                         status: status,
-                        admin_note: existingAttendance.admin_note
-                            ? `${existingAttendance.admin_note}; Shift changed to ${adminNoteAppend}`
-                            : `Shift changed to ${adminNoteAppend}`,
+                        admin_note: newNote,
+                        is_edited: true,
                         updated_at: new Date().toISOString()
                     })
                     .eq('id', existingAttendance.id)
@@ -450,13 +525,16 @@ export async function deleteShift(personId: string, date: string) {
         // 2. Handle corresponding attendance record cleanup
         const { data: attendance } = await supabase
             .from('attendance_days')
-            .select('id, check_in_at, check_out_at, break_start_at, break_end_at, total_break_minutes')
+            .select('id, check_in_at, check_out_at, break_start_at, break_end_at, total_break_minutes, admin_note')
             .eq('person_id', personId)
             .eq('date', date)
             .limit(1)
             .maybeSingle()
 
         if (attendance) {
+            const cleanedNote = cleanAdminNote(attendance.admin_note)
+            const isEdited = cleanedNote !== null
+
             if (attendance.check_in_at || attendance.check_out_at) {
                 // If there are check-in/out times, keep the record but recalculate stats without a shift
                 const { calculateDailyStats } = await import('@/app/actions/kiosk-utils')
@@ -481,6 +559,8 @@ export async function deleteShift(personId: string, date: string) {
                             rounded_check_in_at: stats.rounded_check_in_at,
                             rounded_check_out_at: stats.rounded_check_out_at,
                             status: 'present',
+                            admin_note: cleanedNote,
+                            is_edited: isEdited,
                             updated_at: new Date().toISOString()
                         })
                         .eq('id', attendance.id)
@@ -492,6 +572,8 @@ export async function deleteShift(personId: string, date: string) {
                             paid_leave_minutes: 0,
                             total_work_minutes: 0,
                             status: attendance.check_in_at ? 'present' : 'absent',
+                            admin_note: cleanedNote,
+                            is_edited: isEdited,
                             updated_at: new Date().toISOString()
                         })
                         .eq('id', attendance.id)

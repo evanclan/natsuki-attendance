@@ -45,6 +45,7 @@ export function calculateDailyStats(
         start_time?: string
         end_time?: string
         paid_leave_hours?: number
+        force_break?: boolean | null
     } | null,
     overrideBreakMinutes?: number | null
 ): {
@@ -319,7 +320,7 @@ export function calculateDailyStats(
         if (actualBreakMinutes > 60) { // Keep warning if physically took long break? Or ignore?
             breakExceeded = actualBreakMinutes > 60
         }
-    } else if (!isNoBreak && grossMinutes > 360) { // more than 6 hours
+    } else if (!isNoBreak && (grossMinutes > 360 || shift?.force_break)) { // more than 6 hours OR force_break
         applicableBreakMinutes = 60
         if (actualBreakMinutes > 60) {
             breakExceeded = true
