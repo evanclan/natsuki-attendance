@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { CalendarDays, ArrowLeft, MapPin, Users, Palette } from 'lucide-react'
+import { CalendarDays, ArrowLeft, MapPin, Users } from 'lucide-react'
 
 export default function SettingsPage() {
     return (
@@ -44,12 +44,13 @@ export default function SettingsPage() {
                                 Manage Locations
                             </CardTitle>
                             <CardDescription>
-                                Add and manage shift locations
+                                Add and manage shift locations and their colours
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <p className="text-sm text-muted-foreground">
-                                Configure available locations for work shifts and business trips.
+                                Configure available locations for work shifts and business trips,
+                                and set the colour each one uses on the printed legend.
                             </p>
                         </CardContent>
                     </Card>
@@ -93,24 +94,9 @@ export default function SettingsPage() {
                     </Card>
                 </Link>
 
-                <Link href="/admin/settings/legends">
-                    <Card className="hover:bg-accent/50 transition-colors cursor-pointer h-full">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Palette className="h-5 w-5" />
-                                Legend Creation
-                            </CardTitle>
-                            <CardDescription>
-                                Manage shift color legends
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground">
-                                Create color legends for shift location changes (From X to Y).
-                            </p>
-                        </CardContent>
-                    </Card>
-                </Link>
+                {/* Legend Creation has been merged into Manage Locations: a location's
+                    colour now drives the printed legend. The old page still exists at
+                    /admin/settings/legends as a read-only backup of the original colours. */}
 
                 <Link href="/admin/settings/deadline">
                     <Card className="hover:bg-accent/50 transition-colors cursor-pointer h-full">

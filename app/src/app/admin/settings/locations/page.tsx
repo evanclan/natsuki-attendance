@@ -7,13 +7,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ArrowLeft, Plus, Trash2, MapPin } from 'lucide-react'
-import { getLocations, createLocation, deleteLocation, Location } from '../actions'
+import { getLocations, createLocation, deleteLocation, updateLocationColor, Location } from '../actions'
 
 export default function LocationsPage() {
     const [locations, setLocations] = useState<Location[]>([])
     const [newLocationName, setNewLocationName] = useState('')
     const [loading, setLoading] = useState(false)
     const [deleting, setDeleting] = useState<string | null>(null)
+    const [savingColor, setSavingColor] = useState<string | null>(null)
 
     useEffect(() => {
         loadLocations()
@@ -46,6 +47,23 @@ export default function LocationsPage() {
             }
         } finally {
             setLoading(false)
+        }
+    }
+
+    const handleColorChange = async (id: string, color: string) => {
+        // An empty string means "leave this location colourless" (stored as null).
+        const next = color || null
+        // Optimistic: the swatch follows the picker while the save is in flight.
+        setLocations(prev => prev.map(l => (l.id === id ? { ...l, color: next } : l)))
+        setSavingColor(id)
+        try {
+            const result = await updateLocationColor(id, next)
+            if (!result.success) {
+                alert(result.error || 'Failed to update colour')
+                loadLocations()
+            }
+        } finally {
+            setSavingColor(null)
         }
     }
 
@@ -125,7 +143,8 @@ export default function LocationsPage() {
                             Available Locations
                         </CardTitle>
                         <CardDescription>
-                            Manage all shift locations. Default locations cannot be deleted.
+                            Manage all shift locations and the colour each one uses on the
+                            master list and the printed legend. Default locations cannot be deleted.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -150,6 +169,45 @@ export default function LocationsPage() {
                                                     </p>
                                                 )}
                                             </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 ml-auto mr-2">
+                                            {location.color ? (
+                                                <>
+                                                    <Input
+                                                        type="color"
+                                                        aria-label={`Colour for ${location.name}`}
+                                                        value={location.color}
+                                                        onChange={(e) => handleColorChange(location.id, e.target.value)}
+                                                        className="w-10 h-10 p-1 cursor-pointer"
+                                                    />
+                                                    <span className="text-xs font-mono uppercase text-muted-foreground w-16">
+                                                        {savingColor === location.id ? 'Saving…' : location.color}
+                                                    </span>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="text-xs text-muted-foreground"
+                                                        onClick={() => handleColorChange(location.id, '')}
+                                                        title="Leave this location colourless"
+                                                    >
+                                                        Clear
+                                                    </Button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="w-10 h-10 rounded-md border border-dashed bg-muted/40" />
+                                                    <span className="text-xs text-muted-foreground w-16">No colour</span>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="text-xs"
+                                                        onClick={() => handleColorChange(location.id, '#cccccc')}
+                                                    >
+                                                        Set colour
+                                                    </Button>
+                                                </>
+                                            )}
                                         </div>
                                         {!location.is_default && (
                                             <Button

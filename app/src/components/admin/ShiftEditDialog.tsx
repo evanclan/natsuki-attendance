@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { MasterListShiftData, ShiftType } from '@/app/admin/masterlist/actions'
-import { getLocations, Location } from '@/app/admin/settings/actions'
+import { getLocations, updateLocationColor, Location } from '@/app/admin/settings/actions'
 import { formatLocalDate } from '@/lib/utils'
 
 type ShiftEditDialogProps = {
@@ -44,6 +44,21 @@ export function ShiftEditDialog({
     const [fixHalf, setFixHalf] = useState(true)
     const [color, setColor] = useState<string>('')
     const [forceBreak, setForceBreak] = useState(false)
+    // Colour is owned by the location, so it is read-only until the admin opts in
+    // to changing it — which changes it for that location everywhere.
+    const [editingColor, setEditingColor] = useState(false)
+    const [savingLocationColor, setSavingLocationColor] = useState(false)
+
+    // Shift locations are free text historically (the older calendar dialog used a
+    // plain input, so e.g. "academy" and "Academy" both exist), hence the loose match.
+    const matchedLocation = locations.find(
+        l => l.name.trim().toLowerCase() === location.trim().toLowerCase()
+    )
+
+    // A shift saved before the location's colour was last changed keeps its own
+    // colour, so the two can legitimately disagree.
+    const usesLocationColor =
+        (color || '').toLowerCase() === (matchedLocation?.color || '').toLowerCase()
 
     // Color history state
     const [colorHistory, setColorHistory] = useState<string[]>([])
@@ -86,6 +101,7 @@ export function ShiftEditDialog({
 
     useEffect(() => {
         if (open) {
+            setEditingColor(false)
             if (currentShift) {
                 setShiftType(currentShift.shift_type)
                 setStartTime(currentShift.start_time || '')
@@ -296,6 +312,10 @@ export function ShiftEditDialog({
                                             window.open('/admin/settings/locations', '_blank')
                                         } else {
                                             setLocation(value)
+                                            // Colour follows the location it belongs to.
+                                            const picked = locations.find(l => l.name === value)
+                                            setColor(picked?.color || '')
+                                            setEditingColor(false)
                                         }
                                     }}
                                 >
@@ -305,7 +325,13 @@ export function ShiftEditDialog({
                                     <SelectContent>
                                         {locations.map((loc) => (
                                             <SelectItem key={loc.id} value={loc.name}>
-                                                {loc.name}
+                                                <span className="flex items-center gap-2">
+                                                    <span
+                                                        className={`w-3 h-3 rounded-full border flex-shrink-0 ${loc.color ? '' : 'border-dashed bg-muted'}`}
+                                                        style={loc.color ? { backgroundColor: loc.color } : undefined}
+                                                    />
+                                                    {loc.name}
+                                                </span>
                                             </SelectItem>
                                         ))}
                                         <SelectItem value="__add_new__" className="text-primary font-medium">
@@ -375,41 +401,130 @@ export function ShiftEditDialog({
                                 Color
                             </Label>
                             <div className="col-span-3 space-y-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="relative flex items-center gap-2">
-                                        <Input
-                                            type="color"
-                                            value={color || '#ffffff'}
-                                            onChange={(e) => setColor(e.target.value)}
-                                            className="w-12 h-12 p-1 rounded-md cursor-pointer"
+                                {matchedLocation && !editingColor ? (
+                                    // Colour belongs to the location, so show it as a locked default.
+                                    <div className="flex items-center gap-3">
+                                        <div
+                                            className={`w-12 h-12 rounded-md border ${color ? '' : 'border-dashed bg-muted/40'}`}
+                                            style={color ? { backgroundColor: color } : undefined}
                                         />
-                                        <div className="flex flex-col gap-1">
-                                            <Label htmlFor="hex-color" className="text-xs text-muted-foreground">HEX Code</Label>
-                                            <Input
-                                                id="hex-color"
-                                                type="text"
-                                                value={color || ''}
-                                                onChange={(e) => {
-                                                    const val = e.target.value
-                                                    // Allow typing, but only update if it looks like it could be a hex
-                                                    // or if we want to allow partial updates we might need a separate state for the input text.
-                                                    // For simplicity, let's just set it. The color input might complain if invalid,
-                                                    // so let's maybe be a bit smarter or just direct bind.
-                                                    // Direct bind is usually fine, but let's check validation.
-                                                    setColor(val)
-                                                }}
-                                                placeholder="#000000"
-                                                className="w-28 font-mono uppercase"
-                                                maxLength={7}
-                                            />
+                                        <div className="flex-1 text-sm">
+                                            {usesLocationColor ? (
+                                                <div className="font-medium">
+                                                    {matchedLocation.color
+                                                        ? <>Colour of {matchedLocation.name} <span className="font-mono uppercase text-muted-foreground">({matchedLocation.color})</span></>
+                                                        : <>{matchedLocation.name} has no colour</>}
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <div className="font-medium">
+                                                        This shift keeps <span className="font-mono uppercase">{color || 'no colour'}</span>
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {matchedLocation.name} is now{' '}
+                                                        <span className="font-mono uppercase">{matchedLocation.color || 'colourless'}</span>.
+                                                        Saving this shift will not change it.
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <div className="flex gap-3 mt-0.5">
+                                                <button
+                                                    type="button"
+                                                    className="text-primary underline underline-offset-2"
+                                                    onClick={() => setEditingColor(true)}
+                                                >
+                                                    Change colour
+                                                </button>
+                                                {!usesLocationColor && (
+                                                    <button
+                                                        type="button"
+                                                        className="text-muted-foreground underline underline-offset-2"
+                                                        onClick={() => setColor(matchedLocation.color || '')}
+                                                    >
+                                                        Use {matchedLocation.name}&apos;s colour
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="text-sm text-muted-foreground">
-                                        Pick a custom color
-                                    </div>
-                                </div>
+                                ) : (
+                                    <>
+                                        {matchedLocation && (
+                                            <div className="text-xs rounded-md border border-amber-300 bg-amber-50 text-amber-900 px-3 py-2">
+                                                This changes the colour of <strong>{matchedLocation.name}</strong> everywhere —
+                                                the printed legend and every shift saved there from now on. Shifts already
+                                                saved keep the colour they have.
+                                            </div>
+                                        )}
+                                        <div className="flex items-center gap-3">
+                                            <div className="relative flex items-center gap-2">
+                                                <Input
+                                                    type="color"
+                                                    value={color || '#ffffff'}
+                                                    onChange={(e) => setColor(e.target.value)}
+                                                    className="w-12 h-12 p-1 rounded-md cursor-pointer"
+                                                />
+                                                <div className="flex flex-col gap-1">
+                                                    <Label htmlFor="hex-color" className="text-xs text-muted-foreground">HEX Code</Label>
+                                                    <Input
+                                                        id="hex-color"
+                                                        type="text"
+                                                        value={color || ''}
+                                                        onChange={(e) => setColor(e.target.value)}
+                                                        placeholder="#000000"
+                                                        className="w-28 font-mono uppercase"
+                                                        maxLength={7}
+                                                    />
+                                                </div>
+                                            </div>
+                                            {matchedLocation ? (
+                                                <div className="flex flex-col gap-1">
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        disabled={savingLocationColor || !color}
+                                                        onClick={async () => {
+                                                            setSavingLocationColor(true)
+                                                            try {
+                                                                const result = await updateLocationColor(matchedLocation.id, color)
+                                                                if (result.success) {
+                                                                    setLocations(prev => prev.map(l =>
+                                                                        l.id === matchedLocation.id ? { ...l, color } : l
+                                                                    ))
+                                                                    setEditingColor(false)
+                                                                } else {
+                                                                    alert(result.error || 'Failed to update the location colour')
+                                                                }
+                                                            } finally {
+                                                                setSavingLocationColor(false)
+                                                            }
+                                                        }}
+                                                    >
+                                                        {savingLocationColor ? 'Saving…' : `Save for ${matchedLocation.name}`}
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        disabled={savingLocationColor}
+                                                        onClick={() => {
+                                                            setColor(matchedLocation.color || '')
+                                                            setEditingColor(false)
+                                                        }}
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <div className="text-sm text-muted-foreground">
+                                                    Pick a custom color
+                                                </div>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
 
-                                {colorHistory.length > 0 && (
+                                {(!matchedLocation || editingColor) && colorHistory.length > 0 && (
                                     <div className="space-y-1">
                                         <div className="text-xs text-muted-foreground">Recent Colors:</div>
                                         <div className="flex flex-wrap gap-2">

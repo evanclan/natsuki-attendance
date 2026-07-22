@@ -193,8 +193,25 @@ export type Location = {
     is_default: boolean
     is_active: boolean
     sort_order: number | null
+    // Shared colour for every shift at this location. null means the location is
+    // deliberately colourless (Academy) and is left out of the printed legend.
+    color: string | null
     created_at: string
     updated_at: string
+}
+
+// Starting colours offered to a brand new location, kept clear of the palette
+// already in use so a new entry never looks like an existing one.
+const NEW_LOCATION_COLORS = [
+    '#ffadad', '#ffd6a5', '#fdffb6', '#caffbf', '#9bf6ff',
+    '#a0c4ff', '#bdb2ff', '#ffc6ff', '#b5e48c', '#f6bd60',
+]
+
+function pickNewLocationColor(taken: (string | null)[]) {
+    const used = new Set(taken.filter(Boolean).map(c => c!.toLowerCase()))
+    const free = NEW_LOCATION_COLORS.filter(c => !used.has(c.toLowerCase()))
+    const pool = free.length > 0 ? free : NEW_LOCATION_COLORS
+    return pool[Math.floor(Math.random() * pool.length)]
 }
 
 export async function getLocations() {
@@ -214,7 +231,7 @@ export async function getLocations() {
     return { success: true, data }
 }
 
-export async function createLocation(name: string) {
+export async function createLocation(name: string, color?: string) {
     const supabase = await createClient()
 
     // Get the max sort_order to append new location at the end
@@ -226,13 +243,18 @@ export async function createLocation(name: string) {
 
     const nextSortOrder = (maxData?.[0]?.sort_order || 0) + 1
 
+    const { data: existing } = await supabase
+        .from('locations')
+        .select('color')
+
     const { data: newLocation, error } = await supabase
         .from('locations')
         .insert([{
             name,
             is_default: false,
             is_active: true,
-            sort_order: nextSortOrder
+            sort_order: nextSortOrder,
+            color: color || pickNewLocationColor((existing || []).map(l => l.color))
         }])
         .select()
         .single()
@@ -274,4 +296,29 @@ export async function deleteLocation(id: string) {
     revalidatePath('/admin/settings/locations')
     revalidatePath('/admin/masterlist')
     return { success: true }
+}
+
+// A location's colour is shared by every shift there and by the printed legend,
+// so this is called both from Manage Locations and from the shift dialog.
+// Existing shifts keep whatever colour they were saved with; only new saves pick
+// the updated colour up.
+export async function updateLocationColor(id: string, color: string | null) {
+    const supabase = await createClient()
+
+    const { data: updated, error } = await supabase
+        .from('locations')
+        .update({ color, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single()
+
+    if (error) {
+        console.error('Error updating location colour:', error)
+        return { success: false, error: error.message }
+    }
+
+    revalidatePath('/admin/settings/locations')
+    revalidatePath('/admin/masterlist')
+    revalidatePath('/print/masterlist')
+    return { success: true, data: updated as Location }
 }

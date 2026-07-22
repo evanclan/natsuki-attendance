@@ -1,6 +1,6 @@
 
 import { getMonthlyMasterList } from '@/app/admin/masterlist/actions'
-import { getLegends } from '@/app/admin/settings/legends/actions'
+import { getLocations } from '@/app/admin/settings/actions'
 import { MasterListPrintComponent } from '@/components/admin/MasterListPrintComponent'
 import { redirect } from 'next/navigation'
 import PrintTrigger from './PrintTrigger'
@@ -21,7 +21,7 @@ export default async function PrintMasterListPage({
     const month = params.month ? parseInt(params.month as string) : defaultMonth
 
     const result = await getMonthlyMasterList(year, month)
-    const legendsResult = await getLegends()
+    const locationsResult = await getLocations()
 
     if (!result.success || !result.data) {
         return (
@@ -44,7 +44,7 @@ export default async function PrintMasterListPage({
                 shifts={result.data.shifts}
                 events={result.data.events}
                 attendance={result.data.attendance}
-                legends={legendsResult.success && legendsResult.data ? legendsResult.data : []}
+                locations={locationsResult.success && locationsResult.data ? locationsResult.data : []}
             />
         </div>
     )

@@ -27,11 +27,10 @@ interface Person {
     categories?: { name: string }[] | any
 }
 
-interface ShiftLegend {
+interface LegendLocation {
     id: string
-    from_location: string
-    to_location: string
-    color: string
+    name: string
+    color: string | null
 }
 
 interface MasterListPrintComponentProps {
@@ -42,11 +41,13 @@ interface MasterListPrintComponentProps {
     shifts: any[]
     events: SystemEvent[]
     attendance: AttendanceRecord[]
-    legends: ShiftLegend[]
+    locations: LegendLocation[]
 }
 
 export const MasterListPrintComponent = React.forwardRef<HTMLDivElement, MasterListPrintComponentProps>(
-    ({ year, month, employees, days, shifts, events, attendance, legends }, ref) => {
+    ({ year, month, employees, days, shifts, events, attendance, locations }, ref) => {
+        // Locations left deliberately colourless (Academy) are omitted from the key.
+        const legendEntries = (locations || []).filter(l => l.color)
         const monthName = new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
         const getDayStatus = (day: number) => {
@@ -104,21 +105,13 @@ export const MasterListPrintComponent = React.forwardRef<HTMLDivElement, MasterL
                 <div className="flex items-center gap-4 mb-2">
                     <h1 className="text-xl font-bold whitespace-nowrap">{monthName}</h1>
 
-                    {/* Legends Display */}
-                    {legends && legends.length > 0 && (
+                    {/* Legend key, generated from the locations and their colours */}
+                    {legendEntries.length > 0 && (
                         <div className="flex flex-wrap items-center gap-1">
-                            {legends.map(legend => (
-                                <div key={legend.id} className="flex items-center gap-0.5 text-[8px] bg-gray-100 px-1 py-0.5 rounded-full border border-gray-300">
-                                    <div className="w-2 h-2 rounded-full border border-gray-400" style={{ backgroundColor: legend.color }} />
-                                    <span className="font-medium">
-                                        {legend.from_location === legend.to_location ? (
-                                            legend.from_location
-                                        ) : (
-                                            <>
-                                                {legend.from_location} <span className="text-gray-500">→</span> {legend.to_location}
-                                            </>
-                                        )}
-                                    </span>
+                            {legendEntries.map(loc => (
+                                <div key={loc.id} className="flex items-center gap-0.5 text-[8px] bg-gray-100 px-1 py-0.5 rounded-full border border-gray-300">
+                                    <div className="w-2 h-2 rounded-full border border-gray-400" style={{ backgroundColor: loc.color! }} />
+                                    <span className="font-medium">{loc.name}</span>
                                 </div>
                             ))}
                         </div>
