@@ -5,7 +5,9 @@ import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, ChevronLeft, ChevronRight, X, ChevronDown } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, Trash2, Plus } from 'lucide-react'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { getAllEmployees, setPreferredRest, deletePreferredRest, Person } from '@/app/actions/kiosk'
 import { getSystemEvents, SystemEvent } from '@/app/admin/settings/actions'
 import { getMonthlyMasterList, MasterListShiftData } from '@/app/admin/masterlist/actions'
@@ -121,19 +123,35 @@ export default function SetDayOffPage() {
         return () => clearInterval(timer)
     }, [deadlineDay])
 
-    const [isMemoDialogOpen, setIsMemoDialogOpen] = useState(false)
-    const [selectedDateForMemo, setSelectedDateForMemo] = useState<Date | null>(null)
+    // Day details dialog: tap a day to see everyone's requests, add your own, or remove one
+    const [isDayDialogOpen, setIsDayDialogOpen] = useState(false)
+    const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+    const [isAddingRest, setIsAddingRest] = useState(false)
     const [memoText, setMemoText] = useState('')
+    const [saving, setSaving] = useState(false)
+    const [pendingDelete, setPendingDelete] = useState<{ personId: string; name: string; date: string; memo: string } | null>(null)
 
-    const handleDayClick = async (date: Date) => {
+    const handleDayClick = (date: Date) => {
         if (isSubmissionClosed) return
+        setSelectedDate(date)
+        setIsAddingRest(false)
+        setMemoText('')
+        setIsDayDialogOpen(true)
+    }
 
+    const handleStartAdding = () => {
         if (!selectedEmployeeId) {
             toast.error("Please select your name first")
             return
         }
+        setMemoText('')
+        setIsAddingRest(true)
+    }
 
-        const dateStr = formatLocalDate(date)
+    const handleSaveRest = async () => {
+        if (!selectedDate || !selectedEmployeeId || saving) return
+
+        const dateStr = formatLocalDate(selectedDate)
 
         // Check if user already has a preferred rest on this day
         const existingShift = shifts.find(s =>
@@ -144,38 +162,50 @@ export default function SetDayOffPage() {
 
         if (existingShift) {
             toast.info("You have already set this day as preferred rest")
+            setIsAddingRest(false)
             return
         }
 
-        setSelectedDateForMemo(date)
-        setMemoText('')
-        setIsMemoDialogOpen(true)
-    }
-
-    const handleSaveWithMemo = async () => {
-        if (!selectedDateForMemo || !selectedEmployeeId) return
-
-        const dateStr = formatLocalDate(selectedDateForMemo)
+        setSaving(true)
         const result = await setPreferredRest(selectedEmployeeId, dateStr, memoText)
+        setSaving(false)
 
         if (result.success) {
             toast.success("Preferred rest day set")
+            setIsAddingRest(false)
+            setMemoText('')
             loadMonthData()
-            setIsMemoDialogOpen(false)
         } else {
             toast.error("Failed to set rest day")
         }
     }
 
-    const handleDelete = async (e: React.MouseEvent, personId: string, dateStr: string) => {
-        e.stopPropagation()
-        if (isSubmissionClosed) return
-        // if (!confirm("Are you sure you want to remove this preferred rest day?")) return
+    const handleConfirmDelete = async () => {
+        if (!pendingDelete || saving) return
+        const { personId, name, date, memo } = pendingDelete
 
-        const result = await deletePreferredRest(personId, dateStr)
+        setSaving(true)
+        const result = await deletePreferredRest(personId, date)
+        setSaving(false)
+        setPendingDelete(null)
+
         if (result.success) {
-            toast.success("Removed preferred rest day")
             loadMonthData()
+            toast.success(`Removed ${name}'s rest day`, {
+                duration: 8000,
+                action: {
+                    label: "Undo",
+                    onClick: async () => {
+                        const restore = await setPreferredRest(personId, date, memo)
+                        if (restore.success) {
+                            toast.success(`Restored ${name}'s rest day`)
+                            loadMonthData()
+                        } else {
+                            toast.error("Failed to restore")
+                        }
+                    },
+                },
+            })
         } else {
             toast.error("Failed to remove")
         }
@@ -282,28 +312,23 @@ export default function SetDayOffPage() {
                         ))}
                     </div>
 
-                    {/* Preferred Rest Names - Stacked */}
+                    {/* Preferred Rest Names - compact preview; tap the day to see full details */}
                     <div className="mt-auto space-y-0.5 md:space-y-1">
-                        {preferredShifts.map(shift => {
+                        {preferredShifts.slice(0, 3).map(shift => {
                             const employee = employees.find(e => e.id === shift.person_id)
                             if (!employee) return null
 
                             return (
-                                <div key={shift.id} className="flex items-center justify-between text-[9px] md:text-xs font-semibold text-blue-700 bg-blue-100/50 rounded py-0.5 md:py-1 px-1 md:px-2">
-                                    <span className="truncate mr-1">{employee.full_name}</span>
-                                    {!isSubmissionClosed && (
-                                        <button
-                                            type="button"
-                                            onClick={(e) => handleDelete(e, shift.person_id, shift.date)}
-                                            className="text-blue-400 hover:text-red-500 transition-colors p-0.5 md:p-1 hover:bg-blue-200 rounded-full z-10 shrink-0"
-                                            title="Remove"
-                                        >
-                                            <X className="h-2.5 w-2.5 md:h-3 md:w-3" />
-                                        </button>
-                                    )}
+                                <div key={shift.id} className="text-[9px] md:text-xs font-semibold text-blue-700 bg-blue-100/50 rounded py-0.5 md:py-1 px-1 md:px-2 truncate">
+                                    {employee.full_name}
                                 </div>
                             )
                         })}
+                        {preferredShifts.length > 3 && (
+                            <div className="text-[9px] md:text-xs font-bold text-blue-600 px-1 md:px-2">
+                                +{preferredShifts.length - 3} more
+                            </div>
+                        )}
                     </div>
                 </div>
             )
@@ -313,6 +338,13 @@ export default function SetDayOffPage() {
     }
 
     const monthName = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+    // Data for the day details dialog (recomputed from `shifts` so it stays fresh after saves/deletes)
+    const dialogShifts = selectedDate ? getPreferredRestShiftsForDate(selectedDate) : []
+    const dialogEvents = selectedDate ? getEventsForDate(selectedDate) : []
+    const myShiftOnSelectedDate = selectedEmployeeId
+        ? dialogShifts.find(s => s.person_id === selectedEmployeeId)
+        : undefined
 
     return (
         <div className="min-h-screen bg-slate-100 p-4 md:p-8 relative">
@@ -472,31 +504,176 @@ export default function SetDayOffPage() {
                 </Card>
             </div>
 
-            {/* Memo Dialog */}
-            {isMemoDialogOpen && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
-                        <h3 className="text-lg font-bold mb-4">Add Optional Memo</h3>
-                        <p className="text-sm text-muted-foreground mb-4">
-                            You can add a note for this preferred rest day (optional).
-                        </p>
-                        <textarea
-                            className="w-full border rounded-md p-2 min-h-[100px] mb-4"
-                            placeholder="Enter memo here..."
-                            value={memoText}
-                            onChange={(e) => setMemoText(e.target.value)}
-                        />
-                        <div className="flex justify-end gap-2">
-                            <Button variant="outline" onClick={() => setIsMemoDialogOpen(false)}>
-                                Cancel
-                            </Button>
-                            <Button onClick={handleSaveWithMemo}>
-                                Save
-                            </Button>
-                        </div>
+            {/* Day Details Dialog */}
+            <Dialog
+                open={isDayDialogOpen}
+                onOpenChange={(open) => {
+                    setIsDayDialogOpen(open)
+                    if (!open) setIsAddingRest(false)
+                }}
+            >
+                <DialogContent className="p-0 gap-0 flex flex-col max-h-[85dvh] sm:max-w-md overflow-hidden">
+                    <DialogHeader className="px-4 pt-4 pb-3 border-b text-left shrink-0">
+                        <DialogTitle className="text-lg md:text-xl">
+                            {selectedDate?.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                        </DialogTitle>
+                        {dialogEvents.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                                {dialogEvents.map(event => (
+                                    <span
+                                        key={event.id}
+                                        className={`
+                                            text-xs font-medium px-2 py-0.5 rounded-full
+                                            ${(event.event_type === 'holiday' || event.is_holiday)
+                                                ? 'bg-red-100 text-red-700'
+                                                : 'bg-blue-100 text-blue-700'}
+                                        `}
+                                    >
+                                        {event.title}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                        <DialogDescription>
+                            {dialogShifts.length > 0
+                                ? `${dialogShifts.length} preferred rest ${dialogShifts.length === 1 ? 'request' : 'requests'} ・ 希望休`
+                                : 'Preferred rest ・ 希望休'}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+                        {dialogShifts.length === 0 ? (
+                            <p className="text-center text-muted-foreground text-sm py-8">
+                                No one has set a rest day yet.
+                                <br />
+                                まだ誰も希望休を設定していません
+                            </p>
+                        ) : (
+                            dialogShifts.map(shift => {
+                                const employee = employees.find(e => e.id === shift.person_id)
+                                if (!employee) return null
+                                const isMine = shift.person_id === selectedEmployeeId
+
+                                return (
+                                    <div
+                                        key={shift.id}
+                                        className={`
+                                            flex items-center justify-between gap-3 rounded-lg border p-3
+                                            ${isMine ? 'border-blue-300 bg-blue-50' : 'bg-white'}
+                                        `}
+                                    >
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-semibold text-base text-slate-800 truncate">
+                                                    {employee.full_name}
+                                                </span>
+                                                {isMine && (
+                                                    <span className="text-[10px] font-bold bg-blue-600 text-white rounded-full px-2 py-0.5 shrink-0">
+                                                        YOU
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {shift.memo && (
+                                                <p className="text-sm text-muted-foreground break-words mt-0.5">
+                                                    {shift.memo}
+                                                </p>
+                                            )}
+                                        </div>
+                                        {!isSubmissionClosed && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-10 w-10 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 shrink-0"
+                                                title="Remove"
+                                                onClick={() => setPendingDelete({
+                                                    personId: shift.person_id,
+                                                    name: employee.full_name,
+                                                    date: shift.date,
+                                                    memo: shift.memo || '',
+                                                })}
+                                            >
+                                                <Trash2 className="h-5 w-5" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                )
+                            })
+                        )}
                     </div>
-                </div>
-            )}
+
+                    {!isSubmissionClosed && (
+                        <div className="border-t px-4 py-3 space-y-3 shrink-0 bg-slate-50/50">
+                            {isAddingRest ? (
+                                <>
+                                    <div>
+                                        <label className="text-sm font-medium text-slate-700 mb-1.5 block">
+                                            Optional memo ・ メモ（任意）
+                                        </label>
+                                        <textarea
+                                            className="w-full border rounded-md p-2 min-h-[80px] text-base bg-white"
+                                            placeholder="e.g. AM off, PM off / 例: AM休み、PM休み"
+                                            value={memoText}
+                                            onChange={(e) => setMemoText(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            className="flex-1 h-11"
+                                            onClick={() => setIsAddingRest(false)}
+                                            disabled={saving}
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            className="flex-1 h-11"
+                                            onClick={handleSaveRest}
+                                            disabled={saving}
+                                        >
+                                            {saving ? 'Saving...' : 'Save ・ 保存'}
+                                        </Button>
+                                    </div>
+                                </>
+                            ) : myShiftOnSelectedDate ? (
+                                <p className="text-center text-sm font-medium text-blue-700 py-1">
+                                    You already set this day as preferred rest ・ この日は設定済みです
+                                </p>
+                            ) : (
+                                <Button className="w-full h-12 text-base" onClick={handleStartAdding}>
+                                    <Plus className="h-5 w-5 mr-1" />
+                                    Set my day off ・ 希望休を設定
+                                </Button>
+                            )}
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation */}
+            <AlertDialog
+                open={!!pendingDelete}
+                onOpenChange={(open) => { if (!open) setPendingDelete(null) }}
+            >
+                <AlertDialogContent className="max-w-sm">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Remove this rest day? ・ 削除しますか？</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will remove <span className="font-semibold text-slate-800">{pendingDelete?.name}</span>&apos;s
+                            preferred rest on <span className="font-semibold text-slate-800">{pendingDelete?.date}</span>.
+                            You can undo right after deleting.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-red-600 hover:bg-red-700"
+                            onClick={handleConfirmDelete}
+                        >
+                            Remove ・ 削除
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }
