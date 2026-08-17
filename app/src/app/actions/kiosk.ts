@@ -617,3 +617,26 @@ export async function bulkCheckIn(personIds: string[]) {
     revalidatePath('/admin/masterlist')
     return { success: true }
 }
+
+export async function bulkMarkAbsent(personIds: string[]) {
+    // Same approach as bulkCheckIn: logAttendance handles the full per-person
+    // logic (event log + attendance_days upsert), so we just iterate.
+    const results = await Promise.all(
+        personIds.map(async (id) => {
+            return await logAttendance(id, 'mark_absent')
+        })
+    )
+
+    const failures = results.filter((r) => !r.success)
+
+    if (failures.length > 0) {
+        console.error('Some bulk mark-absents failed', failures)
+        return { success: false, error: 'Some mark-absents failed', details: failures }
+    }
+
+    revalidatePath('/kiosk')
+    revalidatePath('/kiosk/employee')
+    revalidatePath('/admin/all_list')
+    revalidatePath('/admin/masterlist')
+    return { success: true }
+}

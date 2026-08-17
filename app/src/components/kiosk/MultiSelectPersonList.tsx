@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Person, bulkCheckIn } from '@/app/actions/kiosk'
+import { Person, bulkCheckIn, bulkMarkAbsent } from '@/app/actions/kiosk'
 import { PersonCard } from './PersonCard'
 import { Button } from '@/components/ui/button'
-import { CheckSquare, Loader2, Square, Users } from 'lucide-react'
+import { CheckSquare, Loader2, Square, Users, XCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 const CATEGORY_ORDER = ['Academy', 'Ex', 'C-Lab', 'Satursaurus']
@@ -127,24 +127,72 @@ export function MultiSelectPersonList({ people, role, visibleCategories, onPerso
         }
     }
 
+    const handleBulkMarkAbsent = async () => {
+        if (selectedIds.size === 0) return
+        if (!confirm(`Mark ${selectedIds.size} students as ABSENT?`)) return
+
+        setIsSubmitting(true)
+        try {
+            const result = await bulkMarkAbsent(Array.from(selectedIds))
+            if (result.success) {
+                // Optimistically update all selected people
+                if (onPersonUpdate) {
+                    selectedIds.forEach(id => {
+                        onPersonUpdate(id, {
+                            status: 'absent'
+                        })
+                    })
+                }
+
+                setIsSelectionMode(false)
+                setSelectedIds(new Set())
+                router.refresh()
+            } else {
+                alert('Some mark-absents failed. Please check the console for details.')
+            }
+        } catch (error) {
+            console.error(error)
+            alert('An error occurred during bulk mark absent')
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
     return (
         <div className="space-y-6 p-2 animate-in fade-in slide-in-from-bottom-4 duration-700 relative">
             {/* Floating Action Button for Selection Mode */}
             <div className={`fixed right-6 z-50 flex flex-col gap-3 items-end ${role === 'employee' ? 'bottom-24' : 'bottom-6'}`}>
                 {isSelectionMode && selectedIds.size > 0 && (
-                    <Button
-                        size="lg"
-                        className="rounded-full shadow-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold animate-in slide-in-from-right-10"
-                        onClick={handleBulkCheckIn}
-                        disabled={isSubmitting}
-                    >
-                        {isSubmitting ? (
-                            <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                        ) : (
-                            <CheckSquare className="h-5 w-5 mr-2" />
+                    <>
+                        <Button
+                            size="lg"
+                            className="rounded-full shadow-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold animate-in slide-in-from-right-10"
+                            onClick={handleBulkCheckIn}
+                            disabled={isSubmitting}
+                        >
+                            {isSubmitting ? (
+                                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                            ) : (
+                                <CheckSquare className="h-5 w-5 mr-2" />
+                            )}
+                            Check In ({selectedIds.size})
+                        </Button>
+                        {role === 'student' && (
+                            <Button
+                                size="lg"
+                                className="rounded-full shadow-lg bg-slate-500 hover:bg-slate-600 text-white font-bold animate-in slide-in-from-right-10"
+                                onClick={handleBulkMarkAbsent}
+                                disabled={isSubmitting}
+                            >
+                                {isSubmitting ? (
+                                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                                ) : (
+                                    <XCircle className="h-5 w-5 mr-2" />
+                                )}
+                                Absent ({selectedIds.size})
+                            </Button>
                         )}
-                        Check In ({selectedIds.size})
-                    </Button>
+                    </>
                 )}
 
                 <Button
