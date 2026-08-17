@@ -378,8 +378,128 @@ export async function deleteAttendanceRecord(personId: string, date: string) {
 
     revalidatePath('/admin/manage_employee')
     revalidatePath('/admin/all_list')
-    revalidatePath(`/admin/manage_employee/${record.code}`) // Try to revalidate specific employee page if we had code, but we don't. 
+    revalidatePath(`/admin/manage_employee/${record.code}`) // Try to revalidate specific employee page if we had code, but we don't.
     // Just revalidate generic paths.
 
     return { success: true }
+}
+
+/**
+ * Bulk-mark selected (person, date) cells as absent from the All List.
+ *
+ * Deliberately minimal-write: only sets `status = 'absent'` — it NEVER touches
+ * check-in/out times or computed minutes, so existing data cannot be destroyed.
+ * Cells whose shift is a special leave type (paid leave, business trip, etc.)
+ * are skipped, mirroring the protection in upsertAttendanceRecord.
+ */
+export async function bulkMarkAbsentDays(cells: { personId: string, date: string }[]) {
+    const supabase = await createClient()
+
+    const SPECIAL_SHIFT_TYPES = ['paid_leave', 'half_paid_leave', 'custom_leave', 'business_trip', 'special_leave']
+
+    let updated = 0
+    const skipped: { personId: string, date: string, reason: string }[] = []
+    const failures: { personId: string, date: string, error: string }[] = []
+
+    // Sequential loop: predictable load on the connection pool, per-cell error isolation
+    for (const cell of cells) {
+        try {
+            // 1. Guard: skip cells covered by a special leave shift
+            const { data: shift } = await supabase
+                .from('shifts')
+                .select('shift_type')
+                .eq('person_id', cell.personId)
+                .eq('date', cell.date)
+                .limit(1)
+                .maybeSingle()
+
+            if (shift && SPECIAL_SHIFT_TYPES.includes(shift.shift_type?.toLowerCase())) {
+                skipped.push({ ...cell, reason: `Has ${shift.shift_type} shift` })
+                continue
+            }
+
+            // 2. Update existing record's status only, or insert a new absent record
+            const { data: existingRecord } = await supabase
+                .from('attendance_days')
+                .select('id, status')
+                .eq('person_id', cell.personId)
+                .eq('date', cell.date)
+                .maybeSingle()
+
+            let attendanceDayId: number | null = null
+
+            if (existingRecord) {
+                const { error: updateError } = await supabase
+                    .from('attendance_days')
+                    .update({
+                        status: 'absent',
+                        is_edited: true,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', existingRecord.id)
+
+                if (updateError) {
+                    failures.push({ ...cell, error: updateError.message })
+                    continue
+                }
+                attendanceDayId = existingRecord.id
+            } else {
+                const { data: inserted, error: insertError } = await supabase
+                    .from('attendance_days')
+                    .insert({
+                        person_id: cell.personId,
+                        date: cell.date,
+                        status: 'absent',
+                        is_edited: true,
+                        admin_note: 'Bulk marked absent by admin'
+                    })
+                    .select('id')
+                    .single()
+
+                if (insertError) {
+                    failures.push({ ...cell, error: insertError.message })
+                    continue
+                }
+                attendanceDayId = inserted?.id ?? null
+            }
+
+            // 3. Audit trail (non-fatal if it fails, same as single-cell edit)
+            const { error: eventError } = await supabase
+                .from('attendance_events')
+                .insert({
+                    person_id: cell.personId,
+                    attendance_day_id: attendanceDayId,
+                    event_type: 'admin_edit',
+                    source: 'admin',
+                    payload: {
+                        original: existingRecord ? { status: existingRecord.status } : null,
+                        new: { status: 'absent' }
+                    },
+                    note: 'Bulk marked absent by admin from All List'
+                })
+
+            if (eventError) {
+                console.error('Failed to create audit event for bulk absent:', eventError)
+            }
+
+            updated++
+        } catch (error: any) {
+            failures.push({ ...cell, error: error.message || 'Unknown error' })
+        }
+    }
+
+    revalidatePath('/admin/all_list')
+
+    if (failures.length > 0) {
+        console.error('Some bulk mark-absents failed:', failures)
+        return {
+            success: false,
+            error: `${failures.length} of ${cells.length} failed`,
+            updated,
+            skipped,
+            failures
+        }
+    }
+
+    return { success: true, updated, skipped }
 }

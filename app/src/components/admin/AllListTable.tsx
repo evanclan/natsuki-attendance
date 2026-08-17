@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight, Printer } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, CheckSquare, Loader2, Printer, Square, XCircle } from 'lucide-react'
 import { AttendanceEditDialog } from '@/components/admin/AttendanceEditDialog'
 import { formatLocalDate } from '@/lib/utils'
+import { bulkMarkAbsentDays } from '@/app/admin/attendance-actions/actions'
 
 type Employee = {
     id: string
@@ -69,6 +70,11 @@ export function AllListTable({ year, month, employees, students, attendance, shi
     const [selectedDate, setSelectedDate] = useState<Date | null>(null)
     const [selectedAttendance, setSelectedAttendance] = useState<AttendanceRecord | null>(null)
 
+    // Bulk selection mode (students only) — cell keys are `${personId}|${dateStr}`
+    const [isSelectionMode, setIsSelectionMode] = useState(false)
+    const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set())
+    const [isBulkSubmitting, setIsBulkSubmitting] = useState(false)
+
     const daysInMonth = new Date(year, month + 1, 0).getDate()
     const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
 
@@ -112,12 +118,66 @@ export function AllListTable({ year, month, employees, students, attendance, shi
     const handleCellClick = (employee: Employee, day: number) => {
         const date = new Date(year, month, day)
         const dateStr = formatLocalDate(date)
+
+        // Selection mode: toggle student cells instead of opening the edit dialog
+        if (isSelectionMode) {
+            if (employee.role !== 'student') return
+            const key = `${employee.id}|${dateStr}`
+            setSelectedCells(prev => {
+                const next = new Set(prev)
+                if (next.has(key)) {
+                    next.delete(key)
+                } else {
+                    next.add(key)
+                }
+                return next
+            })
+            return
+        }
+
         const attendanceRecord = attendance.find(a => a.person_id === employee.id && a.date === dateStr)
 
         setSelectedEmployee(employee)
         setSelectedDate(date)
         setSelectedAttendance(attendanceRecord || null)
         setDialogOpen(true)
+    }
+
+    const exitSelectionMode = () => {
+        setIsSelectionMode(false)
+        setSelectedCells(new Set())
+    }
+
+    const handleBulkMarkAbsent = async () => {
+        if (selectedCells.size === 0 || isBulkSubmitting) return
+        if (!confirm(`Mark ${selectedCells.size} selected cell(s) as ABSENT?`)) return
+
+        setIsBulkSubmitting(true)
+        try {
+            const cells = Array.from(selectedCells).map(key => {
+                const [personId, date] = key.split('|')
+                return { personId, date }
+            })
+
+            const result = await bulkMarkAbsentDays(cells)
+
+            if (result.success) {
+                const skippedMsg = result.skipped && result.skipped.length > 0
+                    ? ` (${result.skipped.length} skipped: special leave shift)`
+                    : ''
+                alert(`Marked ${result.updated} cell(s) as absent.${skippedMsg}`)
+                exitSelectionMode()
+                router.refresh()
+            } else {
+                alert(`Some cells failed: ${result.error}. Please check and try again.`)
+                router.refresh()
+            }
+        } catch (error) {
+            console.error('Bulk mark absent error:', error)
+            alert('An error occurred during bulk mark absent.')
+        } finally {
+            setIsBulkSubmitting(false)
+        }
     }
 
     const handleSaveAttendance = () => {
@@ -222,6 +282,8 @@ export function AllListTable({ year, month, employees, students, attendance, shi
                     const shift = shifts.find(s => s.person_id === employee.id && s.date === dateStr)
                     const dayStatus = getDayStatus(day)
                     const isRest = dayStatus.isRestDay
+                    const isSelected = isSelectionMode && selectedCells.has(`${employee.id}|${dateStr}`)
+                    const isSelectable = !isSelectionMode || employee.role === 'student'
 
                     // Determine background color
                     let bgStyle = {}
@@ -240,12 +302,18 @@ export function AllListTable({ year, month, employees, students, attendance, shi
                             onClick={() => handleCellClick(employee, day)}
                             style={bgStyle}
                             className={`
-                                min-w-[120px] p-2 border-r border-border cursor-pointer
+                                relative min-w-[120px] p-2 border-r border-border
                                 transition-colors flex flex-col justify-between
                                 h-auto min-h-[60px]
-                                ${hoverClass}
+                                ${isSelectable ? `cursor-pointer ${hoverClass}` : 'cursor-not-allowed opacity-60'}
+                                ${isSelected ? 'ring-2 ring-inset ring-blue-600 bg-blue-50' : ''}
                             `}
                         >
+                            {isSelected && (
+                                <div className="absolute top-0.5 right-0.5 z-10 bg-blue-600 text-white rounded-full p-0.5">
+                                    <Check className="h-3 w-3" />
+                                </div>
+                            )}
                             {/* Top: Shift Status/Info */}
                             <div className={`text-[10px] font-semibold text-slate-700 mb-1 px-1 rounded bg-white/40 w-full max-w-full ${shift && (shift.shift_type === 'user_note' || shift.shift_type === 'other_reason')
                                 ? 'line-clamp-2 whitespace-normal break-words leading-tight'
@@ -303,10 +371,11 @@ export function AllListTable({ year, month, employees, students, attendance, shi
 
     const monthName = new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
-    const renderTable = (people: Employee[], title: string, daysToRender: number[], footer?: React.ReactNode) => (
+    const renderTable = (people: Employee[], title: string, daysToRender: number[], footer?: React.ReactNode, headerAction?: React.ReactNode) => (
         <div className="border rounded-md overflow-hidden mb-8">
-            <div className="bg-muted px-4 py-2 border-b border-border font-semibold">
-                {title}
+            <div className="bg-muted px-4 py-2 border-b border-border font-semibold flex items-center justify-between">
+                <span>{title}</span>
+                {headerAction}
             </div>
             <div className="overflow-x-auto">
                 <div className="min-w-max">
@@ -371,6 +440,26 @@ export function AllListTable({ year, month, employees, students, attendance, shi
                     <Printer className="h-4 w-4" />
                     Print Table
                 </Button>
+            ), (
+                <Button
+                    size="sm"
+                    variant={isSelectionMode ? "default" : "outline"}
+                    className="gap-2"
+                    onClick={() => isSelectionMode ? exitSelectionMode() : setIsSelectionMode(true)}
+                    disabled={isBulkSubmitting}
+                >
+                    {isSelectionMode ? (
+                        <>
+                            <Square className="h-4 w-4" />
+                            Cancel Selection
+                        </>
+                    ) : (
+                        <>
+                            <CheckSquare className="h-4 w-4" />
+                            Select
+                        </>
+                    )}
+                </Button>
             ))}
             {satasaurusStudents.length > 0 && renderTable(satasaurusStudents, "Satursaurus Students", saturdayDays, (
                 <Button onClick={() => handlePrint('satursaurus')} size="sm" variant="outline" className="gap-2">
@@ -378,6 +467,32 @@ export function AllListTable({ year, month, employees, students, attendance, shi
                     Print Table
                 </Button>
             ))}
+
+            {/* Floating bulk action bar (selection mode) */}
+            {isSelectionMode && (
+                <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 items-end">
+                    {selectedCells.size > 0 && (
+                        <Button
+                            size="lg"
+                            className="rounded-full shadow-lg bg-red-500 hover:bg-red-600 text-white font-bold"
+                            onClick={handleBulkMarkAbsent}
+                            disabled={isBulkSubmitting}
+                        >
+                            {isBulkSubmitting ? (
+                                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                            ) : (
+                                <XCircle className="h-5 w-5 mr-2" />
+                            )}
+                            Mark Absent ({selectedCells.size})
+                        </Button>
+                    )}
+                    <div className="bg-slate-800 text-white text-xs px-3 py-1.5 rounded-full shadow">
+                        {selectedCells.size === 0
+                            ? 'Tap student cells to select'
+                            : `${selectedCells.size} cell(s) selected`}
+                    </div>
+                </div>
+            )}
 
             {selectedEmployee && selectedDate && (
                 <AttendanceEditDialog
