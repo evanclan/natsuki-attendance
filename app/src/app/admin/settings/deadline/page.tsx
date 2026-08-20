@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Save, CalendarClock } from 'lucide-react'
 import { getDeadlineSetting, updateDeadlineSetting } from './actions'
+import PreferredRestApplicants from '@/components/admin/PreferredRestApplicants'
 import { toast } from "sonner"
 
 export default function DeadlineSettingsPage() {
@@ -67,7 +68,7 @@ export default function DeadlineSettingsPage() {
                 <h1 className="text-2xl font-bold">Preferred Rest Deadline</h1>
             </div>
 
-            <div className="max-w-2xl mx-auto">
+            <div className="max-w-5xl mx-auto">
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -120,6 +121,8 @@ export default function DeadlineSettingsPage() {
                         </div>
                     </CardContent>
                 </Card>
+
+                <PreferredRestApplicants />
             </div>
         </div>
     )
