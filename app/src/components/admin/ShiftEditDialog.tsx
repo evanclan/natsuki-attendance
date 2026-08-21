@@ -121,7 +121,7 @@ export function ShiftEditDialog({
             } else {
                 // Default values for new shift
                 if (role === 'student') {
-                    setShiftType('sick_absent')
+                    setShiftType('planned_absent')
                     setMemo('')
                     setColor('#FDBA74') // Default color for students? Or keep empty.
                 } else {
