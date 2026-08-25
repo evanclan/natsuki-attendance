@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Check, ChevronLeft, ChevronRight, CheckSquare, Loader2, Printer, Square, XCircle } from 'lucide-react'
 import { AttendanceEditDialog } from '@/components/admin/AttendanceEditDialog'
-import { formatLocalDate } from '@/lib/utils'
+import { formatLocalDate, OTHER_BRANCH_COLOR } from '@/lib/utils'
 import { bulkMarkAbsentDays } from '@/app/admin/attendance-actions/actions'
 
 type Employee = {
@@ -256,6 +256,7 @@ export function AllListTable({ year, month, employees, students, attendance, shi
             case 'business_trip': return 'B. Trip'
             case 'special_leave': return 'Special'
             case 'rest': return 'Rest'
+            case 'other_branch': return 'Other Branch'
             case 'absent': return 'Absent'
             case 'flex': return 'Flex'
             case 'work_no_break': return 'Work (NB)'
@@ -289,6 +290,8 @@ export function AllListTable({ year, month, employees, students, attendance, shi
                     let bgStyle = {}
                     if (shift?.color) {
                         bgStyle = { backgroundColor: shift.color }
+                    } else if (shift?.shift_type === 'other_branch') {
+                        bgStyle = { backgroundColor: OTHER_BRANCH_COLOR }
                     } else if (isRest || shift?.shift_type === 'rest' || shift?.shift_type === 'preferred_rest') {
                         bgStyle = { backgroundColor: '#fef2f2' } // red-50 equivalent
                     }

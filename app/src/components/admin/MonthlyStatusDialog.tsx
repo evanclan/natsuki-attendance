@@ -190,6 +190,7 @@ export function MonthlyStatusDialog({
                                 <SelectItem value="business_trip">Business Trip</SelectItem>
                                 <SelectItem value="rest">Rest</SelectItem>
                                 <SelectItem value="preferred_rest">Preferred Rest</SelectItem>
+                                <SelectItem value="other_branch">Other Branch</SelectItem>
                                 <SelectItem value="absent">Absent</SelectItem>
                             </SelectContent>
                         </Select>

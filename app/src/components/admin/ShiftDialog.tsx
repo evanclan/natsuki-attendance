@@ -194,6 +194,7 @@ export function ShiftDialog({
                                 <SelectItem value="special_leave">Special Leave</SelectItem>
                                 <SelectItem value="business_trip">Business Trip</SelectItem>
                                 <SelectItem value="rest">Rest</SelectItem>
+                                <SelectItem value="other_branch">Other Branch</SelectItem>
                                 <SelectItem value="absent">Absent</SelectItem>
                             </SelectContent>
                         </Select>

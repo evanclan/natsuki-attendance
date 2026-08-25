@@ -229,6 +229,7 @@ export function ShiftCalendar({ personId, readOnly = false }: ShiftCalendarProps
                                         ${shift.shift_type === 'flex' ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
                                         ${shift.shift_type === 'business_trip' ? 'bg-purple-50 text-purple-700 border-purple-200' : ''}
                                         ${shift.shift_type === 'rest' ? 'bg-red-50 text-red-700 border-red-200' : ''}
+                                        ${shift.shift_type === 'other_branch' ? 'bg-sky-100 text-sky-800 border-sky-300' : ''}
                                         ${shift.shift_type === 'absent' ? 'bg-gray-100 text-gray-700 border-gray-200' : ''}
                                     `}>
                                         {shift.shift_type.replace('_', ' ')}

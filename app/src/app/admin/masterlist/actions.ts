@@ -46,7 +46,7 @@ async function fetchAllRows(
     return allRows
 }
 
-export type ShiftType = 'work' | 'rest' | 'absent' | 'paid_leave' | 'half_paid_leave' | 'business_trip' | 'flex' | 'special_leave' | 'preferred_rest' | 'present' | 'sick_absent' | 'planned_absent' | 'family_reason' | 'other_reason' | 'work_no_break' | 'user_note' | 'custom_leave'
+export type ShiftType = 'work' | 'rest' | 'absent' | 'paid_leave' | 'half_paid_leave' | 'business_trip' | 'flex' | 'special_leave' | 'preferred_rest' | 'other_branch' | 'present' | 'sick_absent' | 'planned_absent' | 'family_reason' | 'other_reason' | 'work_no_break' | 'user_note' | 'custom_leave'
 
 export type MasterListShiftData = {
     date: string

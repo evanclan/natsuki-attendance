@@ -112,6 +112,8 @@ export function exportMasterListToExcel({
             return '休み'
         } else if (shift.shift_type === 'preferred_rest') {
             return '希望休'
+        } else if (shift.shift_type === 'other_branch') {
+            return '他校'
         }
         return shift.shift_name || shift.shift_type || ''
     }

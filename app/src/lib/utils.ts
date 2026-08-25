@@ -7,6 +7,13 @@ export function cn(...inputs: ClassValue[]) {
 
 import { MasterListShiftData } from '@/app/admin/masterlist/actions'
 
+/**
+ * Fixed cell colour for the 'other_branch' status (deep sky blue).
+ * The status has no per-shift colour picker, so this is the single source of truth
+ * for the masterlist cell, the print views and the Excel export.
+ */
+export const OTHER_BRANCH_COLOR = '#00BFFF'
+
 export function calculateExpectedHours(shift: MasterListShiftData): number {
   if ((shift.shift_type === 'work' || shift.shift_type === 'work_no_break') && shift.start_time && shift.end_time) {
     const [startH, startM] = shift.start_time.split(':').map(Number)

@@ -234,6 +234,8 @@ export const MasterListPrintComponent = React.forwardRef<HTMLDivElement, MasterL
                                                 cellContent = '休み'
                                             } else if (shift.shift_type === 'preferred_rest') {
                                                 cellContent = '希望休'
+                                            } else if (shift.shift_type === 'other_branch') {
+                                                cellContent = '他校'
                                             } else {
                                                 // Should capture other types or default
                                                 cellContent = shift.shift_name || shift.shift_type || ''

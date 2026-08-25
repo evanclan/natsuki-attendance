@@ -264,7 +264,9 @@ export function calculateDailyStats(
         }
     }
 
-    if (shiftType === 'rest' || shiftType === 'absent') {
+    // 'other_branch' means the person worked at another school that day — those hours
+    // are recorded by that school, so this system counts the day as zero, like a rest.
+    if (shiftType === 'rest' || shiftType === 'absent' || shiftType === 'other_branch') {
         return {
             total_work_minutes: 0,
             total_break_minutes: 0,

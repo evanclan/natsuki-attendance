@@ -1,6 +1,6 @@
 import { MasterListShiftData } from '@/app/admin/masterlist/actions'
 import { Check } from 'lucide-react'
-import { calculateExpectedHours } from '@/lib/utils'
+import { calculateExpectedHours, OTHER_BRANCH_COLOR } from '@/lib/utils'
 import { memo } from 'react'
 
 type Person = {
@@ -40,6 +40,9 @@ export const ShiftCell = memo(function ShiftCell({
 }: ShiftCellProps) {
     // Determine background color
     let bgColor = 'bg-white'
+    // Some statuses have a fixed brand colour that has no Tailwind class, so it is
+    // applied inline instead (see OTHER_BRANCH_COLOR).
+    let bgStyleColor: string | undefined = undefined
     let textColor = 'text-foreground'
     let mainContent: React.ReactNode = ''
     let memoContent: string | undefined = undefined
@@ -59,6 +62,10 @@ export const ShiftCell = memo(function ShiftCell({
             bgColor = 'bg-red-50'
             textColor = 'text-red-700'
             mainContent = 'Preferred\nRest'
+        } else if (shift.shift_type === 'other_branch') {
+            bgStyleColor = OTHER_BRANCH_COLOR
+            textColor = 'text-white'
+            mainContent = 'Other\nBranch'
         } else if (shift.shift_type === 'absent') {
             bgColor = 'bg-gray-100'
             textColor = 'text-gray-500'
@@ -167,10 +174,10 @@ export const ShiftCell = memo(function ShiftCell({
                 h-16 w-[100px] min-w-[100px] max-w-[100px] p-1 border-r border-b border-border 
                 flex flex-col items-center justify-center text-[10px] text-center cursor-pointer
                 hover:bg-accent transition-colors whitespace-pre-line relative overflow-hidden
-                ${!shift?.color ? bgColor : ''} ${textColor}
+                ${!shift?.color && !bgStyleColor ? bgColor : ''} ${textColor}
                 ${isSelected ? 'ring-2 ring-inset ring-blue-500 z-10' : ''}
             `}
-            style={shift?.color ? { backgroundColor: shift.color } : undefined}
+            style={shift?.color || bgStyleColor ? { backgroundColor: shift?.color || bgStyleColor } : undefined}
             onClick={() => onCellClick(person, day)}
         >
             {isSelected && (

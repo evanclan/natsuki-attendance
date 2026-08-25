@@ -219,7 +219,7 @@ export async function getMonthlyAttendanceReport(
 
         // Also check individual shift assignment for rest
         const shift = shifts.find(s => s.date === dateStr)
-        if (shift?.shift_type === 'rest' || shift?.shift_type === 'preferred_rest') {
+        if (shift?.shift_type === 'rest' || shift?.shift_type === 'preferred_rest' || shift?.shift_type === 'other_branch') {
             isRestDay = true
         }
 

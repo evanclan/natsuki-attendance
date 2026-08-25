@@ -237,6 +237,9 @@ export const AllListPrintComponent = React.forwardRef<HTMLDivElement, AllListPri
                                         } else if (shift.shift_type === 'preferred_rest') {
                                             cellContent = '希望休'
                                             cellClass = 'bg-red-50' // User requested red for preferred_rest
+                                        } else if (shift.shift_type === 'other_branch') {
+                                            cellContent = '他校'
+                                            cellClass = 'bg-sky-100'
                                         } else if (shift.shift_type === 'planned_absent') {
                                             cellContent = '予欠'
                                             cellClass = 'bg-red-50'
