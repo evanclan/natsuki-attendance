@@ -219,9 +219,10 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
             'custom_leave'
         ].includes(day.shiftType?.toLowerCase())
 
-        const defaultStatus = day.isRestDay
-            ? (day.isHoliday ? 'holiday' : 'rest_day')
-            : (isSpecialShift ? 'present' : (day.checkIn ? 'present' : 'absent'))
+        // Must be a valid attendance_status enum value ('rest_day' / 'holiday' are not)
+        const defaultStatus = day.checkIn
+            ? 'present'
+            : (day.isRestDay ? 'off' : (isSpecialShift ? 'present' : 'absent'))
 
         setEditForm({
             checkIn: getInputValue(day.checkIn),
@@ -268,7 +269,7 @@ export function MonthlyReport({ personId, initialDate, mode = 'single', onLoadCo
 
         // Automatically determine status if it was absent/present
         let finalStatus = editForm.status;
-        if (finalStatus === 'absent' && (editForm.checkIn || editForm.checkOut)) {
+        if ((finalStatus === 'absent' || finalStatus === 'off') && (editForm.checkIn || editForm.checkOut)) {
             finalStatus = 'present';
         } else if (finalStatus === 'present' && !editForm.checkIn && !editForm.checkOut && !isSpecialShift) {
             finalStatus = 'absent';

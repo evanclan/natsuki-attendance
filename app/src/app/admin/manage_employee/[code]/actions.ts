@@ -223,6 +223,14 @@ export async function getMonthlyAttendanceReport(
             isRestDay = true
         }
 
+        // A working shift set in the master list overrides the default Sunday / rest-day
+        // event rest (e.g. an employee who occasionally works on a Sunday). Holidays keep
+        // their rest styling.
+        const workingShiftTypes = ['work', 'work_no_break', 'flex', 'half_paid_leave', 'business_trip', 'custom_leave']
+        if (!isHoliday && workingShiftTypes.includes(shift?.shift_type?.toLowerCase() || '')) {
+            isRestDay = false
+        }
+
         // Get attendance record for this day
         const attendance = attendanceData?.find(a => a.date === dateStr)
 
